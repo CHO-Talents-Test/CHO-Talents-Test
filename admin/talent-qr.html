@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 QR 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <style>
+    .qr-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
+    .qr-item-card { background: #fff; border: 1px solid var(--admin-border); border-radius: 12px; padding: 1rem; margin-bottom: 0.8rem; display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+    .qr-item-card.inactive { opacity: 0.5; }
+    .qr-img-wrap { flex-shrink: 0; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; background: var(--t-card, #fff); border-radius: 8px; border: 1px solid var(--t-border, #e9ecef); overflow: hidden; position: relative; }
+    .qr-img-wrap img, .qr-img-wrap canvas { max-width: 100%; max-height: 100%; }
+    .qr-info { flex: 1; min-width: 160px; }
+    .qr-code-label { font-family: monospace; font-size: 0.78rem; color: var(--admin-text-muted); letter-spacing: 1px; margin-bottom: 0.2rem; }
+    .qr-meta { font-size: 0.82rem; color: var(--admin-text-muted); display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 0.3rem; }
+    .qr-actions { display: flex; gap: 0.3rem; flex-wrap: wrap; align-self: center; }
+    .qr-actions button { padding: 0.3rem 0.6rem; font-size: 0.78rem; border-radius: 6px; border: 1px solid var(--admin-border); cursor: pointer; font-weight: 600; background: #fff; }
+    .qr-actions button.danger { color: #e03131; border-color: #e03131; }
+    .qr-actions button.primary { background: var(--admin-primary); color: #fff; border-color: var(--admin-primary); }
+    .qr-actions button.edit { color: #1971c2; border-color: #1971c2; }
+    .qr-actions button.info { color: #1971c2; border-color: #1971c2; background: #e7f5ff; }
+    .create-form { background: #f8f9fa; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.5rem; }
+    .create-form h3 { margin-bottom: 1rem; font-size: 1rem; }
+    .form-section { background: var(--t-card, #fff); border: 1px solid var(--t-border, #e9ecef); border-radius: 10px; padding: 0.8rem 1rem; margin-bottom: 0.8rem; }
+    .form-section:last-of-type { margin-bottom: 0; }
+    .form-grid { display: grid; grid-template-columns: 1fr; gap: 0.6rem; }
+    .form-grid label { font-size: 0.82rem; font-weight: 600; display: block; margin-bottom: 0.3rem; }
+    .form-grid input, .form-grid select { width: 100%; padding: 0.5rem; border: 1px solid var(--admin-border); border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; }
+    .form-grid input[type="radio"], .form-grid input[type="checkbox"] { width: auto; padding: 0; border: none; }
+    .period-row { display: flex; align-items: center; gap: 0.4rem; flex-wrap: wrap; }
+    .period-row input { flex: 1; min-width: 120px; }
+    .radio-row { display: flex; flex-direction: column; gap: 0.4rem; margin-top: 0.3rem; }
+    .radio-row label { display: flex; align-items: center; gap: 0.4rem; font-size: 0.85rem; font-weight: 400; cursor: pointer; white-space: nowrap; }
+    .radio-row label input[type="radio"] { margin: 0; }
+    .radio-row .inline-num { width: 80px; padding: 0.3rem 0.5rem; font-size: 0.85rem; display: inline-block; }
+    .radio-inline { flex-direction: row !important; gap: 0.8rem !important; flex-wrap: wrap !important; }
+    .item-info-box { background: #e7f5ff; padding: 0.6rem 0.8rem; border-radius: 8px; font-size: 0.85rem; margin-top: 0.3rem; display: flex; align-items: center; gap: 0.5rem; }
+    .section-label { font-size: 0.85rem; font-weight: 700; display: block; margin-bottom: 0.4rem; color: #495057; }
+    .location-results { max-height: 200px; overflow-y: auto; border: 1px solid var(--admin-border); border-radius: 8px; margin-bottom: 0.4rem; background: #fff; }
+    .loc-result-item { padding: 0.5rem 0.8rem; border-bottom: 1px solid #eee; cursor: pointer; }
+    .loc-result-item:hover { background: #f1f3f5; }
+    .loc-result-item:last-child { border-bottom: none; }
+    .loc-hint { font-size: 0.75rem; color: var(--admin-text-muted); margin-top: 0.3rem; }
+    .btn-create-qr { padding: 0.6rem 1.5rem; font-size: 0.95rem; border-radius: 10px; font-weight: 700; letter-spacing: 0.5px; }
+    .day-checks { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
+    .day-checks label { display: flex; align-items: center; gap: 0.2rem; font-size: 0.82rem; font-weight: 400; cursor: pointer; background: #f1f3f5; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #dee2e6; transition: background 0.15s; }
+    .day-checks label:has(input:checked) { background: #d0bfff; border-color: #845ef7; }
+    .day-checks input[type="checkbox"] { margin: 0; width: 14px; height: 14px; }
+    .week-checks { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.3rem; }
+    .week-checks label { display: flex; align-items: center; gap: 0.2rem; font-size: 0.82rem; font-weight: 400; cursor: pointer; background: #f1f3f5; padding: 0.3rem 0.6rem; border-radius: 6px; border: 1px solid #dee2e6; transition: background 0.15s; }
+    .week-checks label:has(input:checked) { background: #d0bfff; border-color: #845ef7; }
+    .week-checks input[type="checkbox"] { margin: 0; width: 14px; height: 14px; }
+    .repeat-sub { margin-top: 0.4rem; padding: 0.6rem; background: #f8f0ff; border-radius: 8px; border: 1px solid #e5dbff; }
+    .repeat-sub .section-label { font-size: 0.82rem; margin-bottom: 0.3rem; color: #7048e8; }
+    .filter-bar { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.8rem; }
+    .filter-bar input, .filter-bar select { padding: 0.4rem 0.6rem; border: 1px solid var(--admin-border); border-radius: 8px; font-size: 0.82rem; }
+    .filter-bar input[type="text"] { flex: 1; min-width: 140px; max-width: 250px; }
+    .filter-bar input[type="date"] { width: 140px; }
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
+    .modal-overlay.show { display: flex; }
+    .modal-box { background: #fff; border-radius: 16px; padding: 1.5rem; max-width: 520px; width: 92%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
+    .modal-box.wide { max-width: 600px; }
+    .modal-box h3 { margin-bottom: 1rem; }
+    .modal-box .form-grid { grid-template-columns: 1fr; }
+    .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+    @media (max-width: 640px) {
+      .modal-box { padding: 1rem 0.8rem; width: 96%; }
+      .modal-box h3 { font-size: 0.95rem; }
+    }
+    .scan-list-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .scan-list-table th, .scan-list-table td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--t-border, #e9ecef); }
+    .scan-list-table th { background: #f8f9fa; font-weight: 600; font-size: 0.8rem; color: var(--admin-text-muted); }
+    .scan-list-table tr:hover td { background: #f1f3f5; }
+    .scan-empty { text-align: center; padding: 1.5rem; color: var(--admin-text-muted); font-size: 0.9rem; }
+    .form-input { width: 100%; padding: 0.5rem; border: 1px solid var(--admin-border); border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; }
+    @media (max-width: 480px) {
+      .create-form { padding: 0.8rem; }
+      .form-section { padding: 0.6rem 0.8rem; }
+      .section-label { font-size: 0.82rem; }
+      .radio-row label { font-size: 0.82rem; }
+      .qr-img-wrap { width: 72px; height: 72px; }
+      .qr-item-card { padding: 0.7rem; gap: 0.6rem; }
+      .qr-meta { font-size: 0.75rem; gap: 0.3rem; }
+      .filter-bar input[type="text"] { min-width: 100px; }
+      .filter-bar input[type="date"] { width: 120px; }
+    }
+    /* Dark Theme */
+    [data-theme="dark"] .create-form { background: #1e1e2e; border: 1px solid #333; }
+    [data-theme="dark"] .form-section { background: #2a2a3e; border-color: #444; }
+    [data-theme="dark"] .section-label { color: #ccc; }
+    [data-theme="dark"] .qr-item-card { background: #2a2a3e; border-color: #444; }
+    [data-theme="dark"] .qr-actions button { background: #2a2a3e; color: #ccc; border-color: #555; }
+    [data-theme="dark"] .qr-actions button.primary { background: var(--admin-primary); color: #fff; }
+    [data-theme="dark"] .qr-actions button.danger { background: transparent; }
+    [data-theme="dark"] .qr-actions button.edit { background: transparent; }
+    [data-theme="dark"] .qr-actions button.info { background: rgba(25, 113, 194, 0.15); }
+    [data-theme="dark"] .btn-create-qr { background: #5a4fcf; border-color: #5a4fcf; color: #fff; }
+    [data-theme="dark"] .btn-create-qr:hover { background: #4a3fbf; }
+    [data-theme="dark"] .modal-box { background: #1e1e2e; border: 1px solid #444; }
+    [data-theme="dark"] .item-info-box { background: rgba(25, 113, 194, 0.15); color: #a0cfff; }
+    [data-theme="dark"] .location-results { background: #2a2a3e; border-color: #444; }
+    [data-theme="dark"] .loc-result-item { border-color: #444; }
+    [data-theme="dark"] .loc-result-item:hover { background: #333; }
+    [data-theme="dark"] .repeat-sub { background: rgba(112, 72, 232, 0.1); border-color: rgba(112, 72, 232, 0.3); }
+    [data-theme="dark"] .day-checks label, [data-theme="dark"] .week-checks label { background: #333; border-color: #555; color: #ccc; }
+    [data-theme="dark"] .day-checks label:has(input:checked), [data-theme="dark"] .week-checks label:has(input:checked) { background: rgba(132, 94, 247, 0.3); border-color: #845ef7; }
+    [data-theme="dark"] .scan-list-table th { background: #2a2a3e; color: #aaa; }
+    [data-theme="dark"] .scan-list-table td { border-color: #444; }
+    [data-theme="dark"] .scan-list-table tr:hover td { background: #333; }
+    [data-theme="dark"] .filter-bar input, [data-theme="dark"] .filter-bar select { background: #2a2a3e; border-color: #444; color: #ddd; }
+    [data-theme="dark"] .form-input, [data-theme="dark"] .form-grid input, [data-theme="dark"] .form-grid select { background: #1e1e2e; border-color: #444; color: #ddd; }
+    [data-theme="dark"] .period-row input { background: #1e1e2e; border-color: #444; color: #ddd; }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2>🎫 달란트 QR 코드 관리</h2>
+
+    <div class="create-form" id="createForm">
+      <h3>➕ 새 QR 코드 생성</h3>
+
+      <div class="form-section">
+        <label class="section-label">지급 대상</label>
+        <div class="radio-row radio-inline">
+          <label><input type="radio" name="targetType" value="student" checked onchange="onTargetTypeChange()" /> 🎒 학생</label>
+          <label><input type="radio" name="targetType" value="teacher" onchange="onTargetTypeChange()" /> 👨‍🏫 교사</label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="section-label">달란트 항목</label>
+        <select id="qrItemSelect" class="form-input" onchange="onItemSelectChange()">
+          <option value="">-- 항목을 선택하세요 --</option>
+          <option value="manual">✏️ 직접 입력</option>
+        </select>
+        <div id="selectedItemInfo" class="item-info-box" style="display:none;">
+          📌 <strong id="selectedItemName"></strong> · <span id="selectedItemAmount"></span> 달란트
+        </div>
+        <div id="manualFields" style="display:none;margin-top:0.5rem;">
+          <div style="display:flex;gap:0.5rem;flex-wrap:wrap;">
+            <div style="flex:2;min-width:140px;">
+              <label style="font-size:0.82rem;font-weight:600;">항목 설명</label>
+              <input type="text" id="qrDesc" class="form-input" placeholder="예: 특별 활동 참여" />
+            </div>
+            <div style="flex:1;min-width:80px;">
+              <label style="font-size:0.82rem;font-weight:600;">금액</label>
+              <input type="number" id="qrAmount" class="form-input" min="1" max="100" value="1" />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="section-label">지급 방식</label>
+        <div class="radio-row">
+          <label><input type="radio" name="maxUsesType" value="unlimited" checked onchange="onMaxUsesTypeChange()" /> 지급 제한 없음 (무제한)</label>
+          <label>
+            <input type="radio" name="maxUsesType" value="limited" onchange="onMaxUsesTypeChange()" />
+            선착순 지급
+            <input type="number" id="maxUsesCount" class="inline-num" min="1" max="100000" value="30" disabled />
+            명
+          </label>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="section-label">반복 수령 가능 여부</label>
+        <div class="radio-row radio-inline">
+          <label><input type="radio" name="repeatEnabled" value="no" checked onchange="onRepeatEnabledChange()" /> ❌ X</label>
+          <label><input type="radio" name="repeatEnabled" value="yes" onchange="onRepeatEnabledChange()" /> ⭕ O</label>
+        </div>
+        <div id="repeatOptions" style="display:none;">
+          <div class="repeat-sub">
+            <label class="section-label">반복 방식</label>
+            <div class="radio-row">
+              <label><input type="radio" name="repeatType" value="daily" checked onchange="onRepeatTypeChange()" /> 🔄 매일 (매일 00:00 초기화)</label>
+              <label><input type="radio" name="repeatType" value="weekday" onchange="onRepeatTypeChange()" /> 📅 요일 반복</label>
+              <label><input type="radio" name="repeatType" value="week_weekday" onchange="onRepeatTypeChange()" /> 🗓️ 주차 + 요일 반복</label>
+            </div>
+            <div id="repeatDaysWrap" style="display:none;margin-top:0.5rem;">
+              <label class="section-label">수령 가능 요일</label>
+              <div class="day-checks" id="repeatDaysChecks">
+                <label><input type="checkbox" name="repeatDay" value="0" /> 일</label>
+                <label><input type="checkbox" name="repeatDay" value="1" /> 월</label>
+                <label><input type="checkbox" name="repeatDay" value="2" /> 화</label>
+                <label><input type="checkbox" name="repeatDay" value="3" /> 수</label>
+                <label><input type="checkbox" name="repeatDay" value="4" /> 목</label>
+                <label><input type="checkbox" name="repeatDay" value="5" /> 금</label>
+                <label><input type="checkbox" name="repeatDay" value="6" /> 토</label>
+              </div>
+            </div>
+            <div id="repeatWeeksWrap" style="display:none;margin-top:0.5rem;">
+              <label class="section-label">수령 가능 주차</label>
+              <div class="week-checks" id="repeatWeeksChecks">
+                <label><input type="checkbox" name="repeatWeek" value="1" /> 1주</label>
+                <label><input type="checkbox" name="repeatWeek" value="2" /> 2주</label>
+                <label><input type="checkbox" name="repeatWeek" value="3" /> 3주</label>
+                <label><input type="checkbox" name="repeatWeek" value="4" /> 4주</label>
+                <label><input type="checkbox" name="repeatWeek" value="5" /> 5주</label>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="section-label">유효 기간</label>
+        <div class="radio-row radio-inline" style="margin-bottom:0.4rem;">
+          <label><input type="radio" name="validityType" value="designated" checked onchange="onValidityTypeChange()" /> 📅 지정일</label>
+          <label><input type="radio" name="validityType" value="period" onchange="onValidityTypeChange()" /> 📆 기간</label>
+          <label><input type="radio" name="validityType" value="unlimited" onchange="onValidityTypeChange()" /> ♾️ 무기한</label>
+        </div>
+        <div id="validityDesignated" class="period-row">
+          <input type="date" id="qrValidDate" class="form-input" style="max-width:200px;" />
+        </div>
+        <div id="validityPeriod" class="period-row" style="display:none;">
+          <input type="date" id="qrValidFromDate" class="form-input" />
+          <span style="font-size:0.85rem;color:var(--admin-text-muted);">~</span>
+          <input type="date" id="qrValidToDate" class="form-input" />
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="section-label">유효 시간</label>
+        <div class="radio-row radio-inline" style="margin-bottom:0.4rem;">
+          <label><input type="radio" name="validityTimeType" value="unlimited" checked onchange="onValidityTimeTypeChange()" /> 🕐 시간 제한 없음</label>
+          <label><input type="radio" name="validityTimeType" value="limited" onchange="onValidityTimeTypeChange()" /> ⏰ 시간 제한</label>
+        </div>
+        <div id="validityTimeFields" class="period-row" style="display:none;">
+          <input type="time" id="qrValidStartTime" class="form-input" style="max-width:140px;" value="00:00" />
+          <span style="font-size:0.85rem;color:var(--admin-text-muted);">~</span>
+          <input type="time" id="qrValidEndTime" class="form-input" style="max-width:140px;" value="23:59" />
+        </div>
+      </div>
+
+      <div class="form-section">
+        <label class="section-label">위치 제한</label>
+        <div class="radio-row radio-inline" style="margin-bottom:0.4rem;">
+          <label><input type="radio" name="locationType" value="none" checked onchange="onLocationTypeChange()" /> 🌐 제한 없음</label>
+          <label><input type="radio" name="locationType" value="specific" onchange="onLocationTypeChange()" /> 📍 특정 위치</label>
+        </div>
+        <div id="locationFields" style="display:none;">
+          <div style="display:flex;gap:0.4rem;margin-bottom:0.4rem;">
+            <input type="text" id="qrLocationSearch" class="form-input" placeholder="주소나 명칭을 입력하세요" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchLocationFor('qr');}" />
+            <button type="button" class="admin-btn" onclick="searchLocationFor('qr')" style="padding:0.4rem 0.8rem;font-size:0.82rem;white-space:nowrap;">🔍 검색</button>
+          </div>
+          <div id="qrLocationResults" class="location-results" style="display:none;"></div>
+          <div style="display:flex;gap:0.5rem;align-items:center;flex-wrap:wrap;">
+            <div style="flex:1;min-width:160px;">
+              <input type="text" id="qrLocationName" class="form-input" placeholder="선택된 주소 (검색 후 선택하세요)" oninput="clearLocationCoordsFor('qr')" />
+            </div>
+            <div>
+              <select id="qrLocationRadius" class="form-input" style="width:auto;">
+                <option value="100">100m</option>
+                <option value="200">200m</option>
+                <option value="300">300m</option>
+                <option value="400">400m</option>
+                <option value="500" selected>500m</option>
+                <option value="1000">1km</option>
+                <option value="1500">1.5km</option>
+                <option value="2000">2km</option>
+                <option value="2500">2.5km</option>
+                <option value="3000">3km</option>
+                <option value="3500">3.5km</option>
+                <option value="4000">4km</option>
+                <option value="4500">4.5km</option>
+                <option value="5000">5km</option>
+              </select>
+            </div>
+          </div>
+          <input type="hidden" id="qrLocationLat" />
+          <input type="hidden" id="qrLocationLng" />
+          <div class="loc-hint">💡 주소를 선택하면 위도/경도가 자동 저장됩니다.</div>
+        </div>
+      </div>
+
+      <div style="margin-top:0.8rem;">
+        <button class="admin-btn primary btn-create-qr" id="btnCreateQR" onclick="createQR()">🎫 QR 코드 생성</button>
+        <div id="qrFormStatus" style="display:none;margin-top:0.6rem;padding:0.55rem 0.7rem;border-radius:8px;font-size:0.84rem;"></div>
+      </div>
+    </div>
+
+    <div class="qr-tabs">
+      <button class="filter-btn active" id="tabActive" onclick="switchTab('active')">활성 코드</button>
+      <button class="filter-btn" id="tabAll" onclick="switchTab('all')">전체</button>
+      <span id="qrPageSizeWrap" style="margin-left:auto;"></span>
+      <span id="qrCount" style="font-size:0.82rem;color:var(--admin-text-muted);"></span>
+    </div>
+    <div class="filter-bar">
+      <input type="text" id="qrSearchInput" placeholder="🔍 검색 (설명, 코드)" oninput="onQRFilterChange()" />
+      <select id="qrFilterTarget" onchange="onQRFilterChange()">
+        <option value="">전체 대상</option>
+        <option value="student">🎒 학생</option>
+        <option value="teacher">👨‍🏫 교사</option>
+      </select>
+      <select id="qrFilterCondition" onchange="onQRFilterChange()">
+        <option value="">전체 조건</option>
+        <option value="unlimited">무제한</option>
+        <option value="limited">선착순</option>
+        <option value="location">위치 제한</option>
+        <option value="repeat">반복 수령</option>
+      </select>
+    </div>
+    <div class="filter-bar" style="margin-top:-0.4rem;">
+      <input type="date" id="qrFilterDateFrom" onchange="onQRFilterChange()" title="시작일" />
+      <span style="font-size:0.82rem;color:var(--admin-text-muted);">~</span>
+      <input type="date" id="qrFilterDateTo" onchange="onQRFilterChange()" title="종료일" />
+      <button class="filter-btn" onclick="setQRDatePreset('today')" style="font-size:0.75rem;">오늘</button>
+      <button class="filter-btn" onclick="setQRDatePreset('week')" style="font-size:0.75rem;">1주</button>
+      <button class="filter-btn" onclick="setQRDatePreset('month')" style="font-size:0.75rem;">1달</button>
+      <button class="filter-btn" onclick="setQRDatePreset('year')" style="font-size:0.75rem;">1년</button>
+    </div>
+
+    <div id="qrList">
+      <div style="text-align:center;color:var(--admin-text-muted);padding:2rem;">불러오는 중...</div>
+    </div>
+    <div id="qrListPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+  </div>
+
+  <!-- Edit Modal -->
+  <div class="modal-overlay" id="editModal">
+    <div class="modal-box" style="max-width:600px;max-height:85vh;overflow-y:auto;">
+      <h3>✏️ QR 코드 수정</h3>
+      <input type="hidden" id="editId" />
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;">저장 방식</label>
+        <div class="radio-row radio-inline" style="margin-top:0.3rem;">
+          <label><input type="radio" name="editSaveMode" value="keep" checked /> 📌 기존 QR 유지</label>
+          <label><input type="radio" name="editSaveMode" value="new" /> 🔄 새 QR 생성</label>
+        </div>
+      </div>
+      <div class="form-grid" style="gap:0.8rem;">
+        <div>
+          <label>지급 대상</label>
+          <div class="radio-row radio-inline">
+            <label><input type="radio" name="editTargetType" value="student" checked onchange="onEditTargetTypeChange()" /> 학생</label>
+            <label><input type="radio" name="editTargetType" value="teacher" onchange="onEditTargetTypeChange()" /> 교사</label>
+          </div>
+        </div>
+        <div>
+          <label>달란트 항목</label>
+          <select id="editItemSelect" class="form-input" onchange="onEditItemChange()">
+            <option value="">-- 항목 선택 --</option>
+            <option value="manual">✏️ 직접 입력</option>
+          </select>
+          <div id="editItemInfo" class="item-info-box" style="display:none;">
+            📌 <strong id="editItemName"></strong> · <span id="editItemAmount"></span> 달란트
+          </div>
+        </div>
+        <div id="editManualFields" style="display:none;">
+          <label>설명</label>
+          <input type="text" id="editDesc" />
+        </div>
+        <div id="editManualAmountField" style="display:none;">
+          <label>달란트 금액</label>
+          <input type="number" id="editAmount" min="1" max="100" />
+        </div>
+        <div>
+          <label>지급 방식</label>
+          <div class="radio-row">
+            <label><input type="radio" name="editMaxUsesType" value="unlimited" checked onchange="onEditMaxUsesTypeChange()" /> 지급 제한 없음</label>
+            <label>
+              <input type="radio" name="editMaxUsesType" value="limited" onchange="onEditMaxUsesTypeChange()" />
+              선착순
+              <input type="number" id="editMaxUsesCount" class="inline-num" min="1" max="100000" value="30" disabled />
+              명
+            </label>
+          </div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label>유효 기간</label>
+          <div class="radio-row radio-inline" style="margin-bottom:0.4rem;">
+            <label><input type="radio" name="editValidityType" value="designated" checked onchange="onEditValidityTypeChange()" /> 지정일</label>
+            <label><input type="radio" name="editValidityType" value="period" onchange="onEditValidityTypeChange()" /> 기간</label>
+            <label><input type="radio" name="editValidityType" value="unlimited" onchange="onEditValidityTypeChange()" /> 무기한</label>
+          </div>
+          <div id="editValidityDesignated" class="period-row">
+            <input type="date" id="editValidDate" class="form-input" style="max-width:200px;" />
+          </div>
+          <div id="editValidityPeriod" class="period-row" style="display:none;">
+            <input type="date" id="editValidFromDate" class="form-input" />
+            <span style="font-size:0.85rem;color:var(--admin-text-muted);">~</span>
+            <input type="date" id="editValidToDate" class="form-input" />
+          </div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label>유효 시간</label>
+          <div class="radio-row radio-inline" style="margin-bottom:0.4rem;">
+            <label><input type="radio" name="editValidityTimeType" value="unlimited" checked onchange="onEditValidityTimeTypeChange()" /> 시간 제한 없음</label>
+            <label><input type="radio" name="editValidityTimeType" value="limited" onchange="onEditValidityTimeTypeChange()" /> 시간 제한</label>
+          </div>
+          <div id="editValidityTimeFields" class="period-row" style="display:none;">
+            <input type="time" id="editValidStartTime" class="form-input" style="max-width:140px;" value="00:00" />
+            <span style="font-size:0.85rem;color:var(--admin-text-muted);">~</span>
+            <input type="time" id="editValidEndTime" class="form-input" style="max-width:140px;" value="23:59" />
+          </div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-weight:600;">반복 수령 가능 여부</label>
+          <div class="radio-row radio-inline">
+            <label><input type="radio" name="editRepeatEnabled" value="no" checked onchange="onEditRepeatEnabledChange()" /> ❌ X</label>
+            <label><input type="radio" name="editRepeatEnabled" value="yes" onchange="onEditRepeatEnabledChange()" /> ⭕ O</label>
+          </div>
+          <div id="editRepeatOptions" style="display:none;">
+            <div class="repeat-sub" style="margin-top:0.4rem;">
+              <label class="section-label">반복 방식</label>
+              <div class="radio-row">
+                <label><input type="radio" name="editRepeatType" value="daily" checked onchange="onEditRepeatTypeChange()" /> 매일</label>
+                <label><input type="radio" name="editRepeatType" value="weekday" onchange="onEditRepeatTypeChange()" /> 요일 반복</label>
+                <label><input type="radio" name="editRepeatType" value="week_weekday" onchange="onEditRepeatTypeChange()" /> 주차+요일</label>
+              </div>
+              <div id="editRepeatDaysWrap" style="display:none;margin-top:0.4rem;">
+                <label class="section-label">요일</label>
+                <div class="day-checks">
+                  <label><input type="checkbox" name="editRepeatDay" value="0" /> 일</label>
+                  <label><input type="checkbox" name="editRepeatDay" value="1" /> 월</label>
+                  <label><input type="checkbox" name="editRepeatDay" value="2" /> 화</label>
+                  <label><input type="checkbox" name="editRepeatDay" value="3" /> 수</label>
+                  <label><input type="checkbox" name="editRepeatDay" value="4" /> 목</label>
+                  <label><input type="checkbox" name="editRepeatDay" value="5" /> 금</label>
+                  <label><input type="checkbox" name="editRepeatDay" value="6" /> 토</label>
+                </div>
+              </div>
+              <div id="editRepeatWeeksWrap" style="display:none;margin-top:0.4rem;">
+                <label class="section-label">주차</label>
+                <div class="week-checks">
+                  <label><input type="checkbox" name="editRepeatWeek" value="1" /> 1주</label>
+                  <label><input type="checkbox" name="editRepeatWeek" value="2" /> 2주</label>
+                  <label><input type="checkbox" name="editRepeatWeek" value="3" /> 3주</label>
+                  <label><input type="checkbox" name="editRepeatWeek" value="4" /> 4주</label>
+                  <label><input type="checkbox" name="editRepeatWeek" value="5" /> 5주</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="grid-column:1/-1;">
+          <label style="font-weight:600;">위치 제한</label>
+          <div class="radio-row radio-inline" style="margin-bottom:0.4rem;">
+            <label><input type="radio" name="editLocationType" value="none" checked onchange="onEditLocationTypeChange()" /> 제한 없음</label>
+            <label><input type="radio" name="editLocationType" value="specific" onchange="onEditLocationTypeChange()" /> 특정 위치</label>
+          </div>
+          <div id="editLocationFields" style="display:none;">
+            <div style="display:flex;gap:0.4rem;margin-bottom:0.4rem;">
+              <input type="text" id="editLocationSearch" class="form-input" placeholder="주소나 명칭 입력" style="flex:1;" onkeydown="if(event.key==='Enter'){event.preventDefault();searchLocationFor('edit');}" />
+              <button type="button" class="admin-btn" onclick="searchLocationFor('edit')" style="padding:0.35rem 0.6rem;font-size:0.78rem;">🔍 검색</button>
+            </div>
+            <div id="editLocationResults" class="location-results" style="display:none;"></div>
+            <div style="display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="editLocationName" class="form-input" placeholder="선택된 주소" oninput="clearLocationCoordsFor('edit')" style="flex:1;" />
+              <select id="editLocationRadius" class="form-input" style="width:auto;">
+                <option value="100">100m</option>
+                <option value="200">200m</option>
+                <option value="300">300m</option>
+                <option value="400">400m</option>
+                <option value="500" selected>500m</option>
+                <option value="1000">1km</option>
+                <option value="1500">1.5km</option>
+                <option value="2000">2km</option>
+                <option value="2500">2.5km</option>
+                <option value="3000">3km</option>
+                <option value="3500">3.5km</option>
+                <option value="4000">4km</option>
+                <option value="4500">4.5km</option>
+                <option value="5000">5km</option>
+              </select>
+            </div>
+            <input type="hidden" id="editLocationLat" />
+            <input type="hidden" id="editLocationLng" />
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions" style="margin-top:0.8rem;">
+        <button class="admin-btn" onclick="closeEditModal()">취소</button>
+        <button class="admin-btn primary" onclick="saveEdit()">💾 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Scan List Modal -->
+  <div class="modal-overlay" id="scanListModal">
+    <div class="modal-box wide">
+      <h3>👥 수령자 목록 <span id="scanListTitle" style="font-size:0.85rem;font-weight:400;color:var(--admin-text-muted);"></span></h3>
+      <div id="scanListPageSizeWrap" style="margin-bottom:0.5rem;"></div>
+      <div id="scanListContent"><div class="scan-empty">불러오는 중...</div></div>
+      <div id="scanListPaging" style="margin-top:0.5rem;"></div>
+      <div class="modal-actions">
+        <button class="admin-btn" onclick="closeScanListModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/talent.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session, allQR = [], currentTab = 'active';
+    let qrPageSize = null;
+    function getQRPageSize() { return qrPageSize || (window.innerWidth <= 768 ? 10 : 20); }
+    let qrListPage = 1;
+    let talentItems = [];
+    let isAdmin = false;
+    let kakaoLoaded = false;
+    let kakaoLoadPromise = null;
+
+    (async () => {
+      await navInit();
+      session = await initPage(90, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      isAdmin = (session.permissionRank || 0) >= 100;
+      qrPageSize = await loadPageSize('qr_list', window.innerWidth <= 768 ? 10 : 20);
+      initDefaults();
+      initQRDateFilter();
+      await loadTalentItems();
+      await loadQRList();
+    })();
+
+    /* ── Kakao Maps SDK ── */
+    async function loadKakaoSDK() {
+      if (kakaoLoaded) return true;
+      if (typeof KAKAO_MAP_KEY === 'undefined' || !KAKAO_MAP_KEY || KAKAO_MAP_KEY === 'YOUR_KAKAO_JS_KEY') {
+        alert('카카오 맵 API 키가 설정되지 않았습니다.\njs/supabase-config.js 파일에서 KAKAO_MAP_KEY를 설정해주세요.\n\nhttps://developers.kakao.com 에서 앱 등록 후 JavaScript 키를 발급받으세요.');
+        return false;
+      }
+      if (kakaoLoadPromise) return kakaoLoadPromise;
+
+      kakaoLoadPromise = new Promise(resolve => {
+        const finishLoad = () => {
+          if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services) {
+            kakaoLoaded = true;
+            resolve(true);
+          } else {
+            alert('카카오 맵 SDK가 정상 로드되지 않았습니다.\n\n브라우저 새로고침 후 다시 시도해주세요.\n문제가 계속되면 Kakao Developers의 JavaScript 키/도메인 설정을 확인해주세요:\n\n' + location.origin);
+            kakaoLoadPromise = null;
+            resolve(false);
+          }
+        };
+
+        if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
+          kakao.maps.load(finishLoad);
+          return;
+        }
+
+        const s = document.createElement('script');
+        s.src = 'https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + KAKAO_MAP_KEY + '&libraries=services&autoload=false';
+        s.onload = () => {
+          if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.load) {
+            kakao.maps.load(finishLoad);
+          } else {
+            alert('카카오 맵 SDK가 정상 로드되지 않았습니다.\n\nKakao Developers (developers.kakao.com) 에서\n내 애플리케이션 > 앱 설정 > 플랫폼 > Web\n사이트 도메인에 아래 주소를 등록해주세요:\n\n' + location.origin);
+            kakaoLoadPromise = null;
+            resolve(false);
+          }
+        };
+        s.onerror = () => {
+          alert('카카오 맵 SDK 로드 실패\n\nKakao Developers (developers.kakao.com) 에서\n내 애플리케이션 > 앱 설정 > 플랫폼 > Web\n사이트 도메인에 아래 주소를 등록해주세요:\n\n' + location.origin);
+          kakaoLoadPromise = null;
+          resolve(false);
+        };
+        document.head.appendChild(s);
+      });
+
+      return kakaoLoadPromise;
+    }
+
+    /* ── Talent Items ── */
+    async function loadTalentItems() {
+      const { data } = await fetchAllTalentItems();
+      talentItems = (data || []).filter(i => i.is_active);
+      const targetType = document.querySelector('input[name="targetType"]:checked').value;
+      populateItemSelect('qrItemSelect', targetType);
+      populateItemSelect('editItemSelect', null);
+    }
+
+    function populateItemSelect(selectId, targetType) {
+      const sel = document.getElementById(selectId);
+      const manualOpt = sel.querySelector('option[value="manual"]');
+      while (sel.options.length > 1) {
+        if (sel.options[1] === manualOpt) break;
+        sel.remove(1);
+      }
+      const filtered = targetType ? talentItems.filter(i => i.target_type === targetType) : talentItems;
+      filtered.forEach(item => {
+        const opt = document.createElement('option');
+        opt.value = item.id;
+        opt.textContent = item.name + ' (' + item.talent_amount + ' 달란트)';
+        opt.dataset.amount = item.talent_amount;
+        opt.dataset.name = item.name;
+        sel.insertBefore(opt, manualOpt);
+      });
+    }
+
+    /* ── Target Type ── */
+    function onTargetTypeChange() {
+      const type = document.querySelector('input[name="targetType"]:checked').value;
+      populateItemSelect('qrItemSelect', type);
+      document.getElementById('qrItemSelect').value = '';
+      document.getElementById('manualFields').style.display = 'none';
+      document.getElementById('selectedItemInfo').style.display = 'none';
+    }
+
+    function onEditTargetTypeChange() {
+      const type = document.querySelector('input[name="editTargetType"]:checked').value;
+      populateItemSelect('editItemSelect', type);
+      document.getElementById('editItemSelect').value = '';
+      document.getElementById('editManualFields').style.display = 'none';
+      document.getElementById('editManualAmountField').style.display = 'none';
+      document.getElementById('editItemInfo').style.display = 'none';
+    }
+
+    /* ── Item Select ── */
+    function onItemSelectChange() {
+      const val = document.getElementById('qrItemSelect').value;
+      const manualDiv = document.getElementById('manualFields');
+      const infoDiv = document.getElementById('selectedItemInfo');
+      if (val === 'manual' || val === '') {
+        manualDiv.style.display = val === 'manual' ? '' : 'none';
+        infoDiv.style.display = 'none';
+      } else {
+        manualDiv.style.display = 'none';
+        const item = talentItems.find(i => i.id === val);
+        if (item) {
+          document.getElementById('selectedItemName').textContent = item.name;
+          document.getElementById('selectedItemAmount').textContent = item.talent_amount;
+          infoDiv.style.display = '';
+        }
+      }
+    }
+
+    function onEditItemChange() {
+      const val = document.getElementById('editItemSelect').value;
+      const manualF = document.getElementById('editManualFields');
+      const manualA = document.getElementById('editManualAmountField');
+      const infoDiv = document.getElementById('editItemInfo');
+      if (val === 'manual') {
+        manualF.style.display = ''; manualA.style.display = ''; infoDiv.style.display = 'none';
+      } else if (val) {
+        manualF.style.display = 'none'; manualA.style.display = 'none';
+        const item = talentItems.find(i => i.id === val);
+        if (item) {
+          document.getElementById('editItemName').textContent = item.name;
+          document.getElementById('editItemAmount').textContent = item.talent_amount;
+          infoDiv.style.display = '';
+        }
+      } else {
+        manualF.style.display = 'none'; manualA.style.display = 'none'; infoDiv.style.display = 'none';
+      }
+    }
+
+    /* ── Max Uses ── */
+    function onMaxUsesTypeChange() {
+      document.getElementById('maxUsesCount').disabled = !document.querySelector('input[name="maxUsesType"][value="limited"]').checked;
+    }
+    function onEditMaxUsesTypeChange() {
+      document.getElementById('editMaxUsesCount').disabled = !document.querySelector('input[name="editMaxUsesType"][value="limited"]').checked;
+    }
+
+    /* ── Repeat ── */
+    function onRepeatEnabledChange() {
+      const yes = document.querySelector('input[name="repeatEnabled"][value="yes"]').checked;
+      document.getElementById('repeatOptions').style.display = yes ? '' : 'none';
+      if (yes) onRepeatTypeChange();
+    }
+    function onRepeatTypeChange() {
+      const t = document.querySelector('input[name="repeatType"]:checked').value;
+      document.getElementById('repeatDaysWrap').style.display = (t === 'weekday' || t === 'week_weekday') ? '' : 'none';
+      document.getElementById('repeatWeeksWrap').style.display = t === 'week_weekday' ? '' : 'none';
+    }
+    function onEditRepeatEnabledChange() {
+      const yes = document.querySelector('input[name="editRepeatEnabled"][value="yes"]').checked;
+      document.getElementById('editRepeatOptions').style.display = yes ? '' : 'none';
+      if (yes) onEditRepeatTypeChange();
+    }
+    function onEditRepeatTypeChange() {
+      const t = document.querySelector('input[name="editRepeatType"]:checked').value;
+      document.getElementById('editRepeatDaysWrap').style.display = (t === 'weekday' || t === 'week_weekday') ? '' : 'none';
+      document.getElementById('editRepeatWeeksWrap').style.display = t === 'week_weekday' ? '' : 'none';
+    }
+    function getCheckedValues(name) {
+      return [...document.querySelectorAll('input[name="' + name + '"]:checked')].map(c => parseInt(c.value));
+    }
+
+    /* ── Validity Type ── */
+    function onValidityTypeChange() {
+      const type = document.querySelector('input[name="validityType"]:checked').value;
+      document.getElementById('validityDesignated').style.display = type === 'designated' ? '' : 'none';
+      document.getElementById('validityPeriod').style.display = type === 'period' ? '' : 'none';
+    }
+    function onEditValidityTypeChange() {
+      const type = document.querySelector('input[name="editValidityType"]:checked').value;
+      document.getElementById('editValidityDesignated').style.display = type === 'designated' ? '' : 'none';
+      document.getElementById('editValidityPeriod').style.display = type === 'period' ? '' : 'none';
+    }
+
+    /* ── Validity Time Type ── */
+    function onValidityTimeTypeChange() {
+      const type = document.querySelector('input[name="validityTimeType"]:checked').value;
+      document.getElementById('validityTimeFields').style.display = type === 'limited' ? '' : 'none';
+    }
+    function onEditValidityTimeTypeChange() {
+      const type = document.querySelector('input[name="editValidityTimeType"]:checked').value;
+      document.getElementById('editValidityTimeFields').style.display = type === 'limited' ? '' : 'none';
+    }
+
+    /* ── Location Type ── */
+    function onLocationTypeChange() {
+      document.getElementById('locationFields').style.display =
+        document.querySelector('input[name="locationType"][value="specific"]').checked ? '' : 'none';
+    }
+    function onEditLocationTypeChange() {
+      document.getElementById('editLocationFields').style.display =
+        document.querySelector('input[name="editLocationType"][value="specific"]').checked ? '' : 'none';
+    }
+
+    /* ── Location Search (shared) ── */
+    async function searchLocationFor(prefix) {
+      const input = document.getElementById(prefix + 'LocationSearch');
+      const query = input.value.trim();
+      if (!query) { alert('검색어를 입력하세요.'); return; }
+      if (!await loadKakaoSDK()) return;
+
+      const ps = new kakao.maps.services.Places();
+      ps.keywordSearch(query, function(data, status) {
+        const box = document.getElementById(prefix + 'LocationResults');
+        if (status !== kakao.maps.services.Status.OK || !data.length) {
+          box.innerHTML = '<div style="padding:0.8rem;text-align:center;color:var(--admin-text-muted);font-size:0.85rem;">검색 결과가 없습니다.</div>';
+          box.style.display = '';
+          return;
+        }
+        box.innerHTML = data.map(p => {
+          const safeName = p.place_name.replace(/'/g, "\\'").replace(/"/g, '&quot;');
+          return '<div class="loc-result-item" onclick="selectLocationFor(\'' + prefix + '\',\'' + safeName + '\',' + p.y + ',' + p.x + ')">'
+            + '<div style="font-weight:600;font-size:0.85rem;">' + p.place_name + '</div>'
+            + '<div style="font-size:0.78rem;color:var(--admin-text-muted);">' + p.address_name + '</div>'
+            + '</div>';
+        }).join('');
+        box.style.display = '';
+      });
+    }
+
+    function selectLocationFor(prefix, name, lat, lng) {
+      document.getElementById(prefix + 'LocationName').value = name;
+      document.getElementById(prefix + 'LocationLat').value = lat;
+      document.getElementById(prefix + 'LocationLng').value = lng;
+      document.getElementById(prefix + 'LocationResults').style.display = 'none';
+    }
+
+    function clearLocationCoordsFor(prefix) {
+      document.getElementById(prefix + 'LocationLat').value = '';
+      document.getElementById(prefix + 'LocationLng').value = '';
+    }
+
+    /* ── Utility ── */
+    function nowKST() {
+      return new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+    }
+    function toLocalInput(d) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0')
+        + 'T' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+    function toDateStr(d) {
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+
+    function initDefaults() {
+      document.getElementById('qrValidDate').value = toDateStr(nowKST());
+      document.getElementById('qrValidStartTime').value = '00:00';
+      document.getElementById('qrValidEndTime').value = '23:59';
+      const now = nowKST();
+      const later = new Date(now.getTime() + 86400000);
+      document.getElementById('qrValidFromDate').value = toDateStr(now);
+      document.getElementById('qrValidToDate').value = toDateStr(later);
+    }
+
+    function generateCode() {
+      const arr = new Uint8Array(18);
+      crypto.getRandomValues(arr);
+      const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+      let raw = '';
+      for (let i = 0; i < 18; i++) raw += chars[arr[i] % chars.length];
+      return raw.slice(0,6) + '-' + raw.slice(6,12) + '-' + raw.slice(12,18);
+    }
+
+    /* ── Form Values & Build ── */
+    function getFormValues(prefix) {
+      const isCreate = prefix === '';
+      const pf = isCreate ? '' : 'edit';
+      const targetType = document.querySelector('input[name="' + (isCreate ? 'targetType' : 'editTargetType') + '"]:checked').value;
+      const itemSel = document.getElementById(isCreate ? 'qrItemSelect' : 'editItemSelect').value;
+      const maxUsesType = document.querySelector('input[name="' + (isCreate ? 'maxUsesType' : 'editMaxUsesType') + '"]:checked').value;
+      const maxUsesCount = parseInt(document.getElementById(isCreate ? 'maxUsesCount' : 'editMaxUsesCount').value) || 30;
+      const validityType = document.querySelector('input[name="' + (isCreate ? 'validityType' : 'editValidityType') + '"]:checked').value;
+      const locationType = document.querySelector('input[name="' + (isCreate ? 'locationType' : 'editLocationType') + '"]:checked').value;
+      const locPrefix = isCreate ? 'qr' : 'edit';
+
+      let desc, amount, talentItemId = null;
+      if (itemSel === '' || itemSel === 'manual') {
+        if (itemSel === '') return { error: '달란트 항목을 선택하세요.' };
+        desc = document.getElementById(isCreate ? 'qrDesc' : 'editDesc').value.trim();
+        amount = parseInt(document.getElementById(isCreate ? 'qrAmount' : 'editAmount').value) || 0;
+        if (!desc) return { error: '설명을 입력하세요.' };
+        if (amount < 1) return { error: '금액은 1 이상이어야 합니다.' };
+        if (amount > 100) return { error: '달란트는 최대 100까지만 설정할 수 있습니다.' };
+      } else {
+        const item = talentItems.find(i => i.id === itemSel);
+        if (!item) return { error: '선택한 항목을 찾을 수 없습니다.' };
+        desc = item.name; amount = item.talent_amount; talentItemId = item.id;
+      }
+
+      const maxUses = maxUsesType === 'limited' ? maxUsesCount : 0;
+      if (maxUsesType === 'limited' && (maxUsesCount < 1 || maxUsesCount > 100000))
+        return { error: '선착순 인원은 1~100,000 사이여야 합니다.' };
+
+      let validFrom = null, validTo = null;
+      let validStartTime = null, validEndTime = null;
+      const timeType = document.querySelector('input[name="' + (isCreate ? 'validityTimeType' : 'editValidityTimeType') + '"]:checked').value;
+      const startTime = timeType === 'limited'
+        ? (document.getElementById(isCreate ? 'qrValidStartTime' : 'editValidStartTime').value || '00:00')
+        : null;
+      const endTime = timeType === 'limited'
+        ? (document.getElementById(isCreate ? 'qrValidEndTime' : 'editValidEndTime').value || '23:59')
+        : null;
+      if (timeType === 'limited' && startTime > endTime) return { error: '유효 시간 시작은 종료보다 늦을 수 없습니다.' };
+      if (timeType === 'limited') {
+        validStartTime = startTime + ':00';
+        validEndTime = endTime + ':59';
+      }
+
+      if (validityType === 'designated') {
+        const d = document.getElementById(isCreate ? 'qrValidDate' : 'editValidDate').value;
+        if (d) {
+          validFrom = d + 'T00:00:00';
+          validTo = d + 'T23:59:59';
+        }
+      } else if (validityType === 'period') {
+        const fromDate = document.getElementById(isCreate ? 'qrValidFromDate' : 'editValidFromDate').value;
+        const toDate = document.getElementById(isCreate ? 'qrValidToDate' : 'editValidToDate').value;
+        if (fromDate) validFrom = fromDate + 'T00:00:00';
+        if (toDate) validTo = toDate + 'T23:59:59';
+      }
+
+      let locationLat = null, locationLng = null, locationName = null, locationRadius = null;
+      if (locationType === 'specific') {
+        locationLat = parseFloat(document.getElementById(locPrefix + 'LocationLat').value);
+        locationLng = parseFloat(document.getElementById(locPrefix + 'LocationLng').value);
+        if (!locationLat || !locationLng || isNaN(locationLat) || isNaN(locationLng))
+          return { error: '위치 제한이 "특정 위치"인 경우 주소를 검색하여 선택해야 합니다.\n위도/경도 값이 없으면 QR 코드를 생성할 수 없습니다.' };
+        locationName = document.getElementById(locPrefix + 'LocationName').value;
+        locationRadius = parseInt(document.getElementById(locPrefix + 'LocationRadius').value) || 500;
+      }
+
+      let repeatType = 'none', repeatDays = null, repeatWeeks = null;
+      const repeatPrefix = isCreate ? '' : 'edit';
+      const repeatEnabled = isCreate
+        ? document.querySelector('input[name="repeatEnabled"]:checked')?.value === 'yes'
+        : document.querySelector('input[name="editRepeatEnabled"]:checked')?.value === 'yes';
+      if (repeatEnabled) {
+        repeatType = document.querySelector('input[name="' + (isCreate ? 'repeatType' : 'editRepeatType') + '"]:checked').value;
+        if (repeatType === 'weekday' || repeatType === 'week_weekday') {
+          repeatDays = getCheckedValues(isCreate ? 'repeatDay' : 'editRepeatDay');
+          if (repeatDays.length === 0) return { error: '반복 수령 요일을 선택하세요.' };
+        }
+        if (repeatType === 'week_weekday') {
+          repeatWeeks = getCheckedValues(isCreate ? 'repeatWeek' : 'editRepeatWeek');
+          if (repeatWeeks.length === 0) return { error: '반복 수령 주차를 선택하세요.' };
+        }
+      }
+
+      return { targetType, desc, amount, talentItemId, maxUses, validFrom, validTo,
+               validStartTime, validEndTime,
+               locationLat, locationLng, locationName, locationRadius,
+               repeatType, repeatDays, repeatWeeks };
+    }
+
+    function kstDateTimeToIso(value) {
+      return new Date(value + '+09:00').toISOString();
+    }
+
+    function buildRow(code, v) {
+      const row = {
+        code, description: v.desc, amount: v.amount,
+        max_uses: v.maxUses, talent_item_id: v.talentItemId,
+        target_type: v.targetType,
+        is_active: true, used_count: 0,
+        created_by: session.id, created_at: new Date().toISOString()
+      };
+      if (v.repeatType && v.repeatType !== 'none') {
+        row.repeat_type = v.repeatType;
+        if (v.repeatDays) row.repeat_days = v.repeatDays;
+        if (v.repeatWeeks) row.repeat_weeks = v.repeatWeeks;
+      }
+      if (v.validFrom) row.valid_from = kstDateTimeToIso(v.validFrom);
+      if (v.validTo) row.valid_until = kstDateTimeToIso(v.validTo);
+      row.valid_start_time = v.validStartTime || null;
+      row.valid_end_time = v.validEndTime || null;
+      if (v.locationLat) {
+        row.location_lat = v.locationLat;
+        row.location_lng = v.locationLng;
+        row.location_name = v.locationName;
+        row.location_radius = v.locationRadius;
+      }
+      return row;
+    }
+
+    function showQRFormStatus(message, type) {
+      const el = document.getElementById('qrFormStatus');
+      if (!el) return;
+      if (!message) {
+        el.style.display = 'none';
+        el.textContent = '';
+        return;
+      }
+      const color = type === 'success' ? '#2b8a3e' : type === 'warn' ? '#e67700' : '#e03131';
+      const bg = type === 'success' ? '#d3f9d8' : type === 'warn' ? '#fff3bf' : '#ffe3e3';
+      el.style.display = 'block';
+      el.style.color = color;
+      el.style.background = bg;
+      el.textContent = message;
+    }
+
+    /* ── Create / Edit / Toggle ── */
+    async function createQR() {
+      const btn = document.getElementById('btnCreateQR');
+      showQRFormStatus('', '');
+      const v = getFormValues('');
+      if (v.error) {
+        showQRFormStatus(v.error, 'error');
+        return;
+      }
+
+      btn.disabled = true;
+      const originalText = btn.textContent;
+      btn.textContent = '생성 중...';
+      try {
+        const code = generateCode();
+        const row = buildRow(code, v);
+        const { data, error } = await _sb.from('talent_qr_codes').insert(row).select('id,code,description').single();
+        if (error) {
+          await logError('QR_CREATE_FAIL', { 설명: v.desc, 오류: error.message });
+          const isDup = /duplicate key|unique/i.test(error.message);
+          showQRFormStatus(isDup
+            ? '생성 실패: 동일 항목의 QR이 이미 존재합니다. 중복 허용을 위해 docs/TASK-040_fixes.sql을 실행해주세요.'
+            : '생성 실패: ' + tErr(error.message), 'error');
+          return;
+        }
+        if (!data || !data.id) {
+          await logWarn('QR_CREATE_NO_RESULT', { 설명: v.desc, code });
+          showQRFormStatus('생성 결과를 확인하지 못했습니다. 새로고침 후 목록을 확인해주세요.', 'warn');
+          return;
+        }
+
+        await logInfo('qr_create', { code, 금액: v.amount, 설명: v.desc, 유형: v.targetType, max_uses: v.maxUses, qrId: data.id });
+        currentTab = 'active';
+        qrListPage = 1;
+        document.getElementById('tabActive').classList.add('active');
+        document.getElementById('tabAll').classList.remove('active');
+        document.getElementById('qrSearchInput').value = '';
+        document.getElementById('qrFilterTarget').value = '';
+        document.getElementById('qrFilterCondition').value = '';
+        setQRDatePreset('week');
+        await loadQRList();
+        showQRFormStatus('QR 코드가 생성되었습니다: ' + data.code, 'success');
+      } catch (err) {
+        await logError('QR_CREATE_ERROR', { 설명: v.desc, 오류: String(err) });
+        showQRFormStatus('생성 중 오류가 발생했습니다: ' + tErr(err.message || String(err)), 'error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalText;
+      }
+    }
+    window.createQR = createQR;
+
+    async function saveEdit() {
+      const id = document.getElementById('editId').value;
+      const v = getFormValues('edit');
+      if (v.error) { alert(v.error); return; }
+      const saveMode = document.querySelector('input[name="editSaveMode"]:checked').value;
+      const update = {
+        description: v.desc, amount: v.amount,
+        talent_item_id: v.talentItemId, max_uses: v.maxUses,
+        target_type: v.targetType,
+        valid_from: v.validFrom ? kstDateTimeToIso(v.validFrom) : null,
+        valid_until: v.validTo ? kstDateTimeToIso(v.validTo) : null,
+        valid_start_time: v.validStartTime || null,
+        valid_end_time: v.validEndTime || null,
+        location_lat: v.locationLat, location_lng: v.locationLng,
+        location_name: v.locationName, location_radius: v.locationRadius
+      };
+      if (v.repeatType && v.repeatType !== 'none') {
+        update.repeat_type = v.repeatType;
+        if (v.repeatDays) update.repeat_days = v.repeatDays;
+        if (v.repeatWeeks) update.repeat_weeks = v.repeatWeeks;
+      }
+      if (saveMode === 'new') {
+        update.code = generateCode();
+      }
+      const { error } = await _sb.from('talent_qr_codes').update(update).eq('id', id);
+      if (error) { alert('수정 실패: ' + tErr(error.message)); return; }
+      await logInfo('qr_edit', { qr_id: id, mode: saveMode, 금액: v.amount, 설명: v.desc });
+      closeEditModal();
+      alert(saveMode === 'new' ? '수정 완료. 새 QR 코드가 생성되었습니다.' : '수정 완료. 기존 QR 코드가 유지됩니다.');
+      await loadQRList();
+    }
+
+    async function toggleActive(id, current) {
+      const action = current ? '비활성화' : '활성화';
+      if (!confirm('이 코드를 ' + action + '하시겠습니까?')) return;
+      const { error } = await _sb.from('talent_qr_codes').update({ is_active: !current }).eq('id', id);
+      if (error) { alert(action + ' 실패: ' + error.message); return; }
+      await logInfo('qr_toggle', { qr_id: id, new_state: !current });
+      await loadQRList();
+    }
+
+    /* ── Tabs & List ── */
+    function switchTab(tab) {
+      currentTab = tab;
+      qrListPage = 1;
+      document.getElementById('tabActive').classList.toggle('active', tab === 'active');
+      document.getElementById('tabAll').classList.toggle('active', tab === 'all');
+      renderQRList();
+    }
+
+    async function loadQRList() {
+      const { data } = await _sb.from('talent_qr_codes').select('*').order('created_at', { ascending: false });
+      allQR = data || [];
+      renderQRList();
+    }
+
+    function fmtDate(iso) {
+      if (!iso) return '-';
+      const d = new Date(iso);
+      return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    }
+    function fmtDateTime(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0')
+        + ' ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    }
+
+    function getQrTimeWindow(q) {
+      const start = q.valid_start_time ? String(q.valid_start_time).slice(0, 5) : '';
+      const end = q.valid_end_time ? String(q.valid_end_time).slice(0, 5) : '';
+      return start && end ? { start, end } : null;
+    }
+
+    function getPeriodText(q) {
+      const from = q.valid_from ? fmtDateTime(q.valid_from) : '';
+      const to = q.valid_until ? fmtDateTime(q.valid_until) : '';
+      const timeWindow = getQrTimeWindow(q);
+      if (timeWindow) {
+        const fromDate = q.valid_from ? fmtDate(q.valid_from) : '';
+        const toDate = q.valid_until ? fmtDate(q.valid_until) : '';
+        let dateText;
+        if (!fromDate && !toDate) dateText = '무기한';
+        else if (fromDate && toDate) dateText = fromDate + ' ~ ' + toDate;
+        else if (fromDate) dateText = fromDate + ' ~';
+        else dateText = '~ ' + toDate;
+        return dateText + ' ' + timeWindow.start + '~' + timeWindow.end;
+      }
+      if (!from && !to) return '무기한';
+      if (from && to) return from + ' ~ ' + to;
+      if (from) return from + ' ~';
+      return '~ ' + to;
+    }
+    function getMaxUsesText(q) {
+      if (!q.max_uses || q.max_uses === 0) return '무제한';
+      return '선착순 ' + q.max_uses.toLocaleString() + '명';
+    }
+    function getTargetText(q) {
+      return getCodeLabel('talent_items.target_type', q.target_type || 'student', q.target_type === 'teacher' ? '교사' : '학생');
+    }
+    function getLocationText(q) {
+      if (!q.location_lat || !q.location_lng) return '제한 없음';
+      const r = q.location_radius || 1000;
+      const rt = r >= 1000 ? (r/1000) + 'km' : r + 'm';
+      return (q.location_name || '특정 위치') + ' (' + rt + ')';
+    }
+    function isExpired(q) {
+      const now = new Date();
+      if (q.valid_until && new Date(q.valid_until) < now) return true;
+      if (q.expires_at && new Date(q.expires_at) < now) return true;
+      return false;
+    }
+
+    const DAY_NAMES = ['일','월','화','수','목','금','토'];
+
+    function getRepeatText(q) {
+      const rt = q.repeat_type || 'none';
+      if (rt === 'none' || rt === 'daily') return getCodeLabel('talent_qr_codes.repeat_type', rt, rt === 'daily' ? '매일' : '1회');
+      if (rt === 'weekday') {
+        const days = (q.repeat_days || []).map(d => DAY_NAMES[d]).join(',');
+        return '매주 ' + (days || '-');
+      }
+      if (rt === 'week_weekday') {
+        const weeks = (q.repeat_weeks || []).map(w => w + '주').join(',');
+        const days = (q.repeat_days || []).map(d => DAY_NAMES[d]).join(',');
+        return weeks + ' ' + (days || '-');
+      }
+      return getCodeLabel('talent_qr_codes.repeat_type', rt, '-');
+    }
+
+    function applyQRFilters(items) {
+      const search = (document.getElementById('qrSearchInput').value || '').trim().toLowerCase();
+      const targetF = document.getElementById('qrFilterTarget').value;
+      const condF = document.getElementById('qrFilterCondition').value;
+      const dateFrom = document.getElementById('qrFilterDateFrom').value;
+      const dateTo = document.getElementById('qrFilterDateTo').value;
+      return items.filter(q => {
+        if (search && !(q.description || '').toLowerCase().includes(search) && !(q.code || '').toLowerCase().includes(search)) return false;
+        if (targetF && q.target_type !== targetF) return false;
+        if (condF === 'unlimited' && q.max_uses > 0) return false;
+        if (condF === 'limited' && (!q.max_uses || q.max_uses === 0)) return false;
+        if (condF === 'location' && !q.location_lat) return false;
+        if (condF === 'repeat' && (!q.repeat_type || q.repeat_type === 'none')) return false;
+        if (q.created_at) {
+          const cd = q.created_at.substring(0, 10);
+          if (dateFrom && cd < dateFrom) return false;
+          if (dateTo && cd > dateTo) return false;
+        }
+        return true;
+      });
+    }
+
+    function onQRFilterChange() {
+      qrListPage = 1;
+      renderQRList();
+    }
+
+    function setQRDatePreset(preset) {
+      const today = toDateStr(nowKST());
+      let from = today;
+      if (preset === 'today') { from = today; }
+      else if (preset === 'week') {
+        const d = nowKST(); d.setDate(d.getDate() - 6);
+        from = toDateStr(d);
+      } else if (preset === 'month') {
+        from = today.substring(0, 8) + '01';
+      } else if (preset === 'year') {
+        from = today.substring(0, 5) + '01-01';
+      }
+      document.getElementById('qrFilterDateFrom').value = from;
+      document.getElementById('qrFilterDateTo').value = today;
+      qrListPage = 1;
+      renderQRList();
+    }
+
+    function initQRDateFilter() {
+      const today = nowKST();
+      const weekAgo = new Date(today); weekAgo.setDate(weekAgo.getDate() - 7);
+      document.getElementById('qrFilterDateFrom').value = toDateStr(weekAgo);
+      document.getElementById('qrFilterDateTo').value = toDateStr(today);
+    }
+
+    function renderQRList() {
+      const list = document.getElementById('qrList');
+      let items = currentTab === 'active' ? allQR.filter(q => q.is_active) : allQR;
+      items = applyQRFilters(items);
+      document.getElementById('qrCount').textContent = items.length + '개';
+      const sizeWrap = document.getElementById('qrPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('qr_list', getQRPageSize(), 'onQRListPageSizeChange(this.value)');
+      if (items.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:var(--admin-text-muted);padding:2rem;">QR 코드가 없습니다.</div>';
+        document.getElementById('qrListPaging').innerHTML = '';
+        return;
+      }
+
+      const pageSize = getQRPageSize();
+      const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+      if (qrListPage > totalPages) qrListPage = totalPages;
+      const startIdx = (qrListPage - 1) * pageSize;
+      const pageData = items.slice(startIdx, startIdx + pageSize);
+
+      list.innerHTML = pageData.map((q, idx) => {
+        const expired = isExpired(q);
+        const usedUp = q.max_uses > 0 && (q.used_count || 0) >= q.max_uses;
+        const safeDesc = (q.description || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
+        const usedText = q.max_uses > 0 ? (q.used_count || 0) + '/' + q.max_uses : String(q.used_count || 0);
+        const repeatText = getRepeatText(q);
+        return '<div class="qr-item-card' + (q.is_active ? '' : ' inactive') + '">'
+          + '<div class="qr-img-wrap" id="qr-img-' + idx + '"></div>'
+          + '<div class="qr-info">'
+          + (isAdmin ? '<div class="qr-code-label">' + q.code + '</div>' : '')
+          + '<div style="font-weight:600;margin:0.2rem 0;">' + (q.description || '-') + ' · ' + q.amount + ' 달란트</div>'
+          + '<div class="qr-meta">'
+          + '<span>👤 ' + getTargetText(q) + '</span>'
+          + '<span>📅 ' + fmtDate(q.created_at) + '</span>'
+          + '<span>👥 사용: ' + usedText + (usedUp ? ' (완료)' : '') + '</span>'
+          + '<span>📊 ' + getMaxUsesText(q) + '</span>'
+          + '<span>🔁 ' + repeatText + '</span>'
+          + '<span>⏰ ' + getPeriodText(q) + (expired ? ' (만료)' : '') + '</span>'
+          + '<span>📍 ' + getLocationText(q) + '</span>'
+          + '<span>' + (q.is_active ? '🟢 활성' : '🔴 비활성') + '</span>'
+          + '</div></div>'
+          + '<div class="qr-actions">'
+          + '<button class="info" onclick="openScanListModal(\'' + q.id + '\',\'' + safeDesc + '\')">👥 수령자</button>'
+          + '<button onclick="printQR(\'' + q.code + '\',\'' + safeDesc + '\',' + q.amount + ')">🖨️ 인쇄</button>'
+          + '<button class="edit" onclick="openEditModal(\'' + q.id + '\')">✏️ 수정</button>'
+          + '<button class="' + (q.is_active ? 'danger' : 'primary') + '" onclick="toggleActive(\'' + q.id + '\',' + q.is_active + ')">' + (q.is_active ? '비활성화' : '활성화') + '</button>'
+          + '</div></div>';
+      }).join('');
+
+      pageData.forEach((q, idx) => {
+        const el = document.getElementById('qr-img-' + idx);
+        if (el) {
+          try { new QRCode(el, { text: q.code, width: 88, height: 88, correctLevel: QRCode.CorrectLevel.M }); }
+          catch (e) { el.textContent = '?'; }
+        }
+      });
+      renderQRPaging(totalPages);
+    }
+
+    function renderQRPaging(totalPages) {
+      document.getElementById('qrListPaging').innerHTML = buildPagingButtons(qrListPage, totalPages, 'goQRPage(__PAGE__)');
+      const sizeWrap = document.getElementById('qrPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('qr_list', getQRPageSize(), 'onQRListPageSizeChange(this.value)');
+    }
+    function goQRPage(p) { qrListPage = p; renderQRList(); }
+    async function onQRListPageSizeChange(val) {
+      qrPageSize = parseInt(val, 10) || 20;
+      await savePageSize('qr_list', qrPageSize);
+      qrListPage = 1;
+      renderQRList();
+    }
+
+    /* ── Copy / Print ── */
+    function copyCode(code) {
+      navigator.clipboard.writeText(code).then(() => alert('코드가 복사되었습니다: ' + code));
+    }
+
+    function printQR(code, desc, amount) {
+      const tmp = document.createElement('div');
+      tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
+      document.body.appendChild(tmp);
+      new QRCode(tmp, { text: code, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+      setTimeout(() => {
+        const canvas = tmp.querySelector('canvas');
+        const imgSrc = canvas ? canvas.toDataURL('image/png') : '';
+        document.body.removeChild(tmp);
+        const codeSection = isAdmin ? '<p style="font-family:monospace;font-size:0.85rem;color:#888;letter-spacing:1px;margin:0.3rem 0;">' + code + '</p>' : '';
+        const w = window.open('', '_blank', 'width=420,height=500');
+        w.document.write('<html><head><title>QR 인쇄</title></head><body style="text-align:center;padding:2rem;font-family:sans-serif;">'
+          + '<h2 style="margin-bottom:0.5rem;">🎫 달란트 QR 코드</h2>'
+          + '<img src="' + imgSrc + '" style="width:200px;height:200px;margin:1rem auto;display:block;" />'
+          + codeSection
+          + '<p style="font-size:1.2rem;font-weight:700;">' + desc + ' · ' + amount + ' 달란트</p>'
+          + '<hr/><p style="font-size:0.8rem;color:#888;">달란트 마을 (CHO-Talents)</p>'
+          + '<script>setTimeout(()=>window.print(),300);<\/script></body></html>');
+      }, 150);
+    }
+
+    /* ── Scan List Modal ── */
+    let _scanListData = [], _scanProfileMap = {}, _scanDeptMap = {}, _scanReturnedSet = new Set();
+    let _scanListPage = 1, _scanListPageSize = 10;
+
+    async function openScanListModal(qrId, desc) {
+      document.getElementById('scanListModal').classList.add('show');
+      document.getElementById('scanListTitle').textContent = desc ? ' - ' + desc : '';
+      document.getElementById('scanListContent').innerHTML = '<div class="scan-empty">불러오는 중...</div>';
+      document.getElementById('scanListPaging').innerHTML = '';
+      document.getElementById('scanListPageSizeWrap').innerHTML = '';
+      _scanListPage = 1;
+      _scanListPageSize = await loadPageSize('qr_scan_list', 10);
+      try {
+        const { data: scans } = await _sb.from('talent_qr_scans')
+          .select('*').eq('qr_code_id', qrId).order('scanned_at', { ascending: false });
+        if (!scans || scans.length === 0) {
+          document.getElementById('scanListContent').innerHTML = '<div class="scan-empty">수령자가 없습니다.</div>';
+          return;
+        }
+        _scanListData = scans;
+        const userIds = [...new Set(scans.map(s => s.user_id))];
+        const { data: profiles } = await _sb.from('profiles')
+          .select('id, display_name, username, department_id').in('id', userIds);
+        _scanProfileMap = {};
+        (profiles || []).forEach(p => { _scanProfileMap[p.id] = p; });
+        const deptIds = [...new Set((profiles || []).map(p => p.department_id).filter(Boolean))];
+        _scanDeptMap = {};
+        if (deptIds.length > 0) {
+          const { data: depts } = await _sb.from('departments').select('id, name').in('id', deptIds);
+          (depts || []).forEach(d => { _scanDeptMap[d.id] = d.name; });
+        }
+
+        const qr = allQR.find(x => x.id === qrId);
+        let earnQuery = _sb.from('talent_transactions')
+          .select('id, user_id, created_at').in('user_id', userIds).eq('type', 'earn').eq('source', 'qr');
+        if (qr && qr.talent_item_id) earnQuery = earnQuery.eq('talent_item_id', qr.talent_item_id);
+        const { data: earnTxns } = await earnQuery;
+
+        const { data: returnTxns } = await _sb.from('talent_transactions')
+          .select('description, user_id').in('user_id', userIds).eq('type', 'use').like('description', '반환:%');
+        const returnedEarnIds = new Set();
+        (returnTxns || []).forEach(r => {
+          const m = (r.description || '').match(/\[([a-f0-9-]+)\]/);
+          if (m) returnedEarnIds.add(m[1]);
+        });
+
+        _scanReturnedSet = new Set();
+        scans.forEach(s => {
+          const scanTime = new Date(s.scanned_at).getTime();
+          const userEarns = (earnTxns || []).filter(t => t.user_id === s.user_id);
+          const matched = userEarns.find(t => Math.abs(new Date(t.created_at).getTime() - scanTime) < 120000);
+          if (matched && returnedEarnIds.has(matched.id)) _scanReturnedSet.add(s.id);
+        });
+
+        renderScanListPage();
+      } catch (e) {
+        document.getElementById('scanListContent').innerHTML = '<div class="scan-empty">조회 실패: ' + (e.message || e) + '</div>';
+      }
+    }
+
+    function renderScanListPage() {
+      const scans = _scanListData;
+      const totalPages = Math.max(1, Math.ceil(scans.length / _scanListPageSize));
+      if (_scanListPage > totalPages) _scanListPage = totalPages;
+      const start = (_scanListPage - 1) * _scanListPageSize;
+      const pageScans = scans.slice(start, start + _scanListPageSize);
+      const isAdmin = (session.permissionRank || 0) >= 100;
+
+      let html = '<table class="scan-list-table"><thead><tr><th>#</th><th>이름</th>' + (isAdmin ? '<th>아이디</th>' : '') + '<th>부서</th><th>수령 시간</th><th>상태</th></tr></thead><tbody>';
+      pageScans.forEach((s, i) => {
+        const p = _scanProfileMap[s.user_id] || {};
+        const dt = new Date(s.scanned_at);
+        const ts = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0')
+          + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+        const isReturned = _scanReturnedSet.has(s.id);
+        const statusBadge = isReturned
+          ? '<span style="padding:0.1rem 0.4rem;border-radius:4px;font-size:0.75rem;background:#fff0f6;color:#c2255c;font-weight:600;">반환</span>'
+          : '<span style="font-size:0.75rem;color:#2b8a3e;">수령</span>';
+        html += '<tr><td>' + (start + i + 1) + '</td><td>' + (p.display_name||'-') + '</td>' + (isAdmin ? '<td>' + (p.username||'-') + '</td>' : '') + '<td>' + (_scanDeptMap[p.department_id]||'-') + '</td><td>' + ts + '</td><td>' + statusBadge + '</td></tr>';
+      });
+      html += '</tbody></table>';
+      const returnedCount = scans.filter(s => _scanReturnedSet.has(s.id)).length;
+      html += '<div style="margin-top:0.5rem;font-size:0.82rem;color:var(--admin-text-muted);">총 ' + scans.length + '명 수령' + (returnedCount > 0 ? ' (반환 ' + returnedCount + '명)' : '') + '</div>';
+      document.getElementById('scanListContent').innerHTML = html;
+      document.getElementById('scanListPaging').innerHTML = buildPagingButtons(_scanListPage, totalPages, 'goScanListPage(__PAGE__)');
+      document.getElementById('scanListPageSizeWrap').innerHTML = renderPageSizeSelector('qr_scan_list', _scanListPageSize, 'onScanListPageSizeChange(this.value)');
+    }
+
+    function goScanListPage(p) { _scanListPage = p; renderScanListPage(); }
+
+    async function onScanListPageSizeChange(val) {
+      _scanListPageSize = parseInt(val) || 10;
+      _scanListPage = 1;
+      await savePageSize('qr_scan_list', _scanListPageSize);
+      renderScanListPage();
+    }
+
+    function closeScanListModal() { document.getElementById('scanListModal').classList.remove('show'); }
+
+    /* ── Edit Modal ── */
+    function openEditModal(id) {
+      const q = allQR.find(x => x.id === id);
+      if (!q) return;
+      document.getElementById('editId').value = id;
+      const tt = q.target_type || 'student';
+      document.querySelector('input[name="editTargetType"][value="' + tt + '"]').checked = true;
+      populateItemSelect('editItemSelect', tt);
+
+      const editSel = document.getElementById('editItemSelect');
+      if (q.talent_item_id && talentItems.find(i => i.id === q.talent_item_id)) {
+        editSel.value = q.talent_item_id;
+      } else {
+        editSel.value = 'manual';
+      }
+      onEditItemChange();
+      document.getElementById('editDesc').value = q.description || '';
+      document.getElementById('editAmount').value = q.amount || 1;
+
+      if (q.max_uses > 0) {
+        document.querySelector('input[name="editMaxUsesType"][value="limited"]').checked = true;
+        document.getElementById('editMaxUsesCount').value = q.max_uses;
+        document.getElementById('editMaxUsesCount').disabled = false;
+      } else {
+        document.querySelector('input[name="editMaxUsesType"][value="unlimited"]').checked = true;
+        document.getElementById('editMaxUsesCount').disabled = true;
+      }
+
+      const storedTimeWindow = getQrTimeWindow(q);
+      if (!q.valid_from && !q.valid_until) {
+        document.querySelector('input[name="editValidityType"][value="unlimited"]').checked = true;
+        if (storedTimeWindow) {
+          document.querySelector('input[name="editValidityTimeType"][value="limited"]').checked = true;
+          document.getElementById('editValidStartTime').value = storedTimeWindow.start;
+          document.getElementById('editValidEndTime').value = storedTimeWindow.end;
+        } else {
+          document.querySelector('input[name="editValidityTimeType"][value="unlimited"]').checked = true;
+        }
+      } else if (q.valid_from && q.valid_until) {
+        const f = new Date(q.valid_from), u = new Date(q.valid_until);
+        const hasTimeLimit = storedTimeWindow || !(f.getHours() === 0 && f.getMinutes() === 0 && u.getHours() === 23 && u.getMinutes() === 59);
+        if (hasTimeLimit) {
+          document.querySelector('input[name="editValidityTimeType"][value="limited"]').checked = true;
+          document.getElementById('editValidStartTime').value = storedTimeWindow ? storedTimeWindow.start : String(f.getHours()).padStart(2,'0') + ':' + String(f.getMinutes()).padStart(2,'0');
+          document.getElementById('editValidEndTime').value = storedTimeWindow ? storedTimeWindow.end : String(u.getHours()).padStart(2,'0') + ':' + String(u.getMinutes()).padStart(2,'0');
+        } else {
+          document.querySelector('input[name="editValidityTimeType"][value="unlimited"]').checked = true;
+        }
+        if (f.toDateString() === u.toDateString()) {
+          document.querySelector('input[name="editValidityType"][value="designated"]').checked = true;
+          document.getElementById('editValidDate').value = toDateStr(f);
+        } else {
+          document.querySelector('input[name="editValidityType"][value="period"]').checked = true;
+          document.getElementById('editValidFromDate').value = toDateStr(f);
+          document.getElementById('editValidToDate').value = toDateStr(u);
+        }
+      } else {
+        document.querySelector('input[name="editValidityType"][value="period"]').checked = true;
+        if (storedTimeWindow) {
+          document.querySelector('input[name="editValidityTimeType"][value="limited"]').checked = true;
+          document.getElementById('editValidStartTime').value = storedTimeWindow.start;
+          document.getElementById('editValidEndTime').value = storedTimeWindow.end;
+        } else {
+          document.querySelector('input[name="editValidityTimeType"][value="unlimited"]').checked = true;
+        }
+        if (q.valid_from) document.getElementById('editValidFromDate').value = toDateStr(new Date(q.valid_from));
+        if (q.valid_until) document.getElementById('editValidToDate').value = toDateStr(new Date(q.valid_until));
+      }
+      onEditValidityTypeChange();
+      onEditValidityTimeTypeChange();
+
+      const rt = q.repeat_type || 'none';
+      if (rt !== 'none') {
+        document.querySelector('input[name="editRepeatEnabled"][value="yes"]').checked = true;
+        onEditRepeatEnabledChange();
+        document.querySelector('input[name="editRepeatType"][value="' + rt + '"]').checked = true;
+        onEditRepeatTypeChange();
+        if (q.repeat_days) {
+          document.querySelectorAll('input[name="editRepeatDay"]').forEach(c => c.checked = false);
+          q.repeat_days.forEach(d => {
+            const c = document.querySelector('input[name="editRepeatDay"][value="' + d + '"]');
+            if (c) c.checked = true;
+          });
+        }
+        if (q.repeat_weeks) {
+          document.querySelectorAll('input[name="editRepeatWeek"]').forEach(c => c.checked = false);
+          q.repeat_weeks.forEach(w => {
+            const c = document.querySelector('input[name="editRepeatWeek"][value="' + w + '"]');
+            if (c) c.checked = true;
+          });
+        }
+      } else {
+        document.querySelector('input[name="editRepeatEnabled"][value="no"]').checked = true;
+        onEditRepeatEnabledChange();
+      }
+
+      if (q.location_lat && q.location_lng) {
+        document.querySelector('input[name="editLocationType"][value="specific"]').checked = true;
+        document.getElementById('editLocationName').value = q.location_name || '';
+        document.getElementById('editLocationLat').value = q.location_lat;
+        document.getElementById('editLocationLng').value = q.location_lng;
+        document.getElementById('editLocationRadius').value = q.location_radius || 500;
+      } else {
+        document.querySelector('input[name="editLocationType"][value="none"]').checked = true;
+        document.getElementById('editLocationName').value = '';
+        document.getElementById('editLocationLat').value = '';
+        document.getElementById('editLocationLng').value = '';
+      }
+      onEditLocationTypeChange();
+      document.getElementById('editLocationSearch').value = '';
+      document.getElementById('editLocationResults').style.display = 'none';
+
+      document.getElementById('editModal').classList.add('show');
+    }
+
+    function closeEditModal() { document.getElementById('editModal').classList.remove('show'); }
+
+    /* ── Modal backdrop close ── */
+    document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
+    document.getElementById('scanListModal').addEventListener('click', function(e) { if (e.target === this) closeScanListModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

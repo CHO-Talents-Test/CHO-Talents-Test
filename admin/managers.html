@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">관리자 관리</h2>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">관리자 목록</div>
+        <div class="filters" style="flex-wrap:wrap;gap:0.4rem;">
+          <button class="filter-btn active" onclick="setMgrFilter('all',this)">전체</button>
+          <button class="filter-btn" onclick="setMgrFilter('admin',this)">👑 관리자</button>
+          <button class="filter-btn" onclick="setMgrFilter('dept_manager',this)">📋 부서 담당 교사</button>
+          <button class="filter-btn" onclick="setMgrFilter('purchase_teacher',this)">🛒 구매 담당</button>
+          <select id="deptFilter" data-min-perm="80" style="display:none;padding:0.35rem 0.6rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.8rem;background:var(--t-input-bg, #fff);" onchange="onDeptFilterChange()">
+            <option value="">전체 부서</option>
+          </select>
+          <span style="margin-left:0.5rem;"></span>
+          <span id="mgrPageSizeWrap"></span>
+          <button class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="openAddModal()">+ 관리자 등록</button>
+        </div>
+      </div>
+      <table class="admin-table" id="mgrTable">
+        <thead><tr><th data-sort-key="permission_level">권한</th><th data-sort-key="display_name">이름</th><th data-sort-key="_ownDeptName">소속 부서</th><th data-sort-key="_mgrDeptName">담당 부서</th><th>관리</th></tr></thead>
+        <tbody id="mgrList"><tr><td colspan="7" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="mgrPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="mgrModal">
+    <div class="modal-box">
+      <h3 class="modal-title" id="modalTitle">관리자 등록</h3>
+      <div class="form-error" id="modalError"></div>
+      <div style="margin-bottom:0.8rem;" id="userSearchWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">사용자 검색</label>
+        <div style="position:relative;">
+          <input type="text" id="mSearchInput" placeholder="이름 또는 아이디로 검색..."
+            style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;"
+            autocomplete="off" oninput="onSearchInput()" />
+          <div id="searchResults" style="display:none;position:absolute;top:100%;left:0;right:0;max-height:200px;overflow-y:auto;background:#fff;border:1px solid var(--admin-border);border-top:none;border-radius:0 0 8px 8px;z-index:10;box-shadow:0 4px 12px rgba(0,0,0,0.1);"></div>
+        </div>
+        <div id="selectedUser" style="display:none;margin-top:0.5rem;padding:0.6rem;background:#f3f0ff;border-radius:8px;font-size:0.88rem;">
+          <span id="selectedUserInfo"></span>
+          <button onclick="clearSelectedUser()" style="float:right;background:none;border:none;cursor:pointer;color:#ff6b6b;font-weight:700;">✕</button>
+        </div>
+      </div>
+      <div style="margin-bottom:0.8rem;" id="usernameWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">아이디</label>
+        <input type="text" id="mUsername" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" disabled />
+      </div>
+      <div style="margin-bottom:0.8rem;" id="displayNameWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이름</label>
+        <input type="text" id="mDisplayName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" disabled />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">권한</label>
+        <select id="mRole" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" onchange="onRoleChange()">
+        </select>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">소속 부서</label>
+        <select id="mOwnDeptId" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+          <option value="">-- 부서 선택 --</option>
+        </select>
+      </div>
+      <div id="managedDeptWrap" style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">담당 관리 부서</label>
+        <select id="mDeptId" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+          <option value="">-- 부서 선택 --</option>
+        </select>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" onclick="saveManager()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let editingId = null;
+    let deptList = [];
+    let mgrPageSize = null;
+    (async () => {
+      await navInit();
+      session = await initPage(80, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      mgrPageSize = await loadPageSize('managers', 20);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateBadge();
+      loadData();
+    })();
+
+    async function updateBadge() { await updateLogBadge(); }
+
+    async function loadData() {
+      const { data: depts } = await fetchDepartments();
+      deptList = depts || [];
+      const opts = '<option value="">-- 부서 선택 --</option>' +
+        deptList.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      document.getElementById('mDeptId').innerHTML = opts;
+      document.getElementById('mOwnDeptId').innerHTML = opts;
+      populateDeptFilter();
+      await Promise.all([loadManagers(), loadAllUsersForSearch()]);
+    }
+
+    const MGMT_LEVELS = ['purchase_teacher','dept_teacher','chief','evangelist','admin'];
+    const PERM_LEVELS = (typeof getCodeItems === 'function')
+      ? getCodeItems('profiles.permission_level')
+          .filter(i => ['dept_teacher', 'purchase_teacher', 'chief', 'evangelist', 'admin'].includes(i.key))
+          .map(i => ({ value: i.key, label: i.value, rank: getCodeRank('profiles.permission_level', i.key, 0) }))
+      : [
+        { value: 'dept_teacher', label: '부서 담당 교사', rank: 60 },
+        { value: 'purchase_teacher', label: '구매 담당 교사', rank: 70 },
+        { value: 'chief', label: '부장 교사', rank: 80 },
+        { value: 'evangelist', label: '전도사님', rank: 90 },
+        { value: 'admin', label: '관리자', rank: 100 }
+      ];
+    function buildMgrPermOptions(maxRank, selectedValue) {
+      return PERM_LEVELS.filter(l => l.rank < maxRank || l.value === selectedValue)
+        .map(l => `<option value="${l.value}" ${l.value === selectedValue ? 'selected' : ''}>${PERMISSION_EMOJI[l.value]||''} ${l.label}</option>`)
+        .join('');
+    }
+    function onRoleChange() {
+      const perm = document.getElementById('mRole').value;
+      document.getElementById('managedDeptWrap').style.display = MGMT_LEVELS.includes(perm) ? '' : 'none';
+    }
+
+    let allManagers = [];
+    let currentFilter = 'all';
+    function getMgrPageSize() {
+      if (mgrPageSize !== null) return mgrPageSize;
+      return window.innerWidth <= 768 ? 10 : 20;
+    }
+    let mgrPage = 1;
+
+    let currentDeptFilter = '';
+
+    function setMgrFilter(role, btn) {
+      currentFilter = role;
+      mgrPage = 1;
+      document.querySelectorAll('.admin-table-header .filter-btn:not([style*="background:var(--admin-primary)"])').forEach(b => b.classList.remove('active'));
+      if (btn) btn.classList.add('active');
+      renderManagers();
+    }
+
+    function onDeptFilterChange() {
+      currentDeptFilter = document.getElementById('deptFilter').value;
+      mgrPage = 1;
+      renderManagers();
+    }
+
+    function populateDeptFilter() {
+      const sel = document.getElementById('deptFilter');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">전체 부서</option>' + deptList.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+
+    const DEPT_MGR_LEVELS = ['evangelist', 'chief', 'purchase_teacher', 'dept_teacher'];
+
+    async function loadManagers() {
+      let { data } = await fetchUsers();
+      if (!session.isSuperAdmin) {
+        data = (data || []).filter(u => !u.is_super_admin);
+      }
+      const myRank = session.permissionRank || 0;
+      let managers = (data || []).filter(u =>
+        u.permission_level === 'admin' || DEPT_MGR_LEVELS.includes(u.permission_level)
+      );
+
+      if (myRank < 80) {
+        const myManagedDept = session.managedDeptId || session.departmentId;
+        if (myManagedDept) {
+          managers = managers.filter(u => u.department_id === myManagedDept || u.managed_dept_id === myManagedDept);
+        } else {
+          managers = [];
+        }
+      }
+
+      allManagers = managers;
+      renderManagers();
+    }
+
+    function managerMatchesFilter(u, filter) {
+      if (filter === 'admin') return u.permission_level === 'admin';
+      if (filter === 'dept_manager') return DEPT_MGR_LEVELS.includes(u.permission_level);
+      return u.permission_level === filter;
+    }
+
+    const _isAdmin = () => isAdminLevel(session);
+
+    function _mgrDeptName(id) { const d = deptList.find(d => d.id === id); return d ? d.name : '-'; }
+    function sortManagerList(list) {
+      return list.sort((a, b) => {
+        const rA = getPermRank(a.permission_level, a.is_super_admin);
+        const rB = getPermRank(b.permission_level, b.is_super_admin);
+        if (rA !== rB) return rB - rA;
+        const dCmp = (a._ownDeptName || '').localeCompare(b._ownDeptName || '', 'ko');
+        if (dCmp !== 0) return dCmp;
+        const nA = a.display_name || a.username || '';
+        const nB = b.display_name || b.username || '';
+        return nA.localeCompare(nB, 'ko');
+      });
+    }
+
+    let _currentMgrList = [];
+    function renderManagers() {
+      let list = currentFilter === 'all' ? allManagers : allManagers.filter(u => managerMatchesFilter(u, currentFilter));
+      if (currentDeptFilter) list = list.filter(u => u.department_id === currentDeptFilter || u.managed_dept_id === currentDeptFilter);
+      list = [...list];
+      list.forEach(u => { u._ownDeptName = _mgrDeptName(u.department_id); u._mgrDeptName = _mgrDeptName(u.managed_dept_id); });
+      list = sortManagerList(list);
+      _currentMgrList = list;
+      const tbody = document.getElementById('mgrList');
+      document.getElementById('tableTitle').textContent = `관리자 목록 (${list.length}명)`;
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">등록된 관리자가 없습니다.</td></tr>';
+        document.getElementById('mgrPaging').innerHTML = '';
+        return;
+      }
+
+      const pageSize = getMgrPageSize();
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      if (mgrPage > totalPages) mgrPage = totalPages;
+      const startIdx = (mgrPage - 1) * pageSize;
+      const pageData = list.slice(startIdx, startIdx + pageSize);
+
+      const ROLE_BADGE = {};
+      PERM_LEVELS.forEach(l => {
+        ROLE_BADGE[l.value] = {
+          emoji: PERMISSION_EMOJI[l.value] || '',
+          label: PERMISSION_LABELS[l.value] || l.label,
+          cls: (typeof getCodeItem === 'function' && getCodeItem('profiles.permission_level', l.value)?.badgeClass) || (l.rank >= 80 ? 'WARN' : 'INFO')
+        };
+      });
+      if (ROLE_BADGE.admin) ROLE_BADGE.admin.cls = 'ERROR';
+
+      const nameMap = resolveDisplayNames(allManagers);
+      const myRank = session.permissionRank || 0;
+
+      tbody.innerHTML = pageData.map(u => {
+        const rb = ROLE_BADGE[u.permission_level] || ROLE_BADGE.admin;
+        const dn = nameMap[u.id] || u.display_name || '-';
+        const ownDept = deptList.find(d => d.id === u.department_id);
+        const mgrDept = deptList.find(d => d.id === u.managed_dept_id);
+        const isSelf = u.id === session.id;
+        const isSuperAdmin = u.is_super_admin || false;
+        const targetRank = getPermRank(u.permission_level, isSuperAdmin);
+        const canManage = myRank > 80 && (isSelf || (myRank > targetRank));
+        return `<tr>
+          <td><span class="level-badge ${rb.cls}">${rb.emoji} ${rb.label}</span></td>
+          <td>${dn}${(isSelf || _isAdmin()) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
+          <td>${ownDept ? ownDept.name : '-'}</td>
+          <td>${mgrDept ? mgrDept.name : '<span style="color:var(--admin-text-muted);">-</span>'}</td>
+          <td>
+            ${canManage ? `<button class="filter-btn" onclick="openEditModal('${u.id}')">수정</button>` : ''}
+          </td>
+        </tr>`;
+      }).join('');
+      renderMgrPaging(totalPages);
+      initSortableHeaders('mgrTable', function(){ return _currentMgrList; }, function(d){ _currentMgrList = d; mgrPage = 1; renderManagers(); });
+    }
+
+    function renderMgrPaging(totalPages) {
+      const wrap = document.getElementById('mgrPaging');
+      wrap.innerHTML = buildPagingButtons(mgrPage, totalPages, 'goMgrPage(__PAGE__)');
+      const headerWrap = document.getElementById('mgrPageSizeWrap');
+      if (headerWrap) headerWrap.innerHTML = renderPageSizeSelector('managers', getMgrPageSize(), "onMgrPageSizeChange(this.value)");
+    }
+    function goMgrPage(p) { mgrPage = p; renderManagers(); }
+    async function onMgrPageSizeChange(val) {
+      mgrPageSize = parseInt(val) || 20;
+      await savePageSize('managers', mgrPageSize);
+      mgrPage = 1;
+      renderManagers();
+    }
+
+    let _allUsers = [];
+    let _selectedUserId = null;
+    let _searchTimer = null;
+
+    async function loadAllUsersForSearch() {
+      const { data } = await fetchUsers();
+      _allUsers = (data || []);
+      if (!session.isSuperAdmin) {
+        _allUsers = _allUsers.filter(u => !u.is_super_admin);
+      }
+    }
+
+    function onSearchInput() {
+      clearTimeout(_searchTimer);
+      _searchTimer = setTimeout(() => {
+        const q = document.getElementById('mSearchInput').value.trim().toLowerCase();
+        const box = document.getElementById('searchResults');
+        if (q.length < 1) { box.style.display = 'none'; return; }
+        const mgrIds = new Set(allManagers.map(m => m.id));
+        const matches = _allUsers.filter(u => !mgrIds.has(u.id) && u.user_type !== 'student' &&
+          ((u.display_name || '').toLowerCase().includes(q) || (u.username || '').toLowerCase().includes(q))
+        ).slice(0, 10);
+        if (matches.length === 0) {
+          box.innerHTML = '<div style="padding:0.6rem;color:var(--admin-text-muted);font-size:0.85rem;">검색 결과가 없습니다.</div>';
+        } else {
+          box.innerHTML = matches.map(u => {
+            const dept = deptList.find(d => d.id === u.department_id);
+            const deptName = dept ? dept.name : '';
+            return `<div style="padding:0.6rem 0.8rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.88rem;" onmousedown="selectUser('${u.id}')" onmouseover="this.style.background='#f3f0ff'" onmouseout="this.style.background=''">
+              <strong>${u.display_name || u.username}</strong>
+              <span style="margin-left:0.5rem;color:var(--admin-text-muted);font-size:0.78rem;">${u.user_type === 'student' ? '학생' : '교사'}${deptName ? ' / ' + deptName : ''}</span>
+            </div>`;
+          }).join('');
+        }
+        box.style.display = 'block';
+      }, 200);
+    }
+
+    function selectUser(userId) {
+      const u = _allUsers.find(x => x.id === userId);
+      if (!u) return;
+      _selectedUserId = u.id;
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('mSearchInput').style.display = 'none';
+      const dept = deptList.find(d => d.id === u.department_id);
+      document.getElementById('selectedUserInfo').innerHTML =
+        `<strong>${u.display_name || u.username}</strong> - ${u.user_type === 'student' ? '학생' : '교사'}${dept ? ' / ' + dept.name : ''}`;
+      document.getElementById('selectedUser').style.display = 'block';
+      document.getElementById('mUsername').value = u.username;
+      document.getElementById('mDisplayName').value = u.display_name || u.username;
+      document.getElementById('mOwnDeptId').value = u.department_id || '';
+    }
+
+    function clearSelectedUser() {
+      _selectedUserId = null;
+      document.getElementById('selectedUser').style.display = 'none';
+      document.getElementById('mSearchInput').style.display = '';
+      document.getElementById('mSearchInput').value = '';
+      document.getElementById('mUsername').value = '';
+      document.getElementById('mDisplayName').value = '';
+    }
+
+    function openAddModal() {
+      editingId = null;
+      _selectedUserId = null;
+      document.getElementById('modalTitle').textContent = '관리자 등록';
+      document.getElementById('userSearchWrap').style.display = 'block';
+      document.getElementById('usernameWrap').style.display = 'none';
+      document.getElementById('displayNameWrap').style.display = 'none';
+      document.getElementById('mSearchInput').style.display = '';
+      document.getElementById('mSearchInput').value = '';
+      document.getElementById('searchResults').style.display = 'none';
+      document.getElementById('selectedUser').style.display = 'none';
+      document.getElementById('mUsername').value = '';
+      document.getElementById('mDisplayName').value = '';
+      document.getElementById('mRole').innerHTML = buildMgrPermOptions(session.permissionRank || 0, 'dept_teacher');
+      document.getElementById('mRole').disabled = false;
+      document.getElementById('mOwnDeptId').value = '';
+      document.getElementById('mOwnDeptId').disabled = false;
+      document.getElementById('mDeptId').value = '';
+      onRoleChange();
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('mgrModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      editingId = id;
+      _selectedUserId = null;
+      const user = allManagers.find(u => u.id === id);
+      if (!user) return;
+      document.getElementById('modalTitle').textContent = '관리자 수정';
+      document.getElementById('userSearchWrap').style.display = 'none';
+      document.getElementById('usernameWrap').style.display = _isAdmin() ? 'block' : 'none';
+      document.getElementById('displayNameWrap').style.display = 'block';
+      document.getElementById('mUsername').value = user.username; document.getElementById('mUsername').disabled = true;
+      document.getElementById('mDisplayName').value = user.display_name || ''; document.getElementById('mDisplayName').disabled = false;
+      document.getElementById('mRole').innerHTML = buildMgrPermOptions(session.permissionRank || 0, user.permission_level || 'dept_teacher');
+      document.getElementById('mRole').disabled = false;
+      document.getElementById('mOwnDeptId').value = user.department_id || '';
+      document.getElementById('mOwnDeptId').disabled = true;
+      document.getElementById('mDeptId').value = user.managed_dept_id || '';
+      onRoleChange();
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('mgrModal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('mgrModal').classList.add('hidden'); }
+
+    async function saveManager() {
+      const errEl = document.getElementById('modalError');
+      const displayName = document.getElementById('mDisplayName').value.trim();
+      const permLevel = document.getElementById('mRole').value;
+      const ownDeptId = document.getElementById('mOwnDeptId').value || null;
+      const managedDeptId = document.getElementById('mDeptId').value || null;
+
+      if (editingId) {
+        if (!displayName) { errEl.textContent = '이름을 입력해주세요.'; errEl.classList.add('show'); return; }
+        const target = allManagers.find(u => u.id === editingId);
+        const updates = { displayName, userType: 'teacher', permissionLevel: permLevel, departmentId: ownDeptId, managedDeptId };
+        const { error } = await updateUser(editingId, updates);
+        if (error) { await logError('MANAGER_UPDATE_FAIL', { id: editingId, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        const deptName = id => (deptList.find(d => d.id === id) || {}).name || '-';
+        const 변경Parts = [];
+        if (target) {
+          if ((target.display_name || '') !== displayName) 변경Parts.push(`이름: ${target.display_name || '-'} → ${displayName}`);
+          if ((target.permission_level || '') !== permLevel) 변경Parts.push(`권한: ${PERMISSION_LABELS[target.permission_level] || target.permission_level} → ${PERMISSION_LABELS[permLevel] || permLevel}`);
+          if ((target.managed_dept_id || null) !== (managedDeptId || null)) 변경Parts.push(`담당부서: ${deptName(target.managed_dept_id)} → ${deptName(managedDeptId)}`);
+        }
+        await logInfo('MANAGER_UPDATE', { id: editingId, 대상: displayName, 권한: PERMISSION_LABELS[permLevel] || permLevel, 변경내역: 변경Parts.length ? 변경Parts.join(', ') : `이름: ${displayName}` });
+      } else {
+        if (!_selectedUserId) { errEl.textContent = '사용자를 검색하여 선택해주세요.'; errEl.classList.add('show'); return; }
+        const selectedUser = _allUsers.find(u => u.id === _selectedUserId);
+        const updates = { displayName: displayName || undefined, userType: 'teacher', permissionLevel: permLevel, departmentId: ownDeptId, managedDeptId };
+        const { error } = await updateUser(_selectedUserId, updates);
+        if (error) { await logError('MANAGER_PROMOTE_FAIL', { id: _selectedUserId, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        const userName = selectedUser ? (selectedUser.display_name || selectedUser.username) : _selectedUserId;
+        const deptName = id => (deptList.find(d => d.id === id) || {}).name || '-';
+        await logInfo('MANAGER_PROMOTE', { id: _selectedUserId, 대상: userName, 권한: PERMISSION_LABELS[permLevel] || permLevel, 변경내역: `관리자 승격: ${userName}, 권한: ${PERMISSION_LABELS[permLevel] || permLevel}${managedDeptId ? ', 담당부서: ' + deptName(managedDeptId) : ''}` });
+      }
+      closeModal();
+      await loadManagers();
+    }
+
+    async function resetPw(id, username) {
+      if (!confirm(`"${username}" 비밀번호를 1234로 초기화하시겠습니까?`)) return;
+      await resetUserPassword(id, username);
+      alert('비밀번호가 초기화되었습니다.');
+    }
+
+    async function confirmDelete(id, username) {
+      if (!confirm(`"${username}" 부서 담당 교사를 삭제하시겠습니까?`)) return;
+      await deleteUser(id);
+      await loadManagers();
+    }
+
+    document.getElementById('mgrModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

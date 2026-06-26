@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사용자 관리 - 관리자</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">👥 사용자 관리</h2>
+
+    <div class="cards-grid" style="margin-bottom:1.5rem;grid-template-columns:repeat(5,1fr);">
+      <div class="stat-card stat-filter active" data-filter="all" onclick="setUserFilter('all')"><div class="stat-card-label">전체</div><div class="stat-card-value" id="cntAll">-</div></div>
+      <div class="stat-card stat-filter" data-filter="admin" onclick="setUserFilter('admin')" style="border-left-color:#e03131;" data-min-perm="80"><div class="stat-card-label">👑 관리자</div><div class="stat-card-value" id="cntAdmin">-</div></div>
+      <div class="stat-card stat-filter" data-filter="dept_mgr" onclick="setUserFilter('dept_mgr')" style="border-left-color:#cc5de8;" data-min-perm="80"><div class="stat-card-label">📋 부서 담당</div><div class="stat-card-value" id="cntMgr">-</div></div>
+      <div class="stat-card stat-filter" data-filter="teacher" onclick="setUserFilter('teacher')" style="border-left-color:#4dabf7;"><div class="stat-card-label">👩‍🏫 교사</div><div class="stat-card-value" id="cntTeacher">-</div></div>
+      <div class="stat-card stat-filter" data-filter="student" onclick="setUserFilter('student')" style="border-left-color:#51cf66;"><div class="stat-card-label">🎒 학생</div><div class="stat-card-value" id="cntStudent">-</div></div>
+    </div>
+    <style>.cards-grid{display:grid;gap:0.6rem;}.stat-filter{cursor:pointer;transition:box-shadow 0.15s,transform 0.15s;}.stat-filter:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.1);}.stat-filter.active{box-shadow:0 0 0 2px var(--admin-primary,#6c5ce7);transform:translateY(-2px);}@media(max-width:768px){.cards-grid{grid-template-columns:repeat(3,1fr)!important;}.cards-grid .stat-card{padding:0.7rem 0.5rem;}.cards-grid .stat-card-value{font-size:1.3rem;}}</style>
+
+    <!-- 가입 신청 내역 -->
+    <div class="admin-table-wrap" id="reqSection" style="margin-bottom:1.5rem;">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="reqTitle" style="color:#e67700;">📝 가입 신청 내역</div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>역할</th><th>이름</th><th>부서</th><th>사유</th><th>신청일</th><th>처리</th></tr></thead>
+        <tbody id="reqList"></tbody>
+      </table>
+    </div>
+
+    <!-- 부서 이동 신청 내역 -->
+    <div class="admin-table-wrap" id="transferSection" style="margin-bottom:1.5rem;">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="transferTitle" style="color:#1971c2;">🔄 부서 이동 신청 내역</div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>이름</th><th>현재 부서</th><th>이동 요청 부서</th><th>요청자</th><th>요청일</th><th>처리</th></tr></thead>
+        <tbody id="transferList"></tbody>
+      </table>
+    </div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">사용자 목록</div>
+        <div class="filters" style="flex-wrap:wrap;gap:0.4rem;">
+          <select id="deptFilter" style="padding:0.35rem 0.6rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.8rem;background:var(--t-input-bg, #fff);" onchange="onDeptFilterChange()">
+            <option value="">전체 부서</option>
+          </select>
+          <button class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="openAddModal()" data-testid="user-add-button">+ 사용자 등록</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1rem 0 0.5rem;border-bottom:2px solid #4dabf7;padding-bottom:0.3rem;">
+        <h3 style="font-size:0.95rem;margin:0;">👩‍🏫 교사 <span id="teacherCount" style="font-size:0.8rem;color:var(--admin-text-muted);"></span></h3>
+        <span id="teacherPageSizeWrap"></span>
+      </div>
+      <table class="admin-table" id="teacherTable">
+        <thead><tr><th data-sort-key="permission_level">권한</th><th data-sort-key="display_name">이름</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th>관리</th></tr></thead>
+        <tbody id="teacherList"><tr><td colspan="6" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="teacherPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1.5rem 0 0.5rem;border-bottom:2px solid #51cf66;padding-bottom:0.3rem;">
+        <h3 style="font-size:0.95rem;margin:0;">🎒 학생 <span id="studentCount" style="font-size:0.8rem;color:var(--admin-text-muted);"></span></h3>
+        <span id="studentPageSizeWrap"></span>
+      </div>
+      <table class="admin-table" id="studentTable">
+        <thead><tr><th data-sort-key="display_name">이름</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th>관리</th></tr></thead>
+        <tbody id="studentList"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="studentPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <!-- 사용자 등록/수정 모달 -->
+  <div class="modal-overlay hidden" id="userModal">
+    <div class="modal-box" style="max-width:500px;">
+      <h3 class="modal-title" id="modalTitle">사용자 등록</h3>
+      <div class="form-error" id="modalError"></div>
+      <div style="margin-bottom:0.8rem;" id="usernameWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">아이디</label>
+        <input type="text" id="mUsername" data-testid="user-form-username" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이름 (표시명)</label>
+        <input type="text" id="mDisplayName" data-testid="user-form-display-name" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      </div>
+      <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
+        <div style="flex:1;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">역할</label>
+          <select id="mUserType" data-testid="user-form-type" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" onchange="onUserTypeChange()">
+            <option value="student">🎒 학생</option>
+            <option value="teacher">👩‍🏫 교사</option>
+          </select>
+        </div>
+        <div style="flex:1;" id="permLevelWrap">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">권한</label>
+          <select id="mPermLevel" data-testid="user-form-permission" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" onchange="onPermLevelChange()">
+          </select>
+        </div>
+      </div>
+      <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
+        <div style="flex:1;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">소속 부서 <span style="color:#e03131;">*</span></label>
+          <select id="mDept" data-testid="user-form-department" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" onchange="onDeptChange()">
+            <option value="">없음</option>
+          </select>
+        </div>
+        <div style="flex:1;" id="classWrap">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">반</label>
+          <select id="mClassNumber" data-testid="user-form-class-number" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+            <option value="">없음</option>
+          </select>
+        </div>
+      </div>
+      <div id="managedDeptWrap" style="margin-bottom:0.8rem;display:none;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">담당 관리 부서 <span style="color:#e03131;">*필수</span></label>
+        <select id="mManagedDept" data-testid="user-form-managed-department" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+          <option value="">없음</option>
+        </select>
+      </div>
+      <div id="passwordWrap" style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">초기 비밀번호</label>
+        <input type="text" id="mPassword" data-testid="user-form-password" value="1234" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+        <div style="font-size:0.75rem;color:#b2bec3;margin-top:0.2rem;">첫 로그인 시 변경 필수</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" onclick="saveUser()" data-testid="user-form-save">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 부서 이동 모달 -->
+  <div class="modal-overlay hidden" id="transferModal">
+    <div class="modal-box" style="max-width:420px;">
+      <h3 class="modal-title">🔄 부서 이동</h3>
+      <div class="form-error" id="transferError"></div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">대상 사용자</label>
+        <div id="transferUserInfo" style="padding:0.6rem;background:#f8f9fa;border-radius:8px;font-size:0.9rem;"></div>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">현재 부서</label>
+        <div id="transferFromDept" style="padding:0.6rem;background:#f8f9fa;border-radius:8px;font-size:0.9rem;color:#868e96;"></div>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이동할 부서 <span style="color:#e03131;">*</span></label>
+        <select id="transferToDept" data-testid="transfer-to-department" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+          <option value="">-- 부서 선택 --</option>
+        </select>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">사유</label>
+        <input type="text" id="transferReason" data-testid="transfer-reason" placeholder="이동 사유 입력" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      </div>
+      <div id="transferNote" style="font-size:0.78rem;color:#868e96;margin-bottom:0.8rem;"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeTransferModal()">취소</button>
+        <button class="btn-confirm" onclick="submitTransfer()" data-testid="transfer-submit">확인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 상세 정보 모달 -->
+  <div class="modal-overlay hidden" id="detailModal">
+    <div class="modal-box" style="max-width:600px;max-height:85vh;overflow-y:auto;">
+      <h3 class="modal-title">📋 사용자 상세 정보</h3>
+      <div id="detailContent" style="font-size:0.88rem;"></div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="document.getElementById('detailModal').classList.add('hidden')">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .mgmt-dropdown { position: relative; display: inline-block; }
+    .mgmt-menu { display: none; position: absolute; right: 0; top: 100%; background: var(--t-card, #fff); border: 1px solid var(--admin-border); border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); z-index: 9999; min-width: 140px; padding: 0.3rem 0; }
+    .mgmt-menu.show { display: block; }
+    .mgmt-menu a { display: block; padding: 0.45rem 0.8rem; font-size: 0.82rem; color: var(--t-text, #333); text-decoration: none; cursor: pointer; white-space: nowrap; }
+    .mgmt-menu a:hover { background: var(--t-hover-bg, #f1f3f5); }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script src="../js/slack-notify.js?v=3.52.0"></script>
+  <script src="../js/version.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let allUsers = [];
+    let allDepts = [];
+    let editingId = null;
+    let currentFilter = 'all';
+    let userTeacherPageSize = null;
+    let userStudentPageSize = null;
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      userTeacherPageSize = await loadPageSize('users_teacher', 10);
+      userStudentPageSize = await loadPageSize('users_student', 10);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      const myRank = session.permissionRank || 0;
+      if (myRank >= 80) updateBadge();
+      if (myRank < 60) {
+        document.getElementById('reqSection').style.display = 'none';
+        document.querySelectorAll('.admin-table-header .filter-btn[style*="background:var(--admin-primary)"]').forEach(b => b.style.display = 'none');
+      }
+      loadData();
+    })();
+
+    async function updateBadge() { await updateLogBadge(); }
+
+    let allRequests = [];
+
+    async function loadLastLogins() {
+      const { data: loginLogs } = await _sb
+        .from('activity_logs')
+        .select('username, created_at')
+        .eq('action', 'LOGIN_SUCCESS')
+        .order('created_at', { ascending: false });
+      if (!loginLogs) return;
+      const lastLoginMap = {};
+      loginLogs.forEach(log => {
+        if (!lastLoginMap[log.username]) lastLoginMap[log.username] = log.created_at;
+      });
+      allUsers.forEach(u => {
+        if (lastLoginMap[u.username]) u.last_sign_in_at = lastLoginMap[u.username];
+      });
+    }
+
+    let allTransfers = [];
+
+    async function loadData() {
+      const myRank = session.permissionRank || 0;
+      const [usersRes, deptsRes, reqRes, trfRes] = await Promise.all([
+        fetchUsers(), fetchDepartments(),
+        _sb.from('registration_requests').select('*').eq('status', 'pending').order('created_at', { ascending: false }),
+        _sb.from('department_transfer_requests').select('*').eq('status', 'pending').order('created_at', { ascending: false })
+      ]);
+      let users = usersRes.data || [];
+      allDepts = deptsRes.data || [];
+      let reqs = reqRes.data || [];
+      let transfers = trfRes.data || [];
+
+      const myManagedDept = session.managedDeptId || session.departmentId;
+      const myDepts = new Set([session.managedDeptId, session.departmentId].filter(Boolean));
+
+      if (!session.isSuperAdmin) {
+        users = users.filter(u => !u.is_super_admin);
+      }
+
+      if (myRank < 80) {
+        if (myDepts.size > 0) {
+          users = users.filter(u => myDepts.has(u.department_id));
+        } else {
+          users = [];
+        }
+      }
+
+      if (myRank < 80) {
+        reqs = myDepts.size > 0 ? reqs.filter(r => myDepts.has(r.department_id)) : [];
+      }
+
+      if (myRank >= 90) {
+        // 전도사님+: 모든 이동 요청 표시
+      } else if (myRank >= 80) {
+        // 부장 교사: 모든 이동 요청 표시 (처리는 관리 부서만)
+      } else if (myRank >= 60) {
+        transfers = myDepts.size > 0 ? transfers.filter(t => myDepts.has(t.to_department_id)) : [];
+      } else {
+        transfers = [];
+      }
+
+      allRequests = reqs;
+      allTransfers = transfers;
+
+      allUsers = users;
+      await loadLastLogins();
+      updateStats();
+      populateDeptSelects();
+      populateDeptFilter();
+      renderUsers();
+      renderRequests();
+      renderTransfers();
+    }
+
+    const DEPT_MGR_LEVELS = ['evangelist', 'chief', 'purchase_teacher', 'dept_teacher'];
+
+    const PERM_LEVELS = (typeof getCodeItems === 'function')
+      ? getCodeItems('profiles.permission_level')
+          .filter(i => !['student', 'super_admin'].includes(i.key))
+          .map(i => ({ value: i.key, label: i.value, rank: getCodeRank('profiles.permission_level', i.key, 0) }))
+      : [
+        { value: 'teacher', label: '일반 교사', rank: 40 },
+        { value: 'dept_teacher', label: '부서 담당 교사', rank: 60 },
+        { value: 'purchase_teacher', label: '구매 담당 교사', rank: 70 },
+        { value: 'chief', label: '부장 교사', rank: 80 },
+        { value: 'evangelist', label: '전도사님', rank: 90 },
+        { value: 'admin', label: '관리자', rank: 100 }
+      ];
+
+    function buildPermOptions(maxRank, selectedValue) {
+      const isSA = session && session.isSuperAdmin;
+      return PERM_LEVELS.filter(l => isSA || l.rank < maxRank || l.value === selectedValue)
+        .map(l => `<option value="${l.value}" ${l.value === selectedValue ? 'selected' : ''}>${PERMISSION_EMOJI[l.value]||''} ${l.label}</option>`)
+        .join('');
+    }
+
+    const ADMIN_LEVELS = ['admin', 'evangelist', 'chief'];
+    const DEPT_MGR_FILTER_LEVELS = ['purchase_teacher', 'dept_teacher'];
+
+    function updateStats() {
+      document.getElementById('cntAll').textContent = allUsers.length;
+      document.getElementById('cntAdmin').textContent = allUsers.filter(u => ADMIN_LEVELS.includes(u.permission_level)).length;
+      document.getElementById('cntMgr').textContent = allUsers.filter(u => DEPT_MGR_FILTER_LEVELS.includes(u.permission_level)).length;
+      document.getElementById('cntTeacher').textContent = allUsers.filter(u => u.user_type === 'teacher').length;
+      document.getElementById('cntStudent').textContent = allUsers.filter(u => u.user_type === 'student').length;
+    }
+
+    function userMatchesFilter(u, filter) {
+      if (filter === 'all') return true;
+      if (filter === 'admin') return ADMIN_LEVELS.includes(u.permission_level);
+      if (filter === 'dept_mgr') return DEPT_MGR_FILTER_LEVELS.includes(u.permission_level);
+      if (filter === 'teacher') return u.user_type === 'teacher';
+      if (filter === 'student') return u.user_type === 'student';
+      return true;
+    }
+
+    function setUserFilter(filter) {
+      currentFilter = filter;
+      groupPages = { teacher: 1, student: 1 };
+      document.querySelectorAll('.stat-filter').forEach(el => el.classList.toggle('active', el.dataset.filter === filter));
+      renderUsers();
+    }
+
+    function badgeKeyForUser(u) {
+      if (u.permission_level === 'admin') return 'admin';
+      if (DEPT_MGR_LEVELS.includes(u.permission_level)) return 'dept_manager';
+      if (u.user_type === 'teacher') return 'teacher';
+      return 'student';
+    }
+
+    function populateDeptSelects() {
+      const opts = '<option value="">없음</option>' + allDepts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      document.getElementById('mDept').innerHTML = opts;
+      document.getElementById('mManagedDept').innerHTML = opts;
+    }
+
+    function getClassLabel(classNum) {
+      return classNum ? classNum + '반' : '-';
+    }
+
+    function onDeptChange() {
+      const deptId = document.getElementById('mDept').value;
+      const classSelect = document.getElementById('mClassNumber');
+      const dept = allDepts.find(d => d.id === deptId);
+      const count = (dept && dept.class_count) ? dept.class_count : 0;
+      let html = '<option value="">없음</option>';
+      for (let i = 1; i <= count; i++) html += `<option value="${i}">${i}반</option>`;
+      classSelect.innerHTML = html;
+      document.getElementById('classWrap').style.display = count > 0 ? 'block' : 'none';
+    }
+
+    let currentDeptFilter = '';
+    let groupPages = { teacher: 1, student: 1 };
+    function getGroupPageSize(groupKey) {
+      if (groupKey === 'teacher' && userTeacherPageSize !== null) return userTeacherPageSize;
+      if (groupKey === 'student' && userStudentPageSize !== null) return userStudentPageSize;
+      return window.innerWidth <= 768 ? 10 : 20;
+    }
+
+    function onDeptFilterChange() {
+      currentDeptFilter = document.getElementById('deptFilter').value;
+      groupPages = { teacher: 1, student: 1 };
+      renderUsers();
+    }
+
+    function populateDeptFilter() {
+      const sel = document.getElementById('deptFilter');
+      if (!sel) return;
+      const myRank = session.permissionRank || 0;
+      if (myRank < 80) {
+        sel.style.display = 'none';
+        return;
+      }
+      sel.style.display = '';
+      sel.innerHTML = '<option value="">전체 부서</option>' + allDepts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+
+    function getDeptName(id) {
+      const d = allDepts.find(d => d.id === id);
+      return d ? d.name : '-';
+    }
+
+    const ROLE_BADGES = {
+      admin: { emoji: '👑', label: '관리자', cls: 'ERROR' },
+      dept_manager: { emoji: '📋', label: '부서 담당 교사', cls: 'WARN' },
+      teacher: { emoji: '👩‍🏫', label: '교사', cls: 'INFO' },
+      student: { emoji: '🎒', label: '학생', cls: 'DEBUG' }
+    };
+
+    let _nameMap = {};
+    const _isAdmin = () => isAdminLevel(session);
+
+    let _currentTeachers = [], _currentStudents = [];
+    function renderUsers() {
+      let list = allUsers;
+      if (currentDeptFilter) list = list.filter(u => u.department_id === currentDeptFilter);
+      if (currentFilter && currentFilter !== 'all') list = list.filter(u => userMatchesFilter(u, currentFilter));
+      _currentTeachers = sortUserList(list.filter(u => u.user_type === 'teacher'), getDeptName);
+      _currentStudents = sortUserList(list.filter(u => u.user_type === 'student'), getDeptName);
+      document.getElementById('tableTitle').textContent = `사용자 목록 (${list.length}명)`;
+      _nameMap = resolveDisplayNames(allUsers);
+      _currentTeachers.forEach(u => { u._deptName = getDeptName(u.department_id); });
+      _currentStudents.forEach(u => { u._deptName = getDeptName(u.department_id); });
+      renderGroup(_currentTeachers, 'teacher', 'teacherList', 'teacherPaging', 'teacherCount');
+      renderGroup(_currentStudents, 'student', 'studentList', 'studentPaging', 'studentCount');
+      initSortableHeaders('teacherTable', function(){ return _currentTeachers; }, function(d){ _currentTeachers = d; groupPages.teacher = 1; renderGroup(d,'teacher','teacherList','teacherPaging','teacherCount'); });
+      initSortableHeaders('studentTable', function(){ return _currentStudents; }, function(d){ _currentStudents = d; groupPages.student = 1; renderGroup(d,'student','studentList','studentPaging','studentCount'); });
+    }
+
+    function renderGroup(list, groupKey, tbodyId, pagingId, countId) {
+      const pageSize = getGroupPageSize(groupKey);
+      const page = groupPages[groupKey] || 1;
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      if (page > totalPages) groupPages[groupKey] = totalPages;
+      document.getElementById(countId).textContent = `(${list.length}명)`;
+      const tbody = document.getElementById(tbodyId);
+      const colSpan = groupKey === 'student' ? 5 : 6;
+      if (list.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${colSpan}" class="empty-state">등록된 사용자가 없습니다.</td></tr>`;
+        document.getElementById(pagingId).innerHTML = '';
+        return;
+      }
+      const startIdx = (page - 1) * pageSize;
+      const pageList = list.slice(startIdx, startIdx + pageSize);
+      const myRank = session.permissionRank || 0;
+      tbody.innerHTML = pageList.map(u => {
+        const perm = u.permission_level;
+        const permLabel = PERMISSION_LABELS[perm] || perm;
+        const permEmoji = PERMISSION_EMOJI[perm] || '';
+        const rb = ROLE_BADGES[badgeKeyForUser(u)] || ROLE_BADGES.student;
+        const dn = _nameMap[u.id] || u.display_name || '-';
+        const canManage = canManageUser(u);
+        const isSelf = u.id === session.id;
+        let items = [`<a onclick="openDetailModal('${u.id}')">📋 상세 정보</a>`];
+        if (canManage) items.push(`<a onclick='openEditModal(${JSON.stringify(u).replace(/'/g,"&#39;")})'>✏️ 수정</a>`);
+        else if (isProtectedSuperAdminUser(u)) items.push('<a style="color:#868e96;cursor:default;">🔒 최고관리자는 본인만 수정 가능</a>');
+        if (canManage && !isSelf) {
+          if (myRank >= 80) items.push(`<a onclick="openTransferModal('${u.id}','${(dn).replace(/'/g,"\\'")}','${u.department_id||''}')">${myRank >= 90 ? '🔄 부서 이동' : '🔄 부서 이동 신청'}</a>`);
+          items.push(`<a onclick="resetPw('${u.id}','${(dn).replace(/'/g,"\\'")}')">🔑 비밀번호 초기화</a>`);
+          if (myRank >= 80) items.push(`<a onclick="confirmDelete('${u.id}','${(dn).replace(/'/g,"\\'")}')">🗑️ 삭제</a>`);
+        }
+        const permCol = groupKey !== 'student' ? `<td><span class="level-badge ${rb.cls}">${permEmoji} ${permLabel}</span></td>` : '';
+        return `<tr>
+          ${permCol}
+          <td>${dn}${(isSelf || _isAdmin()) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
+          <td>${getDeptName(u.department_id)}</td>
+          <td>${getClassLabel(u.class_number)}</td>
+          <td style="font-weight:700;">${fmtNum(u.talent_balance || 0)}</td>
+          <td>
+            <div class="mgmt-dropdown">
+              <button class="filter-btn" onclick="toggleMgmtMenu(event, this)">관리 ▾</button>
+              <div class="mgmt-menu">${items.join('')}</div>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+      renderGroupPaging(groupKey, totalPages, pagingId);
+    }
+
+    function renderGroupPaging(groupKey, totalPages, pagingId) {
+      const wrap = document.getElementById(pagingId);
+      const page = groupPages[groupKey] || 1;
+      const pageSize = getGroupPageSize(groupKey);
+      wrap.innerHTML = buildPagingButtons(page, totalPages, "goGroupPage('" + groupKey + "',__PAGE__)");
+      const headerWrap = document.getElementById(groupKey + 'PageSizeWrap');
+      if (headerWrap) headerWrap.innerHTML = renderPageSizeSelector(groupKey === 'teacher' ? 'users_teacher' : 'users_student', pageSize, "onUsersPageSizeChange('" + groupKey + "', this.value)");
+    }
+
+    async function onUsersPageSizeChange(groupKey, val) {
+      const size = parseInt(val) || 10;
+      const key = groupKey === 'teacher' ? 'users_teacher' : 'users_student';
+      if (groupKey === 'teacher') userTeacherPageSize = size;
+      else userStudentPageSize = size;
+      await savePageSize(key, size);
+      groupPages[groupKey] = 1;
+      renderUsers();
+    }
+
+    function goGroupPage(groupKey, p) {
+      groupPages[groupKey] = p;
+      renderUsers();
+    }
+
+    function hasOwnFlag(obj, key) {
+      return Object.prototype.hasOwnProperty.call(obj || {}, key);
+    }
+
+    function isProtectedSuperAdminUser(user) {
+      return !!(user && user.is_super_admin === true);
+    }
+
+    function canManageUser(user) {
+      if (!user) return false;
+
+      const myRank = session.permissionRank || 0;
+      const isSA = session && session.isSuperAdmin;
+      const myManagedDept = session.managedDeptId || session.departmentId;
+
+      if (myRank < 60) return false;
+
+      // Super Admin은 모든 사용자 관리 가능
+      if (isSA) return true;
+
+      // 최고관리자 보호 (super admin이 아닌 사용자는 super admin 수정 불가)
+      if (user.id !== session.id && isProtectedSuperAdminUser(user)) return false;
+
+      if (user.id === session.id) return true;
+
+      const targetRank = getPermRank(user.permission_level, false);
+
+      if (myRank <= targetRank) return false;
+
+      if (myRank < 80) {
+        return !!myManagedDept && (
+          user.department_id === myManagedDept ||
+          user.managed_dept_id === myManagedDept
+        );
+      }
+
+      if (myRank === 80) {
+        return !!myManagedDept && (
+          user.department_id === myManagedDept ||
+          user.managed_dept_id === myManagedDept
+        );
+      }
+
+      return true;
+    }
+
+    async function refreshUserProtection(user) {
+      if (!user || hasOwnFlag(user, 'is_super_admin')) return user;
+      try {
+        const { data } = await _sb
+          .from('profiles')
+          .select('is_super_admin')
+          .eq('id', user.id)
+          .maybeSingle();
+        if (data && hasOwnFlag(data, 'is_super_admin')) {
+          user.is_super_admin = data.is_super_admin === true;
+        }
+      } catch (e) {}
+      return user;
+    }
+
+    function showProtectedUserMessage(target, errEl) {
+      const message = isProtectedSuperAdminUser(target)
+        ? '최고관리자 계정은 본인만 수정할 수 있습니다.'
+        : '이 사용자를 수정할 권한이 없습니다.';
+      if (errEl) {
+        errEl.textContent = message;
+        errEl.classList.add('show');
+      } else {
+        alert(message);
+      }
+    }
+
+    function toggleMgmtMenu(e, btn) {
+      e.stopPropagation();
+      document.querySelectorAll('.mgmt-menu.show').forEach(m => { if (m !== btn.nextElementSibling) m.classList.remove('show'); });
+      btn.nextElementSibling.classList.toggle('show');
+    }
+    document.addEventListener('click', () => document.querySelectorAll('.mgmt-menu.show').forEach(m => m.classList.remove('show')));
+
+    async function openDetailModal(userId) {
+      const u = allUsers.find(x => x.id === userId);
+      if (!u) return;
+      const myRank = session.permissionRank || 0;
+      const dn = _nameMap[u.id] || u.display_name || '-';
+      const perm = u.permission_level;
+      const permLabel = PERMISSION_LABELS[perm] || perm;
+      const permEmoji = PERMISSION_EMOJI[perm] || '';
+      const typeLabel = TYPE_LABELS[u.user_type] || u.user_type;
+      const lastLogin = u.last_login_at ? formatKSTShort(u.last_login_at) : (u.last_sign_in_at ? formatKSTShort(u.last_sign_in_at) : '없음');
+
+      let regInfo = '';
+      try {
+        const { data: req } = await _sb.from('registration_requests').select('*').eq('username', u.username).order('created_at', { ascending: false }).limit(1);
+        if (req && req.length > 0) {
+          const r = req[0];
+          let reviewerDisplay = '-';
+          if (r.reviewed_by) {
+            const isUUID = /^[0-9a-f]{8}-/.test(r.reviewed_by);
+            if (isUUID) {
+              const { data: rp } = await _sb.from('profiles').select('display_name, username').eq('id', r.reviewed_by).single();
+              if (rp) {
+                reviewerDisplay = rp.display_name || rp.username || r.reviewed_by;
+                if (myRank >= 100 && rp.username) reviewerDisplay += ` (${rp.username})`;
+              } else {
+                reviewerDisplay = myRank >= 100 ? r.reviewed_by : '승인 완료';
+              }
+            } else {
+              const { data: rps } = await _sb.from('profiles').select('display_name, username').eq('username', r.reviewed_by).limit(1);
+              if (rps && rps.length > 0) {
+                reviewerDisplay = rps[0].display_name || r.reviewed_by;
+                if (myRank >= 100) reviewerDisplay += ` (${r.reviewed_by})`;
+              } else {
+                reviewerDisplay = myRank >= 100 ? r.reviewed_by : '승인 완료';
+              }
+            }
+          }
+          regInfo = `<tr><td style="font-weight:600;width:35%;">계정 신청일</td><td>${formatKSTShort(r.created_at)}</td></tr>
+            <tr><td style="font-weight:600;">신청 사유</td><td>${r.reason || '-'}</td></tr>
+            <tr><td style="font-weight:600;">승인일</td><td>${r.reviewed_at ? formatKSTShort(r.reviewed_at) : '-'}</td></tr>
+            <tr><td style="font-weight:600;">승인자</td><td>${reviewerDisplay}</td></tr>`;
+        }
+      } catch (e) {}
+
+      let talentHtml = '';
+      try {
+        const { data: txns } = await _sb.from('talent_transactions').select('type, amount, description, balance_after, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10);
+        if (txns && txns.length > 0) {
+          talentHtml = '<table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.3rem;"><thead><tr style="background:#f1f3f5;"><th style="padding:0.3rem;">유형</th><th>금액</th><th>설명</th><th>잔액</th><th>날짜</th></tr></thead><tbody>';
+          txns.forEach(t => {
+            const color = t.type === 'earn' ? '#2b8a3e' : '#e03131';
+            talentHtml += `<tr style="border-bottom:1px solid #e9ecef;"><td style="padding:0.3rem;color:${color};">${t.type==='earn'?'적립':'사용'}</td><td style="font-weight:700;color:${color};">${t.type==='earn'?'+':''}${t.amount}</td><td>${t.description||'-'}</td><td>${t.balance_after||0}</td><td>${formatKSTShort(t.created_at)}</td></tr>`;
+          });
+          talentHtml += '</tbody></table>';
+        } else { talentHtml = '<p style="color:#adb5bd;font-size:0.82rem;">달란트 내역이 없습니다.</p>'; }
+      } catch (e) { talentHtml = ''; }
+
+      let orderHtml = '';
+      try {
+        const { data: orders } = await _sb.from('product_orders').select('product_name, price, status, created_at').eq('user_id', userId).neq('status', 'cancelled').order('created_at', { ascending: false }).limit(10);
+        if (orders && orders.length > 0) {
+          const sMap = { requested:'구매 신청', preparing:'상품 준비', purchased:'상품 구매', delivered:'상품 지급' };
+          orderHtml = '<table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.3rem;"><thead><tr style="background:#f1f3f5;"><th style="padding:0.3rem;">상품</th><th>금액</th><th>상태</th><th>날짜</th></tr></thead><tbody>';
+          orders.forEach(o => {
+            orderHtml += `<tr style="border-bottom:1px solid #e9ecef;"><td style="padding:0.3rem;">${o.product_name||'-'}</td><td>${fmtNum(o.price||0)}</td><td>${sMap[o.status]||o.status||'-'}</td><td>${formatKSTShort(o.created_at)}</td></tr>`;
+          });
+          orderHtml += '</tbody></table>';
+        } else { orderHtml = '<p style="color:#adb5bd;font-size:0.82rem;">구매 내역이 없습니다.</p>'; }
+      } catch (e) { orderHtml = ''; }
+
+      let html = '<table style="width:100%;border-collapse:collapse;">';
+      if (myRank >= 100) html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;width:35%;border-bottom:1px solid #e9ecef;">아이디</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${u.username}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">이름</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${dn}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">역할</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${typeLabel}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">권한</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${permEmoji} ${permLabel}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">부서</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${getDeptName(u.department_id)}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">담당 부서</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${u.managed_dept_id ? getDeptName(u.managed_dept_id) : '-'}</td></tr>`;
+      html += regInfo;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">등록일</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${formatKSTShort(u.created_at)}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">마지막 로그인</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${lastLogin}</td></tr>`;
+      html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">달란트 잔액</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;font-weight:700;">${fmtNum(u.talent_balance || 0)}</td></tr>`;
+      html += '</table>';
+      html += '<h4 style="margin:1rem 0 0.3rem;font-size:0.9rem;">💰 달란트 내역 (최근 10건)</h4>' + talentHtml;
+      html += '<h4 style="margin:1rem 0 0.3rem;font-size:0.9rem;">🛒 구매 내역 (최근 10건)</h4>' + orderHtml;
+
+      document.getElementById('detailContent').innerHTML = html;
+      document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    const MGMT_LEVELS = ['purchase_teacher','dept_teacher','chief','evangelist','admin'];
+
+    function onUserTypeChange() {
+      const ut = document.getElementById('mUserType').value;
+      const permWrap = document.getElementById('permLevelWrap');
+      if (ut === 'student') {
+        permWrap.style.display = 'none';
+      } else {
+        permWrap.style.display = 'block';
+        const currentPerm = document.getElementById('mPermLevel').value || 'teacher';
+        document.getElementById('mPermLevel').innerHTML = buildPermOptions(session.permissionRank || 0, currentPerm);
+      }
+      onPermLevelChange();
+    }
+
+    function onPermLevelChange() {
+      const ut = document.getElementById('mUserType').value;
+      const perm = ut === 'student' ? 'student' : (document.getElementById('mPermLevel').value || 'teacher');
+      document.getElementById('managedDeptWrap').style.display = MGMT_LEVELS.includes(perm) ? 'block' : 'none';
+    }
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = '사용자 등록';
+      document.getElementById('usernameWrap').style.display = _isAdmin() ? 'block' : 'none';
+      document.getElementById('mUsername').value = '';
+      document.getElementById('mUsername').disabled = false;
+      document.getElementById('mDisplayName').value = '';
+      document.getElementById('mUserType').value = 'student';
+      document.getElementById('permLevelWrap').style.display = 'none';
+      const myRank = session.permissionRank || 0;
+      const deptSel = document.getElementById('mDept');
+      if (myRank >= 90) {
+        deptSel.disabled = false;
+      } else {
+        const myDeptId = session.managedDeptId || session.departmentId || '';
+        deptSel.value = myDeptId;
+        deptSel.disabled = true;
+      }
+      document.getElementById('mClassNumber').value = '';
+      document.getElementById('mClassNumber').disabled = false;
+      document.getElementById('classWrap').style.display = 'none';
+      document.getElementById('mManagedDept').value = '';
+      document.getElementById('managedDeptWrap').style.display = 'none';
+      document.getElementById('passwordWrap').style.display = 'block';
+      document.getElementById('mPassword').value = '1234';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    async function openEditModal(u) {
+      await refreshUserProtection(u);
+      if (!canManageUser(u)) {
+        showProtectedUserMessage(u);
+        return;
+      }
+      editingId = u.id;
+      const isSA = session && session.isSuperAdmin;
+      const myRank = session.permissionRank || 0;
+      document.getElementById('modalTitle').textContent = '사용자 수정';
+      document.getElementById('usernameWrap').style.display = _isAdmin() ? 'block' : 'none';
+      document.getElementById('mUsername').value = u.username;
+      document.getElementById('mUsername').disabled = true;
+      document.getElementById('mDisplayName').value = u.display_name || '';
+      document.getElementById('mUserType').value = u.user_type || 'student';
+      document.getElementById('mUserType').disabled = isSA ? false : (myRank < 80);
+      if (u.user_type === 'teacher') {
+        document.getElementById('permLevelWrap').style.display = 'block';
+        document.getElementById('mPermLevel').innerHTML = buildPermOptions(myRank, u.permission_level || 'teacher');
+      } else {
+        document.getElementById('permLevelWrap').style.display = 'none';
+      }
+      document.getElementById('mPermLevel').disabled = isSA ? false : (myRank < 80);
+      document.getElementById('mDept').value = u.department_id || '';
+      document.getElementById('mDept').disabled = isSA ? false : true;
+      onDeptChange();
+      document.getElementById('mClassNumber').value = u.class_number || '';
+      const canEditClass = isSA || myRank >= 60;
+      document.getElementById('mClassNumber').disabled = !canEditClass;
+      if (!isSA && myRank < 80) {
+        if (document.getElementById('mManagedDept')) document.getElementById('mManagedDept').disabled = true;
+      } else {
+        if (document.getElementById('mManagedDept')) document.getElementById('mManagedDept').disabled = false;
+      }
+      document.getElementById('mManagedDept').value = u.managed_dept_id || '';
+      document.getElementById('managedDeptWrap').style.display = MGMT_LEVELS.includes(u.permission_level) ? 'block' : 'none';
+      document.getElementById('passwordWrap').style.display = 'none';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('userModal').classList.add('hidden'); }
+
+    async function saveUser() {
+      const errEl = document.getElementById('modalError');
+      let username = document.getElementById('mUsername').value.trim();
+      const displayName = document.getElementById('mDisplayName').value.trim();
+      const userType = document.getElementById('mUserType').value;
+      const permLevel = userType === 'student' ? 'student' : (document.getElementById('mPermLevel').value || 'teacher');
+      const deptId = document.getElementById('mDept').value || null;
+      const classNumber = document.getElementById('mClassNumber').value ? parseInt(document.getElementById('mClassNumber').value) : null;
+      const managedDeptId = document.getElementById('mManagedDept').value || null;
+      const needsManagedDept = MGMT_LEVELS.includes(permLevel);
+
+      if (!displayName) { errEl.textContent = '이름을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!editingId && username && !/^[a-zA-Z0-9_-]+$/.test(username)) { errEl.textContent = '아이디는 영문, 숫자, _, - 만 사용 가능합니다.'; errEl.classList.add('show'); return; }
+      if (!editingId && !username) username = 'user_' + Date.now().toString(36);
+      if (_isAdmin() && !editingId && !username) { errEl.textContent = '아이디를 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!deptId) { errEl.textContent = '소속 부서를 선택해주세요.'; errEl.classList.add('show'); return; }
+      if (needsManagedDept && !managedDeptId) { errEl.textContent = '담당 관리 부서를 선택해주세요.'; errEl.classList.add('show'); return; }
+
+      if (editingId) {
+        const target = allUsers.find(u => u.id === editingId);
+        await refreshUserProtection(target);
+        if (!canManageUser(target)) {
+          showProtectedUserMessage(target, errEl);
+          return;
+        }
+        const { error } = await updateUser(editingId, { displayName, userType, permissionLevel: permLevel, departmentId: deptId, managedDeptId: needsManagedDept ? managedDeptId : null, classNumber });
+        if (error) { await logError('USER_UPDATE_FAIL', { userId: editingId, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        const 변경Parts = [];
+        if ((target.display_name || '') !== displayName) 변경Parts.push(`이름: ${target.display_name || '-'} → ${displayName}`);
+        if ((target.user_type || 'student') !== userType) 변경Parts.push(`유형: ${target.user_type || 'student'} → ${userType}`);
+        if ((target.permission_level || 'student') !== permLevel) 변경Parts.push(`권한: ${PERMISSION_LABELS[target.permission_level] || target.permission_level} → ${PERMISSION_LABELS[permLevel] || permLevel}`);
+        const newManaged = needsManagedDept ? managedDeptId : null;
+        if ((target.managed_dept_id || null) !== (newManaged || null)) 변경Parts.push(`담당부서: ${target.managed_dept_id ? getDeptName(target.managed_dept_id) : '-'} → ${newManaged ? getDeptName(newManaged) : '-'}`);
+        if ((target.class_number ?? null) !== classNumber) 변경Parts.push(`반: ${target.class_number ?? '-'} → ${classNumber ?? '-'}`);
+        await logInfo('USER_UPDATE', { userId: editingId, 대상: displayName, 변경내역: 변경Parts.length ? 변경Parts.join(', ') : `이름: ${displayName}` });
+      } else {
+        const pw = document.getElementById('mPassword').value || '1234';
+        const { error } = await createUser({ username, password: pw, displayName: displayName || username, userType, permissionLevel: permLevel, departmentId: deptId, managedDeptId: needsManagedDept ? managedDeptId : null, classNumber });
+        if (error) { await logError('USER_CREATE_FAIL', { 아이디: username, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        await logInfo('USER_CREATE', { 아이디: username, 대상: displayName || username, 권한: PERMISSION_LABELS[permLevel] || permLevel, 부서: getDeptName(deptId), ...(classNumber != null ? { 반: classNumber } : {}), 변경내역: `사용자 등록: ${displayName || username}` });
+      }
+      closeModal();
+      await loadData();
+    }
+
+    async function resetPw(id, username) {
+      if (!confirm(`"${username}" 비밀번호를 초기화(1234)하시겠습니까?`)) return;
+      const { error } = await resetUserPassword(id, username);
+      if (error) { await logError('USER_PW_RESET_FAIL', { userId: id, 아이디: username, 오류: error }); alert('초기화 실패: ' + tErr(error)); }
+      else { await logInfo('USER_PW_RESET', { userId: id, 아이디: username, 대상: username, 변경내역: `${username} 비밀번호 초기화` }); alert('비밀번호가 1234로 초기화되었습니다.'); }
+    }
+
+    async function confirmDelete(id, username) {
+      if (!confirm(`"${username}" 사용자를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
+      const { error } = await deleteUser(id);
+      if (error) { await logError('USER_DELETE_FAIL', { userId: id, 아이디: username, 오류: error }); alert('삭제 실패: ' + tErr(error)); }
+      else { await logInfo('USER_DELETE', { userId: id, 아이디: username, 대상: username, 변경내역: `사용자 삭제: ${username}` }); await loadData(); }
+    }
+
+    function renderRequests() {
+      document.getElementById('reqTitle').textContent = `📝 가입 신청 내역 (${allRequests.length}건)`;
+      if (allRequests.length === 0) {
+        document.getElementById('reqList').innerHTML = '<tr><td colspan="7" class="empty-state">대기 중인 가입 신청이 없습니다.</td></tr>';
+        return;
+      }
+      const myRank = session.permissionRank || 0;
+      const myDepts = new Set([session.managedDeptId, session.departmentId].filter(Boolean));
+      const tbody = document.getElementById('reqList');
+      tbody.innerHTML = allRequests.map(r => {
+        const rb = ROLE_BADGES[badgeKeyForUser({ permission_level: r.permission_level || 'student', user_type: r.user_type })] || ROLE_BADGES.student;
+        const canProcess = myRank >= 90 || myDepts.has(r.department_id);
+        return `<tr>
+          <td><span class="level-badge ${rb.cls}">${rb.emoji} ${rb.label}</span></td>
+          <td>${r.display_name}</td>
+          <td>${getDeptName(r.department_id)}</td>
+          <td style="font-size:0.8rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.reason || ''}">${r.reason || '-'}</td>
+          <td>${formatKSTShort(r.created_at)}</td>
+          <td>
+            ${canProcess ? `<select id="reqType_${r.id}" style="padding:0.3rem;border-radius:6px;border:1px solid var(--admin-border);font-size:0.8rem;margin-bottom:0.3rem;" onchange="onReqTypeChange('${r.id}')">
+              <option value="student">🎒 학생</option>
+              <option value="teacher">👩‍🏫 교사</option>
+            </select>
+            <select id="reqPerm_${r.id}" style="padding:0.3rem;border-radius:6px;border:1px solid var(--admin-border);font-size:0.8rem;margin-bottom:0.3rem;display:none;">
+              ${buildPermOptions(session.permissionRank || 0, 'teacher')}
+            </select>
+            <div id="reqManagedWrap_${r.id}" style="display:none;margin:0.3rem 0;">
+              <select id="reqManaged_${r.id}" style="padding:0.3rem;border-radius:6px;border:1px solid var(--admin-border);font-size:0.8rem;width:100%;">
+                <option value="">담당 부서 선택</option>
+                ${allDepts.map(d => '<option value="' + d.id + '">' + d.name + '</option>').join('')}
+              </select>
+            </div>
+            <button class="filter-btn" style="background:#51cf66;color:#fff;" onclick="approveReq('${r.id}','${r.username}','${r.display_name}','${r.department_id || ''}')">승인</button>
+            <button class="btn-ack" onclick="rejectReq('${r.id}','${r.username}')">거부</button>` : '<span style="font-size:0.8rem;color:#adb5bd;">처리 권한 없음</span>'}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    function onReqTypeChange(reqId) {
+      const ut = document.getElementById('reqType_' + reqId).value;
+      const permEl = document.getElementById('reqPerm_' + reqId);
+      permEl.style.display = ut === 'teacher' ? 'inline-block' : 'none';
+      const perm = ut === 'student' ? 'student' : permEl.value;
+      const wrap = document.getElementById('reqManagedWrap_' + reqId);
+      wrap.style.display = MGMT_LEVELS.includes(perm) ? 'block' : 'none';
+    }
+
+    async function approveReq(reqId, username, displayName, deptId) {
+      const userType = document.getElementById('reqType_' + reqId).value;
+      const permLevel = userType === 'student' ? 'student' : (document.getElementById('reqPerm_' + reqId).value || 'teacher');
+      const managedEl = document.getElementById('reqManaged_' + reqId);
+      const needsManagedDept = MGMT_LEVELS.includes(permLevel);
+      const managedDeptId = (needsManagedDept && managedEl) ? managedEl.value || null : null;
+      const permLabel = PERMISSION_LABELS[permLevel] || permLevel;
+      if (!confirm(`"${username}" (${displayName})을(를) [${permLabel}] 역할로 승인하시겠습니까?`)) return;
+      const { error } = await createUser({ username, password: '1234', displayName, userType, permissionLevel: permLevel, departmentId: deptId || null, managedDeptId });
+      if (error) { await logError('REGISTER_APPROVE_FAIL', { 아이디: username, 오류: error }); alert('계정 생성 실패: ' + tErr(error)); return; }
+      await _sb.from('registration_requests').update({
+        status: 'approved', reviewed_by: session.username, review_note: '승인됨', reviewed_at: new Date().toISOString()
+      }).eq('id', reqId);
+      await logInfo('REGISTER_APPROVE', { 아이디: username, 대상: displayName, 권한: PERMISSION_LABELS[permLevel] || permLevel, 부서: getDeptName(deptId), 변경내역: `가입 승인: ${displayName} (${PERMISSION_LABELS[permLevel] || permLevel})` });
+      await loadData();
+    }
+
+    async function rejectReq(reqId, username) {
+      const note = prompt(`"${username}" 가입 거부 사유를 입력해주세요:`, '');
+      if (note === null) return;
+      await _sb.from('registration_requests').update({
+        status: 'rejected', reviewed_by: session.username, review_note: note || '거부됨', reviewed_at: new Date().toISOString()
+      }).eq('id', reqId);
+      await logInfo('REGISTER_REJECT', { 아이디: username, 사유: note || '거부됨', 변경내역: `가입 거부: ${username}` });
+      await loadData();
+    }
+
+    document.getElementById('mUsername').addEventListener('input', function() {
+      this.value = this.value.replace(/[^a-zA-Z0-9_\-]/g, '');
+    });
+
+    document.getElementById('userModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
+    document.getElementById('transferModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeTransferModal(); });
+    document.getElementById('detailModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) document.getElementById('detailModal').classList.add('hidden'); });
+
+    // ── 부서 이동 관리 ──
+    let _transferUserId = null;
+    let _transferFromDeptId = null;
+
+    function openTransferModal(userId, displayName, deptId) {
+      _transferUserId = userId;
+      _transferFromDeptId = deptId;
+      document.getElementById('transferUserInfo').textContent = displayName;
+      document.getElementById('transferFromDept').textContent = getDeptName(deptId) || '없음';
+      const opts = '<option value="">-- 부서 선택 --</option>' +
+        allDepts.filter(d => d.id !== deptId).map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      document.getElementById('transferToDept').innerHTML = opts;
+      document.getElementById('transferReason').value = '';
+      document.getElementById('transferError').classList.remove('show');
+      const myRank = session.permissionRank || 0;
+      if (myRank >= 90) {
+        document.getElementById('transferNote').textContent = '즉시 부서 이동이 처리됩니다.';
+      } else {
+        document.getElementById('transferNote').textContent = '이동 요청이 생성되며, 해당 부서 부장 교사 또는 관리자의 승인이 필요합니다.';
+      }
+      document.getElementById('transferModal').classList.remove('hidden');
+    }
+
+    function closeTransferModal() { document.getElementById('transferModal').classList.add('hidden'); }
+
+    async function submitTransfer() {
+      const errEl = document.getElementById('transferError');
+      const toDeptId = document.getElementById('transferToDept').value;
+      const reason = document.getElementById('transferReason').value.trim();
+      if (!toDeptId) { errEl.textContent = '이동할 부서를 선택해주세요.'; errEl.classList.add('show'); return; }
+      const myRank = session.permissionRank || 0;
+      const user = allUsers.find(u => u.id === _transferUserId);
+      const toDeptName = getDeptName(toDeptId);
+      const userName = user ? (user.display_name || user.username) : '';
+
+      if (myRank >= 90) {
+        if (!confirm(`"${userName}"을(를) "${toDeptName}" 부서로 즉시 이동하시겠습니까?`)) return;
+        const { error } = await updateUser(_transferUserId, {
+          displayName: user.display_name,
+          userType: user.user_type,
+          permissionLevel: user.permission_level,
+          departmentId: toDeptId,
+          managedDeptId: user.managed_dept_id,
+          classNumber: null
+        });
+        if (error) { await logError('DEPT_TRANSFER_IMMEDIATE_FAIL', { userId: _transferUserId, 오류: error }); errEl.textContent = '이동 실패: ' + tErr(error); errEl.classList.add('show'); return; }
+        await logInfo('DEPT_TRANSFER_IMMEDIATE', { userId: _transferUserId, 아이디: user.username, 대상: userName, 이전값: getDeptName(_transferFromDeptId), 변경값: toDeptName, 사유: reason || null, 변경내역: `부서: ${getDeptName(_transferFromDeptId) || '-'} → ${toDeptName}` });
+        alert(`"${userName}"이(가) "${toDeptName}" 부서로 이동되었습니다.`);
+      } else {
+        if (!confirm(`"${userName}"의 "${toDeptName}" 부서 이동 요청을 생성하시겠습니까?\n해당 부서 부장 교사 또는 관리자 승인이 필요합니다.`)) return;
+        const { error } = await _sb.from('department_transfer_requests').insert({
+          user_id: _transferUserId,
+          username: user.username,
+          display_name: user.display_name,
+          from_department_id: _transferFromDeptId || null,
+          to_department_id: toDeptId,
+          requested_by: session.username,
+          request_reason: reason || null
+        });
+        if (error) { await logError('DEPT_TRANSFER_REQUEST_FAIL', { userId: _transferUserId, 오류: error.message }); errEl.textContent = '요청 실패: ' + tErr(error.message); errEl.classList.add('show'); return; }
+        await logInfo('DEPT_TRANSFER_REQUEST', { userId: _transferUserId, 아이디: user.username, 대상: userName, 이전값: getDeptName(_transferFromDeptId), 변경값: toDeptName, 사유: reason || null, 변경내역: `부서 이동 요청: ${getDeptName(_transferFromDeptId) || '-'} → ${toDeptName}` });
+        sendSlackNotify('dept_transfer', { 대상: userName, 이전부서: getDeptName(_transferFromDeptId) || '-', 이동부서: toDeptName, 사유: reason || '없음', 신청자: session.displayName || session.username });
+        alert(`부서 이동 요청이 생성되었습니다.\n"${toDeptName}" 부서 담당 교사의 승인을 기다립니다.`);
+      }
+      closeTransferModal();
+      await loadData();
+    }
+
+    function renderTransfers() {
+      const section = document.getElementById('transferSection');
+      const myRank = session.permissionRank || 0;
+      if (myRank < 60) { section.style.display = 'none'; return; }
+      section.style.display = '';
+      document.getElementById('transferTitle').textContent = `🔄 부서 이동 신청 내역 (${allTransfers.length}건)`;
+      const tbody = document.getElementById('transferList');
+      if (allTransfers.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">대기 중인 부서 이동 요청이 없습니다.</td></tr>';
+        return;
+      }
+      const myDepts = new Set([session.managedDeptId, session.departmentId].filter(Boolean));
+      tbody.innerHTML = allTransfers.map(t => {
+        const canApprove = myRank >= 90 || myDepts.has(t.to_department_id);
+        return `<tr>
+          <td><strong>${t.display_name || t.username}</strong></td>
+          <td>${getDeptName(t.from_department_id)}</td>
+          <td style="color:#1971c2;font-weight:600;">${getDeptName(t.to_department_id)}</td>
+          <td style="font-size:0.82rem;">${t.requested_by}${t.request_reason ? '<br><span style="color:#868e96;font-size:0.75rem;">' + t.request_reason + '</span>' : ''}</td>
+          <td>${formatKSTShort(t.created_at)}</td>
+          <td>
+            ${canApprove ? `<button class="filter-btn" style="background:#51cf66;color:#fff;" onclick="approveTransfer('${t.id}','${t.user_id}','${(t.display_name||t.username).replace(/'/g,"\\'")}','${t.to_department_id}')">승인</button>
+            <button class="btn-ack" onclick="rejectTransfer('${t.id}','${(t.display_name||t.username).replace(/'/g,"\\'")}')">거부</button>` : '<span style="font-size:0.8rem;color:#adb5bd;">처리 권한 없음</span>'}
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    async function approveTransfer(trfId, userId, displayName, toDeptId) {
+      const toDeptName = getDeptName(toDeptId);
+      if (!confirm(`"${displayName}"의 "${toDeptName}" 부서 이동을 승인하시겠습니까?`)) return;
+      const user = allUsers.find(u => u.id === userId);
+      if (user) {
+        const { error } = await updateUser(userId, {
+          displayName: user.display_name,
+          userType: user.user_type,
+          permissionLevel: user.permission_level,
+          departmentId: toDeptId,
+          managedDeptId: user.managed_dept_id,
+          classNumber: null
+        });
+        if (error) { alert('부서 이동 실패: ' + tErr(error)); return; }
+      } else {
+        const { error } = await _sb.from('profiles').update({ department_id: toDeptId, class_number: null }).eq('id', userId);
+        if (error) { alert('부서 이동 실패: ' + tErr(error.message)); return; }
+      }
+      await _sb.from('department_transfer_requests').update({
+        status: 'approved', reviewed_by: session.username, review_note: '승인됨', reviewed_at: new Date().toISOString()
+      }).eq('id', trfId);
+      await logInfo('DEPT_TRANSFER_APPROVE', { userId, 대상: displayName, 부서: toDeptName, 변경내역: `부서 이동 승인: ${toDeptName}` });
+      alert(`"${displayName}"이(가) "${toDeptName}" 부서로 이동되었습니다.`);
+      await loadData();
+    }
+
+    async function rejectTransfer(trfId, displayName) {
+      const note = prompt(`"${displayName}" 부서 이동 거부 사유를 입력해주세요:`, '');
+      if (note === null) return;
+      await _sb.from('department_transfer_requests').update({
+        status: 'rejected', reviewed_by: session.username, review_note: note || '거부됨', reviewed_at: new Date().toISOString()
+      }).eq('id', trfId);
+      await logInfo('DEPT_TRANSFER_REJECT', { 대상: displayName, 사유: note || '거부됨', 변경내역: `부서 이동 거부: ${displayName}` });
+      await loadData();
+    }
+  </script>
+</body>
+</html>

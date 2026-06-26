@@ -1,0 +1,363 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Q & A - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <style>
+    .qna-container { max-width: 800px; margin: 0 auto; padding: 2rem 1rem; }
+    .qna-hero { text-align: center; margin-bottom: 2rem; }
+    .qna-hero h1 { font-size: 1.6rem; color: var(--c-primary); }
+    .qna-hero p { color: var(--c-text-muted); }
+    .qna-section-title { font-size: 1.1rem; font-weight: 700; margin: 1.5rem 0 0.8rem; display: flex; align-items: center; gap: 0.5rem; }
+    .faq-item { background: #fff; border: 1px solid var(--c-border); border-radius: 10px; margin-bottom: 0.6rem; overflow: hidden; }
+    .faq-q { padding: 0.8rem 1rem; font-weight: 600; font-size: 0.9rem; cursor: pointer; display: flex; justify-content: space-between; align-items: center; transition: background 0.15s; }
+    .faq-q:hover { background: #f8f5ff; }
+    .faq-q::after { content: '+'; font-size: 1.2rem; color: var(--c-primary); transition: transform 0.2s; }
+    .faq-item.open .faq-q::after { content: '−'; }
+    .faq-a { display: none; padding: 0 1rem 0.8rem; font-size: 0.85rem; color: var(--c-text-muted); line-height: 1.6; border-top: 1px solid var(--c-border); padding-top: 0.8rem; margin-top: 0; }
+    .faq-item.open .faq-a { display: block; }
+    .qna-card { background: #fff; border: 1px solid var(--c-border); border-radius: 10px; padding: 1rem; margin-bottom: 0.8rem; }
+    .qna-card .q-text { font-weight: 600; font-size: 0.9rem; margin-bottom: 0.5rem; }
+    .qna-card .a-text { font-size: 0.85rem; color: var(--c-text-muted); background: #f8f9fa; padding: 0.6rem 0.8rem; border-radius: 6px; margin-top: 0.4rem; }
+    .qna-card .meta { font-size: 0.75rem; color: #adb5bd; margin-top: 0.4rem; }
+    .qna-status { display: inline-block; padding: 0.15rem 0.5rem; border-radius: 4px; font-size: 0.72rem; font-weight: 600; }
+    .qna-status.pending { background: #fff3bf; color: #e67700; }
+    .qna-status.answered { background: #d3f9d8; color: #2b8a3e; }
+    .ask-form { background: #fff; border: 1px solid var(--c-border); border-radius: 12px; padding: 1.2rem; margin-top: 1.5rem; }
+    .ask-form h3 { font-size: 1rem; margin-bottom: 0.8rem; }
+    .ask-form textarea { width: 100%; min-height: 80px; border: 1px solid var(--c-border); border-radius: 8px; padding: 0.6rem; font-size: 0.9rem; resize: vertical; }
+    .ask-form button { margin-top: 0.6rem; padding: 0.5rem 1.5rem; background: var(--c-primary); color: #fff; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; }
+    .ask-form button:hover { opacity: 0.9; }
+    .admin-answer { margin-top: 0.5rem; }
+    .admin-answer textarea { width: 100%; min-height: 60px; border: 1px solid var(--c-border); border-radius: 6px; padding: 0.5rem; font-size: 0.85rem; resize: vertical; }
+    .admin-answer .btn-row { display: flex; gap: 0.4rem; margin-top: 0.4rem; flex-wrap: wrap; }
+    .admin-answer .btn-row button { padding: 0.3rem 0.8rem; font-size: 0.78rem; border: 1px solid var(--c-border); border-radius: 6px; cursor: pointer; font-weight: 600; background: #fff; }
+    .admin-answer .btn-row button.primary { background: var(--c-primary); color: #fff; border-color: var(--c-primary); }
+    .admin-answer .btn-row button.faq-btn { background: #51cf66; color: #fff; border-color: #51cf66; }
+    .empty-state { text-align: center; padding: 2rem; color: var(--c-text-muted); }
+    .form-error { display: none; color: #e03131; font-size: 0.82rem; }
+    .form-error.show { display: block; }
+  </style>
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+
+  <div class="qna-container">
+    <div class="qna-hero">
+      <h1>💬 Q & A</h1>
+      <p>궁금한 점을 질문하고 답변을 확인하세요</p>
+    </div>
+
+    <div id="faqAdminWrap" style="display:none;margin-bottom:1rem;">
+      <button type="button" onclick="toggleFaqForm()" style="padding:0.45rem 1rem;background:#51cf66;color:#fff;border:none;border-radius:8px;font-weight:600;cursor:pointer;font-size:0.85rem;">FAQ 직접 등록</button>
+      <div id="faqForm" class="ask-form" style="display:none;margin-top:0.6rem;">
+        <h3>⭐ FAQ 직접 등록</h3>
+        <input type="text" id="faqQuestion" placeholder="질문을 입력하세요" style="width:100%;padding:0.5rem;border:1px solid var(--c-border);border-radius:8px;font-size:0.9rem;margin-bottom:0.4rem;" />
+        <textarea id="faqAnswer" placeholder="답변을 입력하세요..." style="width:100%;min-height:80px;border:1px solid var(--c-border);border-radius:8px;padding:0.6rem;font-size:0.9rem;resize:vertical;"></textarea>
+        <button type="button" onclick="submitFAQ()">FAQ 등록</button>
+        <div class="form-error" id="faqError" style="margin-top:0.5rem;"></div>
+      </div>
+    </div>
+
+    <div class="qna-section-title">⭐ 자주 묻는 질문</div>
+    <div id="faqList"><div class="empty-state">불러오는 중...</div></div>
+
+    <div class="qna-section-title">📝 질문 게시판</div>
+    <div id="qnaList"><div class="empty-state">불러오는 중...</div></div>
+
+    <div class="ask-form" id="askForm">
+      <h3>✋ 질문하기</h3>
+      <div id="nameFieldWrap" style="margin-bottom:0.5rem;">
+        <input type="text" id="askName" placeholder="이름을 입력하세요" style="width:100%;padding:0.5rem;border:1px solid var(--c-border);border-radius:8px;font-size:0.9rem;margin-bottom:0.4rem;" />
+      </div>
+      <textarea id="askQuestion" placeholder="궁금한 점을 입력해주세요..."></textarea>
+      <button type="button" onclick="submitQuestion()">질문 등록</button>
+      <div class="form-error" id="askError" style="margin-top:0.5rem;"></div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script src="js/slack-notify.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let _session = null;
+    let _isAdmin = false;
+    let _canDelete = false;
+    let _isSuperAdmin = false;
+    let _usernameMap = {};
+
+    (async () => {
+      await navInit();
+      _session = await loadAuthSession();
+      if (_session) navUpdateAuth(_session);
+      await initTheme();
+      const rank = _session ? (_session.permissionRank || 0) : 0;
+      if (_session) {
+        _isAdmin = rank >= 60;
+        _canDelete = rank >= 90;
+        _isSuperAdmin = rank >= 100;
+        document.getElementById('nameFieldWrap').style.display = 'none';
+        if (_isAdmin) document.getElementById('faqAdminWrap').style.display = '';
+      }
+      await loadFAQ();
+      await loadQuestions();
+    })();
+
+    function toggleFaqForm() {
+      const form = document.getElementById('faqForm');
+      form.style.display = form.style.display === 'none' ? '' : 'none';
+    }
+
+    async function loadFAQ() {
+      const container = document.getElementById('faqList');
+      const { data, error } = await _sb.from('qna').select('*').eq('is_faq', true).eq('is_deleted', false).order('created_at');
+      if (error || !data || data.length === 0) {
+        container.innerHTML = '<div class="empty-state">등록된 FAQ가 없습니다.</div>';
+        return;
+      }
+      container.innerHTML = data.map(q => `
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+          <div class="faq-q">Q. ${escHtml(q.question)}</div>
+          <div class="faq-a">A. ${escHtml(q.answer || '답변 준비 중')}</div>
+        </div>`).join('');
+    }
+
+    async function loadQuestions() {
+      const container = document.getElementById('qnaList');
+      const { data, error } = await _sb.from('qna').select('*').eq('is_faq', false).order('created_at', { ascending: false });
+      if (error) {
+        container.innerHTML = '<div class="empty-state">질문을 불러오지 못했습니다.</div>';
+        return;
+      }
+      const filtered = (data || []).filter(q => !q.is_deleted);
+      if (filtered.length === 0) {
+        container.innerHTML = '<div class="empty-state">등록된 질문이 없습니다.</div>';
+        return;
+      }
+
+      const qnaIds = filtered.map(q => q.id);
+      const { data: comments } = await _sb.from('qna_comments').select('*').in('qna_id', qnaIds).order('created_at', { ascending: true });
+      const commentsByQna = {};
+      (comments || []).forEach(c => {
+        if (!commentsByQna[c.qna_id]) commentsByQna[c.qna_id] = [];
+        commentsByQna[c.qna_id].push(c);
+      });
+
+      if (_isSuperAdmin) {
+        const userIds = new Set();
+        filtered.forEach(q => { if (q.asked_by) userIds.add(q.asked_by); });
+        (comments || []).forEach(c => { if (c.commented_by) userIds.add(c.commented_by); });
+        if (userIds.size > 0) {
+          const { data: profiles } = await _sb.from('profiles').select('id, username').in('id', [...userIds]);
+          if (profiles) profiles.forEach(p => { _usernameMap[p.id] = p.username; });
+        }
+      }
+
+      container.innerHTML = filtered.map(q => renderQuestionCard(q, commentsByQna[q.id] || [])).join('');
+    }
+
+    function renderQuestionCard(q, comments) {
+      const hasComments = comments.length > 0;
+      const statusClass = hasComments ? 'answered' : 'pending';
+      const statusText = hasComments ? '답변완료' : '대기중';
+      const askerDisplay = renderAskerName(q);
+      const dateStr = formatDateTime(q.created_at);
+      const threadHtml = hasComments
+        ? comments.map(c => renderCommentItem(c)).join('')
+        : '<div class="a-text" style="color:#adb5bd;">아직 답변이 없어요</div>';
+      const adminBtns = [];
+      if (_isAdmin && hasComments) adminBtns.push(`<button class="faq-btn" onclick="markAsFaq('${q.id}')">FAQ 등록</button>`);
+      if (_canDelete) adminBtns.push(`<button style="background:#ff6b6b;color:#fff;border-color:#ff6b6b;" onclick="deleteQuestion('${q.id}')">삭제</button>`);
+      const canComment = !!_session;
+      return `<div class="qna-card">
+        <div class="q-text"><span class="qna-status ${statusClass}">${statusText}</span> ${escHtml(q.question)}</div>
+        <div class="meta">${askerDisplay} · 질문 ${dateStr}</div>
+        <div style="margin-top:0.6rem;">${threadHtml}</div>
+        ${canComment ? renderCommentForm(q.id) : ''}
+        ${adminBtns.length ? `<div class="btn-row" style="margin-top:0.5rem;">${adminBtns.join('')}</div>` : ''}
+      </div>`;
+    }
+
+    function renderCommentItem(c) {
+      const commenter = renderCommenterName(c);
+      const dateStr = formatDateTime(c.created_at);
+      return `<div class="a-text" style="margin-bottom:0.4rem;">
+        💬 ${escHtml(c.content)}
+        <span style="display:block;margin-top:0.3rem;font-size:0.75rem;color:#868e96;">— ${commenter} · ${dateStr}</span>
+      </div>`;
+    }
+
+    function renderCommenterName(c) {
+      const name = c.commented_by_name || '관리자';
+      if (_isSuperAdmin && c.commented_by) {
+        const username = _usernameMap[c.commented_by] || '';
+        if (username) {
+          return `${escHtml(name)} <span style="font-size:0.75rem;color:#868e96;">(${escHtml(username)})</span>`;
+        }
+      }
+      return escHtml(name);
+    }
+
+    function renderAskerName(q) {
+      const name = q.asked_by_name || '익명';
+      if (_isSuperAdmin && q.asked_by) {
+        const username = _usernameMap[q.asked_by] || '';
+        if (username) {
+          return `${escHtml(name)} <span style="font-size:0.75rem;color:#868e96;">(${escHtml(username)})</span>`;
+        }
+      }
+      return escHtml(name);
+    }
+
+    function renderCommentForm(id) {
+      return `<div class="admin-answer">
+        <textarea id="cmt_${id}" placeholder="답변(댓글)을 입력하세요..."></textarea>
+        <div class="btn-row">
+          <button class="primary" onclick="submitComment('${id}')">답변 등록</button>
+          ${_isAdmin ? `<button class="faq-btn" onclick="submitComment('${id}', true)">답변 + FAQ 등록</button>` : ''}
+        </div>
+      </div>`;
+    }
+
+    async function submitQuestion() {
+      const errEl = document.getElementById('askError');
+      const text = document.getElementById('askQuestion').value.trim();
+      errEl.classList.remove('show');
+      if (!text) { errEl.textContent = '질문을 입력해주세요.'; errEl.classList.add('show'); return; }
+
+      if (_session) {
+        const { error } = await _sb.from('qna').insert({
+          question: text,
+          asked_by: _session.id,
+          asked_by_name: _session.displayName || _session.username
+        });
+        if (error) { errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+      } else {
+        const name = (document.getElementById('askName').value || '').trim();
+        if (!name) { errEl.textContent = '이름을 입력해주세요.'; errEl.classList.add('show'); return; }
+        const { error } = await _sb.rpc('submit_anonymous_question', { p_question: text, p_name: name });
+        if (error) { errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+      }
+      await logInfo('QNA_CREATE', { 제목: text });
+      var qnaName = _session ? (_session.displayName || _session.username) : ((document.getElementById('askName') || {}).value || '익명');
+      sendSlackNotify('qna_new', { 등록자: qnaName, 질문: text });
+      document.getElementById('askQuestion').value = '';
+      await loadQuestions();
+    }
+
+    async function submitComment(questionId, asFaq) {
+      if (!_isAdmin || !_session) return;
+      const textarea = document.getElementById('cmt_' + questionId);
+      if (!textarea) return;
+      const content = textarea.value.trim();
+      if (!content) { alert('답변을 입력해주세요.'); return; }
+
+      const commenterName = _session.displayName || _session.username;
+      const { error: cErr } = await _sb.from('qna_comments').insert({
+        qna_id: questionId,
+        content,
+        commented_by: _session.id,
+        commented_by_name: commenterName
+      });
+      if (cErr) { alert(tErr(cErr)); return; }
+      await logInfo('QNA_COMMENT', { 질문ID: questionId });
+
+      const updates = {
+        status: 'answered',
+        answered_at: new Date().toISOString(),
+        answered_by: _session.id,
+        answered_by_name: commenterName,
+        answer: content
+      };
+      if (asFaq) {
+        updates.is_faq = true;
+        updates.status = 'faq';
+      }
+      const { error: uErr } = await _sb.from('qna').update(updates).eq('id', questionId);
+      if (uErr) { alert(tErr(uErr)); return; }
+      await logInfo('QNA_ANSWER', { 질문ID: questionId, 답변자: commenterName });
+      if (asFaq) await logInfo('QNA_FAQ_SET', { 질문ID: questionId, FAQ여부: true });
+
+      if (asFaq) await loadFAQ();
+      await loadQuestions();
+    }
+
+    async function submitFAQ() {
+      if (!_isAdmin || !_session) return;
+      const errEl = document.getElementById('faqError');
+      const question = document.getElementById('faqQuestion').value.trim();
+      const answer = document.getElementById('faqAnswer').value.trim();
+      errEl.classList.remove('show');
+      if (!question) { errEl.textContent = '질문을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!answer) { errEl.textContent = '답변을 입력해주세요.'; errEl.classList.add('show'); return; }
+
+      const adminName = _session.displayName || _session.username;
+      const { error } = await _sb.from('qna').insert({
+        question,
+        answer,
+        is_faq: true,
+        status: 'faq',
+        asked_by: _session.id,
+        asked_by_name: adminName,
+        answered_by: _session.id,
+        answered_by_name: adminName,
+        answered_at: new Date().toISOString()
+      });
+      if (error) { errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+      await logInfo('QNA_CREATE', { 제목: question });
+
+      document.getElementById('faqQuestion').value = '';
+      document.getElementById('faqAnswer').value = '';
+      document.getElementById('faqForm').style.display = 'none';
+      await loadFAQ();
+    }
+
+    async function markAsFaq(id) {
+      if (!_isAdmin) return;
+      if (!confirm('이 질문을 FAQ로 등록하시겠습니까?')) return;
+      const { data: latest } = await _sb.from('qna_comments').select('content').eq('qna_id', id).order('created_at', { ascending: false }).limit(1).maybeSingle();
+      const updates = { is_faq: true, status: 'faq' };
+      if (latest && latest.content) updates.answer = latest.content;
+      const { error } = await _sb.from('qna').update(updates).eq('id', id);
+      if (error) { alert(tErr(error)); return; }
+      await logInfo('QNA_FAQ_SET', { 질문ID: id, FAQ여부: true });
+      await loadFAQ();
+      await loadQuestions();
+    }
+
+    async function deleteQuestion(id) {
+      if (!_canDelete) return;
+      if (!confirm('이 질문을 삭제하시겠습니까?')) return;
+      const { data: qRow } = await _sb.from('qna').select('question').eq('id', id).single();
+      const { error } = await _sb.rpc('admin_soft_delete_qna', { p_qna_id: id });
+      if (error) { alert('삭제 실패: ' + tErr(error.message)); return; }
+      await logInfo('QNA_DELETE', { 질문ID: id, 제목: qRow?.question || '' });
+      await loadQuestions();
+    }
+
+    function escHtml(str) { const d = document.createElement('div'); d.textContent = str || ''; return d.innerHTML; }
+    function formatDateTime(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      return `${d.getFullYear()}.${String(d.getMonth()+1).padStart(2,'0')}.${String(d.getDate()).padStart(2,'0')} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    }
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

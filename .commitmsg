@@ -1,0 +1,10 @@
+feat: QR management overhaul - scan list, item select, crypto codes, account sync
+
+- Recipients list modal per QR code (name/ID/dept/time table)
+- Max uses radio buttons (unlimited or first-come 1~100,000)
+- Code value hidden for rank < 100 (admin only), including print
+- crypto.getRandomValues 18-char cryptographic code generation
+- Talent item dropdown, manual entry only when no matching item
+- profiles.talent_balance sync (replaces users.total_talent)
+- balance_after + created_by in transactions, session sync
+- Version bump to v3.17.0

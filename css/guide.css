@@ -1,0 +1,244 @@
+/* ===== Role Guide Pages ===== */
+.guide-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 2rem 1rem 3rem;
+}
+
+.guide-hero {
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 1.6rem;
+  margin-bottom: 1.2rem;
+  box-shadow: var(--c-shadow);
+}
+
+.guide-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.7rem;
+  border-radius: 999px;
+  background: #f1f3f5;
+  color: var(--c-text-muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+  margin-bottom: 0.7rem;
+}
+
+.guide-hero h1 {
+  font-size: 1.8rem;
+  color: var(--c-primary);
+  margin-bottom: 0.45rem;
+}
+
+.guide-hero p {
+  color: var(--c-text-muted);
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
+.guide-switcher {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0 0 1.5rem;
+}
+
+.guide-switcher a {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 38px;
+  padding: 0.45rem 0.8rem;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  background: #fff;
+  color: var(--c-text);
+  text-decoration: none;
+  font-size: 0.88rem;
+  font-weight: 700;
+}
+
+.guide-switcher a.active {
+  background: var(--c-primary);
+  border-color: var(--c-primary);
+  color: #fff;
+}
+
+.guide-section {
+  margin-bottom: 1.5rem;
+}
+
+.guide-section h2 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.18rem;
+  color: var(--c-text);
+  margin-bottom: 0.8rem;
+}
+
+.guide-card {
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.guide-card h3 {
+  font-size: 1rem;
+  margin-bottom: 0.35rem;
+  color: var(--c-primary);
+}
+
+.guide-card p,
+.guide-card li {
+  font-size: 0.9rem;
+  color: var(--c-text-muted);
+  line-height: 1.65;
+}
+
+.guide-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 0.8rem;
+}
+
+.guide-mini-card {
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+  padding: 1rem;
+  min-height: 150px;
+}
+
+.guide-mini-card .icon {
+  font-size: 1.8rem;
+  margin-bottom: 0.4rem;
+}
+
+.guide-mini-card h3 {
+  font-size: 0.98rem;
+  margin-bottom: 0.35rem;
+}
+
+.guide-mini-card p {
+  color: var(--c-text-muted);
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.guide-steps {
+  counter-reset: step;
+  list-style: none;
+  padding: 0;
+}
+
+.guide-steps li {
+  counter-increment: step;
+  position: relative;
+  padding: 0.75rem 0.85rem 0.75rem 3rem;
+  margin-bottom: 0.5rem;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.guide-steps li::before {
+  content: counter(step);
+  position: absolute;
+  left: 0.85rem;
+  top: 0.75rem;
+  width: 1.55rem;
+  height: 1.55rem;
+  background: var(--c-primary);
+  color: #fff;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.guide-note {
+  background: #fff9db;
+  border: 1px solid #ffe066;
+  border-radius: 8px;
+  padding: 0.8rem 0.9rem;
+  color: #5f3dc4;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  margin-top: 0.7rem;
+}
+
+.guide-table-wrap {
+  overflow-x: auto;
+  background: #fff;
+  border: 1px solid var(--c-border);
+  border-radius: 12px;
+}
+
+.guide-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.88rem;
+}
+
+.guide-table th,
+.guide-table td {
+  padding: 0.7rem 0.8rem;
+  border-bottom: 1px solid #edf0f2;
+  text-align: left;
+  vertical-align: top;
+  line-height: 1.5;
+}
+
+.guide-table th {
+  background: #f8f9fa;
+  color: var(--c-text);
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.guide-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.guide-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.14rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.badge-student { background: #fff3bf; color: #8a5a00; }
+.badge-teacher { background: #d0ebff; color: #1864ab; }
+.badge-admin { background: #ffe3e3; color: #c92a2a; }
+.badge-oper { background: #e6fcf5; color: #087f5b; }
+
+.guide-list {
+  padding-left: 1.15rem;
+}
+
+.guide-list li {
+  margin-bottom: 0.35rem;
+}
+
+@media (max-width: 640px) {
+  .guide-container { padding: 1rem 0.8rem 2rem; }
+  .guide-hero { padding: 1.1rem; }
+  .guide-hero h1 { font-size: 1.45rem; }
+  .guide-grid { grid-template-columns: 1fr; }
+  .guide-switcher a { flex: 1 1 100%; }
+  .guide-table th,
+  .guide-table td { padding: 0.55rem 0.6rem; font-size: 0.82rem; }
+}

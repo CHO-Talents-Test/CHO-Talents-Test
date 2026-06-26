@@ -1,0 +1,42 @@
+# UTF-8 인코딩 보존 규칙 (필수)
+
+이 프로젝트의 모든 소스 파일(HTML, JS, CSS, MD 등)은 **UTF-8 (BOM 없음)** 인코딩입니다.
+한글이 포함된 파일을 수정할 때 인코딩이 깨지면 전체 사이트가 동작하지 않습니다.
+
+## 금지 사항
+
+1. **PowerShell `Set-Content` / `Out-File` 사용 금지**
+   - 이 명령어들은 기본적으로 UTF-16LE 또는 시스템 로케일(CP949) 인코딩으로 저장
+   - 한글이 포함된 파일을 처리하면 100% 인코딩 깨짐 발생
+
+2. **`>` 리다이렉션 사용 금지** (PowerShell에서)
+   - `echo "text" > file.txt` — UTF-16으로 저장됨
+
+## 허용되는 파일 수정 방법
+
+### 방법 1: StrReplace 도구 사용 (권장)
+- Cursor의 `StrReplace` 도구는 인코딩을 보존함
+- 개별 파일 수정 시 항상 이 방법 사용
+
+### 방법 2: 바이트 단위 읽기/쓰기 (대량 치환 시)
+```powershell
+Get-ChildItem -Recurse -Include *.html,*.js,*.css | ForEach-Object {
+  $bytes = [System.IO.File]::ReadAllBytes($_.FullName)
+  $text = [System.Text.Encoding]::UTF8.GetString($bytes)
+  if ($text.Contains('OLD_STRING')) {
+    $newText = $text.Replace('OLD_STRING', 'NEW_STRING')
+    [System.IO.File]::WriteAllBytes($_.FullName, [System.Text.Encoding]::UTF8.GetBytes($newText))
+  }
+}
+```
+
+### 방법 3: Git 기반 복구
+- 인코딩이 깨진 경우: `git checkout -- <file>` 로 마지막 정상 커밋에서 복원
+
+## 검증 방법
+- 수정 후 `Read` 도구로 파일을 열어 한글이 정상 표시되는지 확인
+- PowerShell 콘솔 출력은 콘솔 인코딩 문제로 깨져 보일 수 있으므로 신뢰하지 말 것
+
+## 머지 충돌 처리
+- `git merge` 충돌 발생 시 반드시 충돌 마커(`<<<<<<<`, `=======`, `>>>>>>>`)를 완전히 제거한 후 커밋
+- 충돌 마커가 남은 채 커밋하면 HTML 파싱 오류로 페이지 전체가 깨짐

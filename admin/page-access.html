@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>페이지 접근 관리 - 달란트 마을</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">🔐 페이지 접근 관리</h2>
+    <p style="font-size:0.85rem;color:var(--admin-text-muted);margin-bottom:1rem;">사용자 유형 및 권한별로 접근 가능한 페이지와 화면 요소를 관리합니다.</p>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title">유형/권한별 접근 설정</div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>구분</th><th>유형</th><th>권한</th><th>등급</th><th>설명</th><th>관리</th></tr></thead>
+        <tbody id="roleList"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="accessModal">
+    <div class="modal-box" style="max-width:750px;max-height:85vh;overflow-y:auto;">
+      <h3 class="modal-title" id="accessTitle">페이지 접근 설정</h3>
+      <div class="form-error" id="accessError"></div>
+      <div id="accessBody"></div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeAccessModal()">취소</button>
+        <button class="btn-confirm" id="btnSaveAccess" onclick="saveAccess()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let editingKey = null;
+
+    const ROLE_LIST = [
+      { key: 'super_admin', userType: 'teacher', perm: 'admin', rank: 110, label: '최고 관리자', emoji: '🔒', desc: '모든 페이지 접근 가능', superOnly: true },
+      { key: 'admin', userType: 'teacher', perm: 'admin', rank: 100, label: '관리자', emoji: '👑', desc: '전체 시스템 관리' },
+      { key: 'evangelist', userType: 'teacher', perm: 'evangelist', rank: 90, label: '전도사님', emoji: '✝️', desc: '사용자/부서/관리자 관리' },
+      { key: 'chief', userType: 'teacher', perm: 'chief', rank: 80, label: '부장 교사', emoji: '📋', desc: '담당 부서 관리' },
+      { key: 'purchase_teacher', userType: 'teacher', perm: 'purchase_teacher', rank: 70, label: '구매 담당 교사', emoji: '🛒', desc: '구매 관리 전체 부서 주문 처리' },
+      { key: 'dept_teacher', userType: 'teacher', perm: 'dept_teacher', rank: 60, label: '부서 담당 교사', emoji: '👩‍🏫', desc: '담당 부서 사용자 관리' },
+      { key: 'teacher', userType: 'teacher', perm: 'teacher', rank: 40, label: '일반 교사', emoji: '👨‍🏫', desc: '달란트 지급' },
+      { key: 'student', userType: 'student', perm: 'student', rank: 20, label: '학생', emoji: '🎒', desc: '내 달란트 조회 / 상점' }
+    ];
+
+    const PAGE_LIST = [
+      { id: 'index', name: '메인 페이지', path: 'index.html', elements: ['feature-cards', 'status-box'] },
+      { id: 'login', name: '로그인', path: 'login.html', elements: [] },
+      { id: 'register', name: '계정 등록', path: 'register.html', elements: [] },
+      { id: 'guide', name: '학생 가이드', path: 'guide.html', elements: [] },
+      { id: 'teacher-guide', name: '교사 가이드', path: 'teacher-guide.html', elements: [] },
+      { id: 'dept-teacher-guide', name: '부서 담당 교사 가이드', path: 'dept-teacher-guide.html', elements: [] },
+      { id: 'purchase-teacher-guide', name: '구매 담당 교사 가이드', path: 'purchase-teacher-guide.html', elements: [] },
+      { id: 'chief-teacher-guide', name: '부장 교사 가이드', path: 'chief-teacher-guide.html', elements: [] },
+      { id: 'evangelist-guide', name: '전도사님 가이드', path: 'evangelist-guide.html', elements: [] },
+      { id: 'admin-guide', name: '관리자 가이드', path: 'admin-guide.html', elements: [] },
+      { id: 'earn-talents', name: '달란트 적립 방법', path: 'earn-talents.html', elements: [] },
+      { id: 'qna', name: 'Q & A', path: 'qna.html', elements: [] },
+      { id: 'my-talents', name: '내 달란트', path: 'my-talents.html', elements: ['history-table'] },
+      { id: 'my-orders', name: '내 구매 상품', path: 'my-orders.html', elements: [] },
+      { id: 'talent-receive', name: '달란트 수령', path: 'talent-receive.html', elements: ['qr-input', 'camera-btn', 'qr-list'] },
+      { id: 'shop', name: '상품 구매', path: 'shop.html', elements: ['purchase-btn'] },
+      { id: 'admin-dashboard', name: '대시보드', path: 'admin/index.html', elements: ['stats-cards', 'shortcuts', 'recent-logs', 'error-card'] },
+      { id: 'admin-users', name: '사용자 관리', path: 'admin/users.html', elements: ['request-section', 'transfer-section', 'user-table', 'detail-modal'] },
+      { id: 'admin-bulk-register', name: '학생 일괄 등록', path: 'admin/bulk-register.html', elements: [] },
+      { id: 'admin-departments', name: '부서 관리', path: 'admin/departments.html', elements: ['dept-table', 'member-modal'] },
+      { id: 'admin-managers', name: '관리자 관리', path: 'admin/managers.html', elements: ['manager-table'] },
+      { id: 'admin-talents', name: '달란트 관리', path: 'admin/talents.html', elements: ['talent-table', 'talent-modal', 'detail-modal'] },
+      { id: 'admin-talent-stats', name: '달란트 통계', path: 'admin/talent-stats.html', elements: ['stats-chart', 'dept-filter', 'user-filter'] },
+      { id: 'admin-talent-qr', name: '달란트 QR 관리', path: 'admin/talent-qr.html', elements: ['qr-table', 'qr-create-form', 'print-btn'] },
+      { id: 'admin-shop', name: '상품 관리', path: 'admin/shop.html', elements: ['product-table'] },
+      { id: 'admin-purchases', name: '구매 관리', path: 'admin/purchases.html', elements: ['order-table'] },
+      { id: 'admin-purchase-stats', name: '구매 통계', path: 'admin/purchase-stats.html', elements: [] },
+      { id: 'admin-reports', name: '보고서', path: 'admin/reports.html', elements: ['report-table'] },
+      { id: 'admin-logs', name: '로그', path: 'admin/logs.html', elements: ['log-table', 'detail-modal'] },
+      { id: 'admin-versions', name: '버전', path: 'admin/versions.html', elements: ['version-list'] },
+      { id: 'admin-talent-items', name: '달란트 항목 관리', path: 'admin/talent-items.html', elements: ['item-table'] },
+      { id: 'admin-page-access', name: '페이지 접근 관리', path: 'admin/page-access.html', elements: [] },
+      { id: 'admin-page-features', name: '페이지 기능 관리', path: 'admin/page-features.html', elements: [] },
+      { id: 'docs-page-permission-rules', name: '페이지 권한 룰', path: 'docs/page-permission-rules.html', elements: [] },
+      { id: 'admin-log-rules', name: '로그 작성 룰', path: 'admin/log-rules.html', elements: [] },
+      { id: 'admin-slack-rules', name: 'Slack 알림 룰', path: 'admin/slack-rules.html', elements: [] },
+      { id: 'admin-audit-rules', name: '작업 이력 작성 룰', path: 'admin/audit-rules.html', elements: [] },
+      { id: 'admin-page-perms', name: '페이지 권한 관리', path: 'admin/page-permissions.html', elements: [] },
+      { id: 'admin-audit', name: '작업 이력', path: 'admin/audit.html', elements: ['audit-table'] }
+    ];
+
+    (async () => {
+      await navInit();
+      session = await initPage(100, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+
+      const canEdit = session.permissionRank >= 90;
+      if (!canEdit) document.getElementById('btnSaveAccess').style.display = 'none';
+      renderRoleTable();
+    })();
+
+    function renderRoleTable() {
+      const isSA = session.isSuperAdmin;
+      document.getElementById('roleList').innerHTML = ROLE_LIST
+        .filter(r => !r.superOnly || isSA)
+        .map(r => `<tr>
+          <td><span class="level-badge">${r.emoji} ${r.label}</span></td>
+          <td>${r.userType === 'teacher' ? '교사' : '학생'}</td>
+          <td>${PERMISSION_LABELS[r.perm] || r.perm}</td>
+          <td style="font-weight:700;">${r.rank}</td>
+          <td style="font-size:0.82rem;color:var(--admin-text-muted);">${r.desc}</td>
+          <td><button class="filter-btn" onclick="openAccessModal('${r.key}')">설정</button></td>
+        </tr>`).join('');
+    }
+
+    async function openAccessModal(roleKey) {
+      editingKey = roleKey;
+      const role = ROLE_LIST.find(r => r.key === roleKey);
+      if (!role) return;
+      document.getElementById('accessTitle').textContent = `${role.emoji} ${role.label} - 페이지 접근 설정`;
+
+      let saved = {};
+      const { data } = await _sb.from('role_page_access').select('*').eq('role_key', roleKey);
+      if (data) data.forEach(r => { saved[r.page_id] = r; });
+
+      const canEdit = session.permissionRank >= 90;
+      const allEnabled = roleKey === 'super_admin';
+
+      const body = document.getElementById('accessBody');
+      body.innerHTML = PAGE_LIST.map(p => {
+        const rec = saved[p.id] || {};
+        const checked = allEnabled ? true : (rec.can_access !== false);
+        return `<div style="border:1px solid var(--admin-border);border-radius:8px;padding:0.7rem;margin-bottom:0.4rem;">
+          <label style="display:flex;align-items:center;gap:0.5rem;font-weight:600;font-size:0.9rem;">
+            <input type="checkbox" data-page="${p.id}" class="page-check" ${checked ? 'checked' : ''} ${(canEdit && !allEnabled) ? '' : 'disabled'} />
+            ${p.name} <span style="font-size:0.72rem;color:var(--admin-text-muted);">(${p.path})</span>
+          </label>
+          ${p.elements.length > 0 ? `<div style="margin-left:1.5rem;margin-top:0.3rem;display:flex;flex-wrap:wrap;gap:0.4rem;">
+            ${p.elements.map(el => {
+              const hidden = (rec.hidden_elements || []).includes(el);
+              return `<label style="font-size:0.8rem;display:flex;align-items:center;gap:0.3rem;">
+                <input type="checkbox" data-page="${p.id}" data-element="${el}" class="elem-check" ${(allEnabled || !hidden) ? 'checked' : ''} ${(canEdit && !allEnabled) ? '' : 'disabled'} />
+                ${el}
+              </label>`;
+            }).join('')}
+          </div>` : ''}
+        </div>`;
+      }).join('');
+
+      document.getElementById('btnSaveAccess').style.display = (canEdit && !allEnabled) ? '' : 'none';
+      document.getElementById('accessError').classList.remove('show');
+      document.getElementById('accessModal').classList.remove('hidden');
+    }
+
+    function closeAccessModal() { document.getElementById('accessModal').classList.add('hidden'); }
+
+    async function saveAccess() {
+      if (!editingKey) return;
+      const errEl = document.getElementById('accessError');
+      const rows = PAGE_LIST.map(p => {
+        const chk = document.querySelector(`.page-check[data-page="${p.id}"]`);
+        const canAccess = chk ? chk.checked : true;
+        const hidden = [];
+        document.querySelectorAll(`.elem-check[data-page="${p.id}"]`).forEach(cb => {
+          if (!cb.checked) hidden.push(cb.dataset.element);
+        });
+        return { role_key: editingKey, page_id: p.id, can_access: canAccess, hidden_elements: hidden };
+      });
+
+      await _sb.from('role_page_access').delete().eq('role_key', editingKey);
+      const { error } = await _sb.from('role_page_access').insert(rows);
+      if (error) {
+        await logError('ROLE_ACCESS_UPDATE_FAIL', { 권한: editingKey, 오류: error.message });
+        errEl.textContent = '저장 실패: ' + tErr(error.message);
+        errEl.classList.add('show');
+        return;
+      }
+      await logInfo('ROLE_ACCESS_UPDATE', { 권한: editingKey });
+      closeAccessModal();
+      alert('저장되었습니다.');
+    }
+
+    document.getElementById('accessModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeAccessModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

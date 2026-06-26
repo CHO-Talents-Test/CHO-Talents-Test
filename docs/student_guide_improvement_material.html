@@ -1,0 +1,491 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>달란트 마을 학생 가이드 개선안</title>
+  <style>
+    :root{
+      --bg:#f7f3ff;
+      --paper:#ffffff;
+      --ink:#202033;
+      --muted:#67627a;
+      --primary:#7357e8;
+      --primary-2:#9b7cff;
+      --accent:#20c997;
+      --blue:#4dabf7;
+      --yellow:#ffd43b;
+      --pink:#ff6b9a;
+      --red:#ff6b6b;
+      --line:#e7e1fa;
+      --shadow:0 18px 45px rgba(75,56,140,.13);
+      --radius:24px;
+    }
+    *{box-sizing:border-box}
+    html{scroll-behavior:smooth}
+    body{
+      margin:0;
+      color:var(--ink);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Noto Sans KR","Apple SD Gothic Neo",Arial,sans-serif;
+      background:
+        radial-gradient(circle at 10% -10%, rgba(255,212,59,.38), transparent 28rem),
+        radial-gradient(circle at 90% 0%, rgba(115,87,232,.28), transparent 26rem),
+        linear-gradient(180deg,#fbf8ff 0%, #f5f1ff 45%, #f8fbff 100%);
+      line-height:1.68;
+    }
+    a{color:inherit}
+    .wrap{width:min(1120px, calc(100% - 36px)); margin:0 auto}
+    .hero{
+      position:relative;
+      overflow:hidden;
+      padding:54px 0 40px;
+    }
+    .hero::before{
+      content:"";
+      position:absolute;
+      inset:24px 18px auto auto;
+      width:180px;height:180px;
+      border-radius:48px;
+      background:linear-gradient(135deg, rgba(32,201,151,.18), rgba(115,87,232,.14));
+      transform:rotate(18deg);
+      z-index:-1;
+    }
+    .hero-grid{
+      display:grid;
+      grid-template-columns: 1.18fr .82fr;
+      gap:28px;
+      align-items:stretch;
+    }
+    .hero-card{
+      background:rgba(255,255,255,.82);
+      border:1px solid rgba(231,225,250,.9);
+      border-radius:32px;
+      box-shadow:var(--shadow);
+      padding:42px;
+      backdrop-filter: blur(12px);
+    }
+    .kicker{display:flex; flex-wrap:wrap; gap:8px; margin-bottom:18px}
+    .badge{
+      display:inline-flex; align-items:center; gap:6px;
+      padding:8px 13px;
+      border-radius:999px;
+      background:#f1edff;
+      color:#513bc2;
+      font-weight:800;
+      font-size:13px;
+      letter-spacing:-.2px;
+    }
+    .badge.green{background:#e9fbf5;color:#087f5b}
+    .badge.yellow{background:#fff7db;color:#9a6a00}
+    h1{font-size:clamp(32px,5.2vw,58px); line-height:1.08; margin:0 0 20px; letter-spacing:-1.8px}
+    h2{font-size:clamp(26px,3vw,36px); margin:0 0 12px; letter-spacing:-.9px; line-height:1.2}
+    h3{font-size:21px; margin:0 0 10px; letter-spacing:-.4px}
+    p{margin:0 0 12px}
+    .lead{font-size:20px; color:#403b56; max-width:760px; margin-bottom:24px}
+    .hero-actions{display:flex; flex-wrap:wrap; gap:12px; margin-top:22px}
+    .btn{
+      border:0;
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      gap:8px;
+      padding:13px 18px;
+      border-radius:16px;
+      font-weight:900;
+      color:#fff;
+      background:linear-gradient(135deg,var(--primary),var(--primary-2));
+      box-shadow:0 10px 24px rgba(115,87,232,.24);
+      cursor:pointer;
+    }
+    .btn.secondary{background:#fff;color:#513bc2;border:1px solid var(--line);box-shadow:none}
+    .mini-panel{
+      background:linear-gradient(180deg,#fff,#f8f5ff);
+      border:1px solid var(--line);
+      border-radius:32px;
+      padding:24px;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      min-height:100%;
+    }
+    .score{
+      display:grid;
+      grid-template-columns:repeat(2,1fr);
+      gap:12px;
+      margin-top:12px;
+    }
+    .score .item{background:#fff;border:1px solid #eee8ff;border-radius:20px;padding:16px;text-align:center}
+    .num{font-size:34px;font-weight:1000;color:var(--primary);line-height:1}
+    .label{font-size:13px;color:var(--muted);font-weight:700;margin-top:6px}
+    .nav{
+      display:flex; flex-wrap:wrap; gap:10px;
+      position:sticky; top:0; z-index:20;
+      background:rgba(247,243,255,.86);
+      backdrop-filter: blur(14px);
+      border-bottom:1px solid rgba(231,225,250,.85);
+      padding:12px 0;
+    }
+    .nav a{font-size:14px;font-weight:800;text-decoration:none;background:#fff;border:1px solid var(--line);padding:8px 12px;border-radius:999px;color:#4a3d74}
+    section{padding:32px 0}
+    .section-head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:18px}
+    .section-head p{color:var(--muted);max-width:620px}
+    .grid{display:grid;gap:16px}
+    .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .grid.cols-4{grid-template-columns:repeat(4,minmax(0,1fr))}
+    .card{
+      background:var(--paper);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
+      padding:22px;
+      box-shadow:0 12px 28px rgba(75,56,140,.08);
+    }
+    .card.highlight{background:linear-gradient(135deg,#ffffff 0%, #f4efff 100%);border-color:#dcd2ff}
+    .icon{
+      width:48px;height:48px;display:grid;place-items:center;
+      border-radius:16px;
+      background:#f1edff;
+      font-size:25px;
+      margin-bottom:14px;
+    }
+    .icon.green{background:#e9fbf5}.icon.blue{background:#e7f5ff}.icon.yellow{background:#fff9db}.icon.pink{background:#fff0f6}.icon.red{background:#fff5f5}
+    .muted{color:var(--muted)}
+    .pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+    .pill{display:inline-flex;align-items:center;border-radius:999px;padding:6px 10px;background:#f7f4ff;color:#513bc2;font-weight:800;font-size:13px}
+    .priority{counter-reset:prio;display:grid;gap:14px}
+    .prio-item{counter-increment:prio;display:grid;grid-template-columns:54px 1fr;gap:14px;align-items:start;background:#fff;border:1px solid var(--line);border-radius:22px;padding:18px;box-shadow:0 9px 22px rgba(75,56,140,.06)}
+    .prio-no{width:44px;height:44px;border-radius:15px;display:grid;place-items:center;background:linear-gradient(135deg,var(--primary),#b197fc);color:#fff;font-weight:1000;font-size:18px}
+    .prio-no::before{content:counter(prio)}
+    .prio-item strong{display:block;font-size:18px;margin-bottom:4px}
+    .tag{font-size:12px;font-weight:900;border-radius:999px;padding:4px 8px;margin-left:4px;white-space:nowrap}
+    .tag.must{background:#fff5f5;color:#c92a2a}.tag.good{background:#e9fbf5;color:#087f5b}.tag.ui{background:#e7f5ff;color:#1864ab}
+    .flow{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-top:14px}
+    .flow-step{position:relative;background:#fff;border:1px solid var(--line);border-radius:20px;padding:18px;min-height:128px}
+    .flow-step::after{content:"→";position:absolute;right:-14px;top:42%;font-weight:1000;color:#8e79e8}
+    .flow-step:last-child::after{display:none}
+    .step-no{font-size:13px;font-weight:1000;color:#7057e8;margin-bottom:6px}
+    .callout{border-radius:24px;padding:22px;border:1px solid var(--line);background:#fff;display:flex;gap:16px;align-items:flex-start}
+    .callout.warn{background:#fff9db;border-color:#ffe08a}.callout.success{background:#e9fbf5;border-color:#b8f2da}.callout.info{background:#e7f5ff;border-color:#b7ddff}
+    .callout .big{font-size:30px;line-height:1}
+    .before-after{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .quote-box{border-radius:20px;padding:18px;border:1px dashed #c8bfff;background:#faf8ff;white-space:pre-line;font-weight:750;color:#3f3763}
+    .quote-box .label2{display:inline-block;font-size:12px;color:#6d5ad7;background:#ede8ff;border-radius:999px;padding:4px 8px;margin-bottom:10px;font-weight:1000}
+    .checklist{display:grid;gap:10px;margin-top:8px}
+    .check{display:flex;gap:10px;align-items:flex-start;background:#fff;border:1px solid var(--line);padding:13px 14px;border-radius:16px}
+    .box{width:22px;height:22px;border:2px solid #b9a9ff;border-radius:7px;flex:0 0 auto;background:#fbf9ff}
+    .status-table{width:100%;border-collapse:separate;border-spacing:0 10px}
+    .status-table th{font-size:13px;color:#6b6480;text-align:left;padding:0 12px}
+    .status-table td{background:#fff;padding:14px 12px;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+    .status-table td:first-child{border-left:1px solid var(--line);border-radius:16px 0 0 16px;font-weight:900}
+    .status-table td:last-child{border-right:1px solid var(--line);border-radius:0 16px 16px 0}
+    .source-list{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+    .source{background:#fff;border:1px solid var(--line);border-radius:18px;padding:15px}
+    .footer{padding:28px 0 50px;color:#6b6480;text-align:center}
+    .print-note{font-size:13px;color:#6b6480;margin-top:10px}
+    @media (max-width:880px){
+      .hero-grid,.grid.cols-2,.grid.cols-3,.grid.cols-4,.before-after,.source-list{grid-template-columns:1fr}
+      .hero-card{padding:28px}
+      .flow{grid-template-columns:1fr}
+      .flow-step::after{content:"↓";right:50%;top:auto;bottom:-20px;transform:translateX(50%)}
+      .section-head{display:block}
+    }
+    @media print{
+      body{background:#fff}
+      .nav,.hero-actions{display:none!important}
+      .wrap{width:100%;max-width:none;padding:0 12mm}
+      .card,.hero-card,.mini-panel,.prio-item,.callout{box-shadow:none;break-inside:avoid}
+      section{padding:16px 0}
+      .hero{padding-top:0}
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="wrap hero-grid">
+      <div class="hero-card">
+        <div class="kicker">
+          <span class="badge">⭐ 달란트 마을</span>
+          <span class="badge green">학생 권한자 가이드</span>
+          <span class="badge yellow">사이트 반영용 개선안</span>
+        </div>
+        <h1>학생이 혼자서도<br/>길을 찾는 가이드로 바꾸기</h1>
+        <p class="lead">현재 학생 발표자료와 사이트 안내 문서를 바탕으로, 실제 학생 화면에 맞게 <b>명칭·흐름·안전수칙·QR·구매 취소</b>를 정리한 꾸며진 수정 제안서입니다.</p>
+        <div class="hero-actions">
+          <a class="btn" href="#checklist">✅ 바로 반영 체크리스트</a>
+          <a class="btn secondary" href="#copy">✍️ 복붙용 문구 보기</a>
+          <button class="btn secondary" onclick="window.print()">🖨️ 인쇄 / PDF 저장</button>
+        </div>
+        <p class="print-note">브라우저에서 열고 <b>Ctrl/Cmd + P</b>를 누르면 PDF로도 저장할 수 있습니다.</p>
+      </div>
+      <aside class="mini-panel">
+        <div>
+          <h2>핵심 판단</h2>
+          <p class="muted">흐름은 좋지만, 실제 사이트·MD 문서·발표 PDF 사이의 용어와 기능 설명이 일부 어긋납니다.</p>
+        </div>
+        <div class="score" aria-label="요약 지표">
+          <div class="item"><div class="num">8</div><div class="label">우선 수정 항목</div></div>
+          <div class="item"><div class="num">5</div><div class="label">학생 핵심 메뉴</div></div>
+          <div class="item"><div class="num">4</div><div class="label">구매 진행 단계</div></div>
+          <div class="item"><div class="num">1</div><div class="label">목표: 혼자서 사용</div></div>
+        </div>
+      </aside>
+    </div>
+  </header>
+
+  <nav class="nav">
+    <div class="wrap" style="display:flex;flex-wrap:wrap;gap:10px">
+      <a href="#summary">요약</a>
+      <a href="#priority">우선순위</a>
+      <a href="#sections">페이지별 보완</a>
+      <a href="#copy">복붙용 문구</a>
+      <a href="#toc">권장 목차</a>
+      <a href="#checklist">체크리스트</a>
+      <a href="#sources">참조 문서</a>
+    </div>
+  </nav>
+
+  <main>
+    <section id="summary">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">한눈에 보기</span>
+            <h2>무엇을 고치면 좋아질까요?</h2>
+          </div>
+          <p>학생용 가이드는 “운영 설명서”가 아니라 “학생이 실제로 누르는 길 안내판”이어야 합니다.</p>
+        </div>
+        <div class="grid cols-4">
+          <article class="card highlight">
+            <div class="icon">🧭</div>
+            <h3>메뉴명 통일</h3>
+            <p class="muted">사용자 가이드, 학생 가이드, 일반 사용자 안내서 표현을 역할별 구조에 맞게 정리합니다.</p>
+            <div class="pill-row"><span class="pill">학생 가이드</span><span class="pill">교사 가이드</span><span class="pill">관리자 가이드</span></div>
+          </article>
+          <article class="card">
+            <div class="icon green">🔐</div>
+            <h3>첫 로그인 보강</h3>
+            <p class="muted">승인 대기, 초기 비밀번호, 첫 로그인 비밀번호 변경, 로그아웃 약속을 한 흐름으로 안내합니다.</p>
+          </article>
+          <article class="card">
+            <div class="icon blue">📱</div>
+            <h3>QR 실패 대처</h3>
+            <p class="muted">카메라 권한, 이미 받은 QR, 기간·대상·위치 조건을 어린이 눈높이의 체크리스트로 바꿉니다.</p>
+          </article>
+          <article class="card">
+            <div class="icon yellow">🛒</div>
+            <h3>구매 취소 설명</h3>
+            <p class="muted">구매 신청 단계에서만 취소 가능하고, 취소하면 사용 대기 달란트가 돌아온다는 점을 추가합니다.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="priority">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">TOP 8</span>
+            <h2>우선 수정 항목</h2>
+          </div>
+          <p>아래 순서대로 적용하면 학생 가이드의 혼란을 가장 빠르게 줄일 수 있습니다.</p>
+        </div>
+        <div class="priority">
+          <div class="prio-item"><div class="prio-no"></div><div><strong>가이드 명칭 통일 <span class="tag must">필수</span></strong><p class="muted">사이트와 문서에서 <b>사용자 가이드</b>로 남아 있는 표현을 학생 권한자 기준의 <b>학생 가이드</b>로 정리합니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>학생이 쓰는 메뉴만 먼저 설명 <span class="tag must">필수</span></strong><p class="muted">학생용 자료에는 달란트 적립, 달란트 수령, 내 달란트, 상품 구매, 내 구매 상품, Q&A를 우선 배치합니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>계정 신청·승인·첫 로그인 흐름 추가 <span class="tag must">필수</span></strong><p class="muted">승인 후 초기 비밀번호 1234, 첫 로그인 비밀번호 변경, 비밀번호 비공개를 하나의 단계로 안내합니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>내 달란트 카드 5개 설명 보완 <span class="tag ui">화면 일치</span></strong><p class="muted">사용 가능, 상품 수령 예정, 사용 대기, 사용 완료, 누적 적립을 모두 설명합니다. 기존 PDF의 “카드 5개”와 본문 누락을 맞춥니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>QR 수령 실패 체크리스트 추가 <span class="tag good">현장 대응</span></strong><p class="muted">카메라 허용, 기간, 대상, 이미 수령, 위치 확인을 학생이 스스로 확인할 수 있게 합니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>구매 취소와 달란트 복원 설명 <span class="tag good">불안 해소</span></strong><p class="muted">구매 신청 단계에서 취소 가능하며, 취소하면 사용 대기 달란트가 복원된다는 문구를 추가합니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>학생 화면 기준 캡처로 교체 <span class="tag ui">시각 자료</span></strong><p class="muted">교사/관리/운영 메뉴가 섞인 화면은 학생에게 혼란을 줄 수 있으므로 실제 학생 계정 캡처로 갱신합니다.</p></div></div>
+          <div class="prio-item"><div class="prio-no"></div><div><strong>안전 수칙 강화 <span class="tag good">보안</span></strong><p class="muted">친구에게 비밀번호 알려주지 않기, 공용 기기 사용 후 로그아웃하기, 비밀번호 분실 시 선생님께 말하기를 넣습니다.</p></div></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="sections">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">페이지별</span>
+            <h2>보완해야 할 장면</h2>
+          </div>
+          <p>학생이 실제로 막히는 순간을 기준으로 설명을 다시 배치했습니다.</p>
+        </div>
+        <div class="grid cols-2">
+          <article class="card">
+            <div class="icon green">🔑</div>
+            <h3>1. 처음 시작하기</h3>
+            <p class="muted">계정 신청에서 끝나지 않고, 승인 대기와 첫 로그인 비밀번호 변경까지 이어서 설명합니다.</p>
+            <div class="flow">
+              <div class="flow-step"><div class="step-no">STEP 1</div><b>계정 신청</b><br/><span class="muted">아이디·이름·부서 입력</span></div>
+              <div class="flow-step"><div class="step-no">STEP 2</div><b>승인 기다리기</b><br/><span class="muted">선생님/관리자 확인</span></div>
+              <div class="flow-step"><div class="step-no">STEP 3</div><b>처음 로그인</b><br/><span class="muted">초기 비밀번호 사용</span></div>
+              <div class="flow-step"><div class="step-no">STEP 4</div><b>비밀번호 변경</b><br/><span class="muted">나만 아는 비밀번호</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="icon blue">📷</div>
+            <h3>2. QR로 달란트 받기</h3>
+            <p class="muted">성공 순서뿐 아니라 실패 시 확인할 내용을 함께 넣습니다.</p>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>카메라 사용을 허용했나요?</span></div>
+              <div class="check"><span class="box"></span><span>오늘 받을 수 있는 QR인가요?</span></div>
+              <div class="check"><span class="box"></span><span>이미 받은 QR은 아닌가요?</span></div>
+              <div class="check"><span class="box"></span><span>학생용 QR이 맞나요?</span></div>
+              <div class="check"><span class="box"></span><span>위치 확인이 필요한 QR인가요?</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <div class="icon yellow">🏅</div>
+            <h3>3. 내 달란트 보기</h3>
+            <p class="muted">학생이 잔액을 오해하지 않도록 5개 카드의 뜻을 정확히 맞춥니다.</p>
+            <table class="status-table">
+              <thead><tr><th>카드</th><th>학생용 설명</th></tr></thead>
+              <tbody>
+                <tr><td>사용 가능</td><td>지금 상품 신청에 쓸 수 있는 달란트예요.</td></tr>
+                <tr><td>상품 수령 예정</td><td>아직 받지 않은 상품 개수예요.</td></tr>
+                <tr><td>사용 대기</td><td>신청했지만 아직 확정 전인 달란트예요.</td></tr>
+                <tr><td>사용 완료</td><td>상품 구매로 실제 사용된 달란트예요.</td></tr>
+                <tr><td>누적 적립</td><td>지금까지 받은 달란트 총합이에요.</td></tr>
+              </tbody>
+            </table>
+          </article>
+          <article class="card">
+            <div class="icon pink">🎁</div>
+            <h3>4. 상품 신청과 취소</h3>
+            <p class="muted">상품은 바로 받는 것이 아니라 신청하고, 선생님 확인 뒤 차례대로 진행된다는 점을 강조합니다.</p>
+            <div class="flow">
+              <div class="flow-step"><div class="step-no">1</div><b>구매 신청</b><br/><span class="muted">이때는 취소 가능</span></div>
+              <div class="flow-step"><div class="step-no">2</div><b>상품 준비</b><br/><span class="muted">선생님 확인 중</span></div>
+              <div class="flow-step"><div class="step-no">3</div><b>상품 구매</b><br/><span class="muted">달란트 실제 사용</span></div>
+              <div class="flow-step"><div class="step-no">4</div><b>상품 지급</b><br/><span class="muted">상품을 받음</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="copy">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">복붙용</span>
+            <h2>가이드에 바로 넣을 문구</h2>
+          </div>
+          <p>PDF 슬라이드, HTML 가이드, 마크다운 문서에 그대로 붙여 넣을 수 있는 학생 눈높이 문구입니다.</p>
+        </div>
+        <div class="grid cols-2">
+          <article class="card">
+            <h3>🔐 처음 로그인</h3>
+            <div class="quote-box"><span class="label2">추가 권장 문구</span>
+처음 로그인할 때는 선생님이 알려준 초기 비밀번호로 들어가요.
+처음 한 번은 새 비밀번호로 바꿔야 해요.
+비밀번호는 친구에게 알려주지 않고, 잊어버리면 선생님께 말해요.</div>
+          </article>
+          <article class="card">
+            <h3>📱 QR이 안 될 때</h3>
+            <div class="quote-box"><span class="label2">추가 권장 문구</span>
+QR이 안 되면 먼저 확인해요.
+카메라를 허용했나요? 오늘 받을 수 있는 QR인가요?
+이미 받은 QR은 아닌가요? 학생용 QR이 맞나요?
+위치 확인이 필요한 QR이면 위치 허용도 필요해요.</div>
+          </article>
+          <article class="card">
+            <h3>🛒 상품 신청</h3>
+            <div class="quote-box"><span class="label2">추가 권장 문구</span>
+상품 구매 버튼은 바로 받는 버튼이 아니에요.
+먼저 구매 신청을 하고, 선생님이 확인한 뒤 준비와 지급이 진행돼요.
+구매 신청 단계에서는 취소할 수 있고, 취소하면 사용 대기 달란트가 돌아와요.</div>
+          </article>
+          <article class="card">
+            <h3>🧭 메뉴가 다를 때</h3>
+            <div class="quote-box"><span class="label2">추가 권장 문구</span>
+사람마다 보이는 메뉴가 다를 수 있어요.
+학생에게 필요한 메뉴만 보이도록 되어 있어요.
+필요한 메뉴가 안 보이면 선생님께 말해요.</div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="toc">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">추천 구성</span>
+            <h2>학생 가이드 최종 목차</h2>
+          </div>
+          <p>사이트에 올리는 HTML 문서나 발표용 PDF를 만들 때 이 순서가 가장 자연스럽습니다.</p>
+        </div>
+        <div class="card highlight">
+          <div class="grid cols-3">
+            <div><h3>🚪 시작</h3><p class="muted">1. 달란트 마을에서 할 수 있는 일<br/>2. 계정 신청 → 승인 → 첫 로그인<br/>3. 메인 화면과 학생 메뉴 찾기</p></div>
+            <div><h3>💰 달란트</h3><p class="muted">4. 달란트 적립 방법<br/>5. QR로 달란트 받기<br/>6. 내 달란트 확인하기</p></div>
+            <div><h3>🎁 상품과 도움</h3><p class="muted">7. 상품 구매 신청하기<br/>8. 내 구매 상품 상태 확인하기<br/>9. 구매 취소 가능 시점<br/>10. Q&A 질문하기<br/>11. 비밀번호와 개인정보 약속<br/>12. 안 될 때 확인하기</p></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="checklist">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">실행 목록</span>
+            <h2>바로 반영할 체크리스트</h2>
+          </div>
+          <p>개발자·문서 담당자가 나누어 처리하기 쉽게 파일/콘텐츠 단위로 정리했습니다.</p>
+        </div>
+        <div class="grid cols-2">
+          <article class="card">
+            <h3>🧩 사이트/HTML 반영</h3>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span><b>guide.html</b> 제목을 “사용자 가이드”에서 “학생 가이드”로 변경</span></div>
+              <div class="check"><span class="box"></span><span>공개/학생 페이지 네비게이션의 가이드 명칭 통일</span></div>
+              <div class="check"><span class="box"></span><span>학생 계정 기준으로 화면 캡처 다시 확보</span></div>
+              <div class="check"><span class="box"></span><span>학생용 문서에는 교사/관리자 기능을 별도 안내로 분리</span></div>
+            </div>
+          </article>
+          <article class="card">
+            <h3>📝 PDF/문서 반영</h3>
+            <div class="checklist">
+              <div class="check"><span class="box"></span><span>8쪽 내 달란트 카드에 “사용 완료 달란트” 설명 추가</span></div>
+              <div class="check"><span class="box"></span><span>4쪽 계정/로그인에 초기 비밀번호와 첫 로그인 변경 안내 추가</span></div>
+              <div class="check"><span class="box"></span><span>7쪽 QR 수령에 실패 시 체크리스트 추가</span></div>
+              <div class="check"><span class="box"></span><span>12쪽 구매 상태에 취소와 달란트 복원 설명 추가</span></div>
+              <div class="check"><span class="box"></span><span>“수령 대기 상품수 / 상품 수령 예정 / 받을 상품” 표현 통일</span></div>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="sources">
+      <div class="wrap">
+        <div class="section-head">
+          <div>
+            <span class="badge">참조</span>
+            <h2>기준으로 삼은 문서</h2>
+          </div>
+          <p>본 개선안은 첨부 문서의 내용과 이전 검토 의견을 바탕으로 작성했습니다.</p>
+        </div>
+        <div class="source-list">
+          <div class="source"><b>학생 가이드.pdf</b><br/><span class="muted">발표용 슬라이드, 학생 눈높이 흐름과 화면 캡처 기준</span></div>
+          <div class="source"><b>SITE_USER_GUIDE.md</b><br/><span class="muted">일반 사용자 안내서, 학생/교사/운영자 기능 설명 기준</span></div>
+          <div class="source"><b>README.md</b><br/><span class="muted">현재 버전, 페이지 구조, 권한 체계 기준</span></div>
+          <div class="source"><b>PROJECT_ARCHITECTURE_FLOW.md</b><br/><span class="muted">시스템 흐름, 권한 구조, 화면 연결 기준</span></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <b>⭐ 달란트 마을 학생 가이드 개선안</b><br/>
+      사이트 반영용 HTML · 발표자료 보완용 체크리스트 · 문서 담당자 공유용 자료
+    </div>
+  </footer>
+</body>
+</html>

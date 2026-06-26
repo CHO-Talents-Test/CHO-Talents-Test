@@ -1,0 +1,516 @@
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>달란트 마을 교사 가이드 개선 자료</title>
+  <style>
+    :root {
+      --bg: #f6f1ff;
+      --panel: #ffffff;
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --primary: #6d5dfc;
+      --primary-dark: #5546d8;
+      --mint: #dffaf2;
+      --yellow: #fff4cc;
+      --blue: #e7f2ff;
+      --pink: #ffe9f0;
+      --line: #e7ddff;
+      --success: #0f9f6e;
+      --warning: #d97706;
+      --danger: #dc2626;
+      --shadow: 0 18px 45px rgba(82, 63, 144, 0.14);
+      --radius: 24px;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans KR", "Apple SD Gothic Neo", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 10% 10%, rgba(109, 93, 252, 0.13), transparent 32%),
+        radial-gradient(circle at 85% 15%, rgba(15, 159, 110, 0.11), transparent 30%),
+        linear-gradient(180deg, #fbf8ff 0%, var(--bg) 42%, #f8fbff 100%);
+      line-height: 1.65;
+    }
+    a { color: var(--primary-dark); }
+    .wrap { max-width: 1120px; margin: 0 auto; padding: 32px 18px 72px; }
+    .hero {
+      position: relative;
+      overflow: hidden;
+      padding: 44px 38px;
+      border-radius: 34px;
+      background: linear-gradient(135deg, #fff 0%, #f0eaff 58%, #e8fff6 100%);
+      box-shadow: var(--shadow);
+      border: 1px solid rgba(109, 93, 252, 0.18);
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -56px;
+      top: -56px;
+      width: 220px;
+      height: 220px;
+      border-radius: 999px;
+      background: rgba(109, 93, 252, 0.14);
+    }
+    .kicker {
+      display: inline-flex;
+      gap: 8px;
+      align-items: center;
+      padding: 8px 14px;
+      border-radius: 999px;
+      background: rgba(109, 93, 252, 0.12);
+      color: var(--primary-dark);
+      font-weight: 800;
+      font-size: 14px;
+    }
+    h1 { margin: 18px 0 12px; font-size: clamp(34px, 6vw, 58px); line-height: 1.08; letter-spacing: -0.05em; }
+    .lead { max-width: 760px; color: #374151; font-size: 18px; margin: 0; }
+    .hero-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-top: 28px; }
+    .mini-card {
+      padding: 18px;
+      background: rgba(255,255,255,0.75);
+      border: 1px solid rgba(255,255,255,0.9);
+      border-radius: 20px;
+      box-shadow: 0 10px 26px rgba(72, 55, 138, 0.08);
+    }
+    .mini-card b { display:block; font-size: 16px; margin-bottom: 4px; }
+    .mini-card span { color: var(--muted); font-size: 13px; }
+    .section { margin-top: 34px; }
+    .section-title { display:flex; align-items:center; justify-content:space-between; gap:18px; margin-bottom: 16px; }
+    h2 { margin: 0; font-size: clamp(25px, 4vw, 36px); letter-spacing: -0.04em; }
+    .section-desc { margin: 6px 0 0; color: var(--muted); }
+    .panel {
+      background: rgba(255,255,255,0.92);
+      border: 1px solid rgba(109, 93, 252, 0.14);
+      border-radius: var(--radius);
+      box-shadow: 0 12px 34px rgba(82, 63, 144, 0.09);
+      padding: 24px;
+    }
+    .grid-2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 18px; }
+    .grid-3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; }
+    .tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 800;
+      background: #eef2ff;
+      color: var(--primary-dark);
+      white-space: nowrap;
+    }
+    .tag.green { background: var(--mint); color: #047857; }
+    .tag.yellow { background: var(--yellow); color: #92400e; }
+    .tag.red { background: #fee2e2; color: #b91c1c; }
+    .tag.gray { background: #f3f4f6; color: #4b5563; }
+    .card-title { font-size: 20px; font-weight: 900; margin: 0 0 8px; letter-spacing: -0.03em; }
+    .card-text { margin: 0; color: var(--muted); font-size: 15px; }
+    .priority {
+      display: flex; gap: 16px; align-items: flex-start;
+      padding: 18px; border-radius: 20px; background: #fff;
+      border: 1px solid var(--line);
+    }
+    .badge-num {
+      flex: 0 0 auto;
+      width: 42px; height: 42px; border-radius: 14px;
+      display:grid; place-items:center;
+      background: var(--primary); color: white; font-weight: 900;
+      box-shadow: 0 10px 18px rgba(109, 93, 252, 0.25);
+    }
+    .priority h3 { margin: 0 0 6px; font-size: 18px; }
+    .priority p { margin: 0; color: var(--muted); }
+    .timeline { position: relative; display: grid; gap: 14px; }
+    .step {
+      display: grid; grid-template-columns: 92px 1fr; gap: 14px; align-items: stretch;
+      padding: 0;
+    }
+    .step .page {
+      border-radius: 18px;
+      background: linear-gradient(180deg, #6d5dfc, #5b4ae8);
+      color: white;
+      display:grid; place-items:center;
+      text-align:center;
+      font-weight: 900;
+      min-height: 88px;
+      box-shadow: 0 12px 24px rgba(109, 93, 252, 0.2);
+    }
+    .step .body {
+      padding: 18px 20px;
+      border-radius: 18px;
+      background: white;
+      border: 1px solid var(--line);
+    }
+    .step h3 { margin: 0 0 7px; font-size: 18px; }
+    .step p { margin: 0; color: var(--muted); }
+    .note {
+      border-radius: 20px;
+      padding: 18px 20px;
+      background: var(--yellow);
+      border: 1px solid #fde68a;
+      color: #78350f;
+    }
+    .note b { color: #92400e; }
+    .quote {
+      padding: 22px;
+      border-radius: 24px;
+      background: linear-gradient(135deg, #27214d, #4b3cc4);
+      color: white;
+      box-shadow: var(--shadow);
+    }
+    .quote p { margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.04em; line-height: 1.35; }
+    .quote span { display:block; color: #ddd6fe; margin-top: 10px; }
+    .checklist { list-style: none; padding: 0; margin: 0; display: grid; gap: 10px; }
+    .checklist li {
+      display: flex; gap: 10px; align-items: flex-start;
+      background: white;
+      border: 1px solid var(--line);
+      padding: 13px 14px;
+      border-radius: 16px;
+    }
+    .checklist li::before { content: "✓"; color: var(--success); font-weight: 900; }
+    .table-wrap { overflow-x: auto; border-radius: 20px; border: 1px solid var(--line); background: white; }
+    table { width: 100%; border-collapse: collapse; min-width: 760px; }
+    th, td { padding: 15px 16px; border-bottom: 1px solid #eee8ff; text-align: left; vertical-align: top; }
+    th { background: #f5f2ff; color: #3d2faa; font-size: 14px; }
+    tr:last-child td { border-bottom: 0; }
+    .pill-row { display:flex; flex-wrap:wrap; gap:8px; margin-top: 10px; }
+    .flow { display:grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+    .flow-card {
+      position: relative;
+      min-height: 132px;
+      border-radius: 20px;
+      padding: 18px;
+      background: white;
+      border: 1px solid var(--line);
+    }
+    .flow-card:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -12px;
+      top: 50%; transform: translateY(-50%);
+      color: var(--primary);
+      font-weight: 900;
+      font-size: 24px;
+      z-index: 2;
+    }
+    .flow-card h3 { margin: 0 0 8px; font-size: 18px; }
+    .flow-card p { margin: 0; color: var(--muted); font-size: 14px; }
+    .script-box {
+      padding: 20px;
+      border-radius: 22px;
+      background: #f8fafc;
+      border: 1px dashed #c4b5fd;
+    }
+    .script-box h3 { margin: 0 0 10px; }
+    .script-box p { margin: 0; font-size: 16px; }
+    .footer {
+      margin-top: 34px;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+    }
+    @media (max-width: 920px) {
+      .hero-grid, .grid-4, .flow { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .grid-3 { grid-template-columns: 1fr; }
+      .grid-2 { grid-template-columns: 1fr; }
+      .flow-card:not(:last-child)::after { display: none; }
+    }
+    @media (max-width: 620px) {
+      .wrap { padding: 18px 12px 48px; }
+      .hero { padding: 30px 22px; border-radius: 26px; }
+      .hero-grid, .grid-4, .flow { grid-template-columns: 1fr; }
+      .step { grid-template-columns: 1fr; }
+      .step .page { min-height: 54px; }
+      .panel { padding: 18px; }
+    }
+    @media print {
+      body { background: white; }
+      .wrap { max-width: none; padding: 0; }
+      .hero, .panel, .quote, .priority, .flow-card, .step .body { box-shadow: none; }
+      .section { break-inside: avoid; page-break-inside: avoid; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <section class="hero">
+      <span class="kicker">⭐ CHO Talents · 일반 교사 가이드 개선 자료</span>
+      <h1>딱딱한 문서를<br />현장 시연 자료로 바꾸기</h1>
+      <p class="lead">기존 교사 사용 가이드를 v3.26.1 기준으로 보완하기 위한 시각형 정리 자료입니다. 일반 교사가 헷갈리기 쉬운 권한, 담당 부서/반, 달란트 지급, QR 수령, 대리 구매, 구매 상태 확인을 한눈에 볼 수 있게 구성했습니다.</p>
+      <div class="hero-grid">
+        <div class="mini-card"><b>🎯 핵심 대상</b><span>일반 교사 40+ 권한자</span></div>
+        <div class="mini-card"><b>⏱ 활용 방식</b><span>15분 온보딩·시연 자료</span></div>
+        <div class="mini-card"><b>🧭 핵심 메시지</b><span>권한·부서·반 먼저 확인</span></div>
+        <div class="mini-card"><b>📌 기준</b><span>v3.26.1 / 최신 문서 반영</span></div>
+      </div>
+    </section>
+
+    <section class="section grid-2">
+      <div class="quote">
+        <p>“일반 교사는 담당 학생의 활동을 기록하고, 학생 명의로 상품을 대신 신청합니다.”</p>
+        <span>화면이 다르면 오류보다 먼저 권한과 담당 부서/반 설정을 확인합니다.</span>
+      </div>
+      <div class="panel">
+        <h2>한 장 요약</h2>
+        <p class="section-desc">교사 가이드에서 반드시 유지해야 할 큰 흐름입니다.</p>
+        <ul class="checklist" style="margin-top:16px">
+          <li>출석은 빠르게, 활동 달란트는 항목 체크 후 지급 확정</li>
+          <li>QR 수령은 학생에게 주는 기능이 아니라 교사 본인이 받는 기능</li>
+          <li>교사용 상품은 직접 신청, 학생용 상품은 대리 구매</li>
+          <li>대리 구매는 교사 달란트가 아니라 학생 달란트로 신청</li>
+          <li>대리 구매 주문은 교사 본인 내 구매 상품에 안 보일 수 있음</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <div>
+          <h2>1. 가장 먼저 고칠 것</h2>
+          <p class="section-desc">발표 자료에 바로 반영하면 효과가 큰 수정 사항입니다.</p>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="priority">
+          <div class="badge-num">1</div>
+          <div>
+            <h3>버전 갱신</h3>
+            <p>표지의 <b>v3.23.0 기준</b>을 <b>v3.26.1 기준</b> 또는 “2026-06-03 현재 사이트 기준”으로 수정합니다.</p>
+            <div class="pill-row"><span class="tag red">필수</span><span class="tag gray">표지</span></div>
+          </div>
+        </div>
+        <div class="priority">
+          <div class="badge-num">2</div>
+          <div>
+            <h3>권한 배지 반복</h3>
+            <p>일반 교사 기능에는 <b>40+</b>, 부서 담당 교사 이상 기능에는 <b>60+</b>, 부장 교사 기능에는 <b>80+</b> 배지를 붙입니다.</p>
+            <div class="pill-row"><span class="tag">40+</span><span class="tag green">60+</span><span class="tag yellow">80+</span></div>
+          </div>
+        </div>
+        <div class="priority">
+          <div class="badge-num">3</div>
+          <div>
+            <h3>Q&A 정책 통일</h3>
+            <p>일반 교사가 답변 가능한지, 질문 등록만 가능한지 실제 운영 정책을 확정한 뒤 PDF·HTML·README 문구를 맞춥니다.</p>
+            <div class="pill-row"><span class="tag red">문서 불일치</span><span class="tag gray">확인 필요</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <div>
+          <h2>2. 일반 교사 기능 지도</h2>
+          <p class="section-desc">교사가 “내가 무엇을 할 수 있는지” 바로 이해하도록 기능을 권한별로 나눕니다.</p>
+        </div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>기능</th><th>권한 배지</th><th>교사에게 설명할 말</th><th>주의 문구</th></tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><b>내 달란트</b></td>
+              <td><span class="tag gray">로그인 사용자</span></td>
+              <td>교사 본인의 달란트 잔액, 사용 대기, 구매 내역을 확인합니다.</td>
+              <td>학생 주문은 교사 본인 화면에 보이지 않을 수 있습니다.</td>
+            </tr>
+            <tr>
+              <td><b>달란트 수령</b></td>
+              <td><span class="tag gray">로그인 사용자</span></td>
+              <td>교사용 QR을 스캔하여 교사 본인이 달란트를 받습니다.</td>
+              <td>학생에게 달란트를 지급하는 화면이 아닙니다.</td>
+            </tr>
+            <tr>
+              <td><b>달란트 관리</b></td>
+              <td><span class="tag">일반 교사 40+</span></td>
+              <td>담당 부서/반 학생에게 출석 또는 활동 달란트를 기록합니다.</td>
+              <td>목록이 비면 담당 부서/반 설정을 먼저 확인합니다.</td>
+            </tr>
+            <tr>
+              <td><b>대리 구매</b></td>
+              <td><span class="tag">일반 교사 40+</span></td>
+              <td>학생 명의로 학생의 달란트를 사용해 상품 구매 신청을 넣습니다.</td>
+              <td>교사 달란트로 사는 것이 아닙니다.</td>
+            </tr>
+            <tr>
+              <td><b>사용자/상품/구매 관리</b></td>
+              <td><span class="tag green">부서 담당 60+</span></td>
+              <td>담당 부서 범위 안에서 운영 관리 기능을 사용합니다.</td>
+              <td>일반 교사 화면에는 보이지 않을 수 있습니다.</td>
+            </tr>
+            <tr>
+              <td><b>반환·보고서</b></td>
+              <td><span class="tag yellow">부장 교사 80+</span></td>
+              <td>운영 관리 기능으로 별도 권한이 필요합니다.</td>
+              <td>일반 교사 교육에서는 참고 수준으로만 다룹니다.</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <div>
+          <h2>3. 화면별 보완 카드</h2>
+          <p class="section-desc">기존 PDF 페이지에 덧붙이면 좋은 문구를 카드 형태로 정리했습니다.</p>
+        </div>
+      </div>
+      <div class="timeline">
+        <div class="step">
+          <div class="page">1쪽<br />표지</div>
+          <div class="body"><h3>기준 버전 수정</h3><p><b>기존:</b> v3.23.0 기준 → <b>수정:</b> v3.26.1 기준 / 일반 교사 40+ 권한자 온보딩 자료</p></div>
+        </div>
+        <div class="step">
+          <div class="page">2쪽<br />목표</div>
+          <div class="body"><h3>핵심 메뉴 보강</h3><p>기존 핵심 메뉴인 달란트 관리·상품 구매·내 달란트에 <b>달란트 수령</b>과 <b>대리 구매</b>를 독립 항목으로 추가합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">5쪽<br />로그인</div>
+          <div class="body"><h3>비밀번호 규칙 추가</h3><p>초기 비밀번호 1234 후 첫 로그인 시 변경. 새 비밀번호는 <b>8자 이상, 영문+숫자 포함</b>으로 안내합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">7쪽<br />내 달란트</div>
+          <div class="body"><h3>카드 의미 한 줄 설명</h3><p>사용 가능·수령 예정·사용 대기·사용 완료·누적 적립의 의미를 각 카드 아래 짧은 문장으로 추가합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">8쪽<br />QR 수령</div>
+          <div class="body"><h3>실패 상황 체크리스트화</h3><p>카메라 권한, 위치 권한, 유효기간, 대상 구분, 중복 수령 여부를 체크리스트로 정리합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">9쪽<br />달란트 관리</div>
+          <div class="body"><h3>목록 미노출 원인 선제 안내</h3><p>“학생 목록이 안 보이면 담당 부서/반 설정부터 확인하세요”라는 노란 안내 박스를 상단에 배치합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">11쪽<br />대리 구매</div>
+          <div class="body"><h3>오해 방지 문구 강화</h3><p>대리 구매는 <b>학생 명의 주문</b>이며 <b>학생의 사용 가능 달란트</b>로 신청된다는 문구를 크게 유지합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">12쪽<br />구매 상태</div>
+          <div class="body"><h3>취소 상태 설명 추가</h3><p>구매 신청 단계에서 취소하면 사용 대기 달란트가 복원되고, 주문은 구매 취소 상태로 처리된다고 설명합니다.</p></div>
+        </div>
+        <div class="step">
+          <div class="page">13쪽<br />Q&A</div>
+          <div class="body"><h3>권한 정책 확정 후 반영</h3><p>일반 교사가 답변까지 가능한지, 질문 등록만 가능한지 실제 정책을 확인하여 PDF·사이트·README 문구를 통일합니다.</p></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <div>
+          <h2>4. 달란트 지급 시연 흐름</h2>
+          <p class="section-desc">교사 교육에서 그대로 보여주기 좋은 4단계 흐름입니다.</p>
+        </div>
+      </div>
+      <div class="flow">
+        <div class="flow-card"><span class="tag">1</span><h3>학생 찾기</h3><p>담당 부서/반 학생 목록에서 대상을 선택합니다.</p></div>
+        <div class="flow-card"><span class="tag">2</span><h3>출석 또는 항목 선택</h3><p>출석은 즉시 지급, 활동은 항목 체크 후 지급합니다.</p></div>
+        <div class="flow-card"><span class="tag">3</span><h3>지급 확정</h3><p>중복 여부를 확인하고 지급 확정 버튼을 누릅니다.</p></div>
+        <div class="flow-card"><span class="tag">4</span><h3>상세 확인</h3><p>누가, 언제, 어떤 항목으로 지급했는지 확인합니다.</p></div>
+      </div>
+      <div class="note" style="margin-top:16px"><b>보완 문구:</b> 일반 교사는 주로 출석 버튼과 항목 선택 지급을 사용합니다. 금액을 직접 입력하는 수동 적립/사용은 권한에 따라 보이지 않을 수 있습니다.</div>
+    </section>
+
+    <section class="section grid-2">
+      <div class="panel">
+        <h2>5. QR 수령 실패 대응</h2>
+        <p class="section-desc">교사가 직접 받는 QR 기능에서 자주 막히는 지점입니다.</p>
+        <ul class="checklist" style="margin-top:16px">
+          <li>카메라가 열리지 않으면 브라우저 카메라 권한을 허용합니다.</li>
+          <li>위치 제한 QR은 브라우저 위치 권한과 실제 장소를 확인합니다.</li>
+          <li>학생용 QR인지 교사용 QR인지 대상 구분을 확인합니다.</li>
+          <li>유효기간이 지난 QR은 수령할 수 없습니다.</li>
+          <li>1회 수령 QR은 이미 받았다면 다시 받을 수 없습니다.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <h2>6. 대리 구매 실패 대응</h2>
+        <p class="section-desc">대리 구매에서 학생·상품이 안 보일 때 확인할 항목입니다.</p>
+        <ul class="checklist" style="margin-top:16px">
+          <li>담당 범위 밖 학생은 검색되지 않을 수 있습니다.</li>
+          <li>학생의 사용 가능 달란트가 부족하면 구매 신청이 제한됩니다.</li>
+          <li>품절 또는 비활성 상품은 신청 대상에서 제외될 수 있습니다.</li>
+          <li>학생 상품은 교사가 직접 구매하는 것이 아니라 대리 구매로 신청합니다.</li>
+          <li>대리 구매 주문은 학생 명의이므로 교사 본인 내 구매 상품에는 보이지 않을 수 있습니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <div>
+          <h2>7. 구매 상태 안내 카드</h2>
+          <p class="section-desc">학생과 교사 모두에게 반복해서 설명해야 하는 4단계 흐름입니다.</p>
+        </div>
+      </div>
+      <div class="flow">
+        <div class="flow-card"><span class="tag gray">신청</span><h3>구매 신청</h3><p>신청만 완료된 상태입니다. 이 단계에서는 취소할 수 있습니다.</p></div>
+        <div class="flow-card"><span class="tag">준비</span><h3>상품 준비</h3><p>담당자가 신청을 확인하고 상품을 준비하는 단계입니다.</p></div>
+        <div class="flow-card"><span class="tag yellow">확정</span><h3>상품 구매</h3><p>구매가 확정되며 이때 달란트가 실제로 차감됩니다.</p></div>
+        <div class="flow-card"><span class="tag green">완료</span><h3>상품 지급</h3><p>상품을 전달받은 완료 상태입니다.</p></div>
+      </div>
+      <div class="note" style="margin-top:16px"><b>취소 보완:</b> 구매 신청 단계에서 취소하면 사용 대기 달란트가 복원되고, 주문은 구매 취소 상태로 처리됩니다.</div>
+    </section>
+
+    <section class="section">
+      <div class="section-title">
+        <div>
+          <h2>8. 15분 시연 추천 순서</h2>
+          <p class="section-desc">실제 일반 교사 계정으로 시연하면 가장 자연스러운 순서입니다.</p>
+        </div>
+      </div>
+      <div class="grid-3">
+        <div class="panel"><p class="card-title">① 로그인</p><p class="card-text">교사 계정으로 접속하고 보이는 메뉴를 확인합니다.</p></div>
+        <div class="panel"><p class="card-title">② 달란트 관리</p><p class="card-text">출석 버튼과 항목 체크 지급을 시연합니다.</p></div>
+        <div class="panel"><p class="card-title">③ 내 달란트</p><p class="card-text">교사 본인 잔액과 사용 대기 의미를 설명합니다.</p></div>
+        <div class="panel"><p class="card-title">④ QR 수령</p><p class="card-text">교사용 QR 수령과 실패 체크리스트를 보여줍니다.</p></div>
+        <div class="panel"><p class="card-title">⑤ 상품 구매</p><p class="card-text">교사용 직접 구매와 학생용 상품 조회 차이를 설명합니다.</p></div>
+        <div class="panel"><p class="card-title">⑥ 대리 구매·Q&A</p><p class="card-text">학생 선택 후 상품 신청, 문제 발생 시 Q&A 확인 위치를 안내합니다.</p></div>
+      </div>
+    </section>
+
+    <section class="section grid-2">
+      <div class="script-box">
+        <h3>발표자가 그대로 읽어도 되는 마무리 멘트</h3>
+        <p>“오늘 기억할 것은 세 가지입니다. 첫째, 일반 교사는 담당 부서와 반 안에서 학생 달란트를 기록합니다. 둘째, 학생 상품은 교사 달란트가 아니라 학생 달란트로 대리 구매합니다. 셋째, 화면이 다르게 보이면 오류보다 먼저 권한과 담당 부서/반 설정을 확인합니다.”</p>
+      </div>
+      <div class="script-box">
+        <h3>가이드 첫 화면 추천 문구</h3>
+        <p>“이 가이드는 일반 교사가 달란트 지급, QR 수령, 교사용 상품 구매, 학생 대리 구매를 현장에서 바로 시연할 수 있도록 만든 안내서입니다.”</p>
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="panel">
+        <h2>최종 체크리스트</h2>
+        <div class="grid-2" style="margin-top:16px">
+          <ul class="checklist">
+            <li>표지 기준 버전을 v3.26.1로 수정했나요?</li>
+            <li>일반 교사 40+와 부서 담당 교사 60+ 기능을 분리했나요?</li>
+            <li>Q&A 답변 권한 문구를 실제 운영 정책과 맞췄나요?</li>
+            <li>학생 목록 미노출 시 담당 부서/반 확인 문구를 넣었나요?</li>
+          </ul>
+          <ul class="checklist">
+            <li>QR 수령 실패 체크리스트를 추가했나요?</li>
+            <li>대리 구매가 학생 명의 주문임을 강조했나요?</li>
+            <li>구매 취소 시 달란트 복원 문구를 넣었나요?</li>
+            <li>최신 일반 교사 계정 기준으로 화면 캡처를 갱신했나요?</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <p class="footer">CHO Talents · 교사 가이드 개선 자료 · HTML 단일 파일로 사이트 업로드 및 브라우저 인쇄 가능</p>
+  </main>
+</body>
+</html>

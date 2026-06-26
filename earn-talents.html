@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 적립 방법 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <style>
+    .earn-hero { text-align: center; margin-bottom: 2rem; }
+    .earn-hero-icon { font-size: 4rem; margin-bottom: 0.5rem; }
+    .earn-hero h1 { font-size: 2rem; font-weight: 900; color: var(--primary); margin-bottom: 0.5rem; }
+    .earn-hero p { color: #636e72; font-size: 1.05rem; }
+
+    .method-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    @media (max-width: 768px) {
+      .method-grid { grid-template-columns: repeat(3, 1fr); gap: 0.6rem; }
+      .method-card { padding: 1rem 0.6rem; }
+      .method-card .m-icon { font-size: 2rem; margin-bottom: 0.4rem; }
+      .method-card h3 { font-size: 0.85rem; }
+      .method-card .m-talent { font-size: 0.7rem; padding: 0.15rem 0.5rem; }
+      .method-card p { font-size: 0.72rem; line-height: 1.4; }
+    }
+
+    .method-card {
+      background: #fff;
+      border-radius: 20px;
+      padding: 2rem 1.5rem;
+      box-shadow: 0 4px 20px rgba(108, 92, 231, 0.08);
+      border: 2px solid transparent;
+      transition: transform 0.3s, box-shadow 0.3s, border-color 0.3s;
+      text-align: center;
+    }
+    .method-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 30px rgba(108, 92, 231, 0.15);
+    }
+
+    .method-card .m-icon { font-size: 3rem; margin-bottom: 0.8rem; display: block; }
+    .method-card h3 { font-size: 1.15rem; font-weight: 800; color: var(--primary); margin-bottom: 0.4rem; }
+    .method-card .m-talent {
+      display: inline-block;
+      background: linear-gradient(135deg, #fdcb6e, #f39c12);
+      color: #fff;
+      font-weight: 800;
+      font-size: 0.9rem;
+      padding: 0.25rem 0.8rem;
+      border-radius: 50px;
+      margin: 0.5rem 0;
+    }
+    .method-card .m-amount {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 28px;
+      margin: 0 0 0.55rem;
+      padding: 0.2rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(108, 92, 231, 0.1);
+      color: var(--c-primary);
+      border: 1px solid rgba(108, 92, 231, 0.22);
+      font-size: 0.82rem;
+      font-weight: 900;
+    }
+    .method-card .m-amount.missing {
+      color: var(--c-text-muted);
+      background: var(--t-subtle-surface, #f8f9fa);
+      border-color: var(--c-border);
+      font-weight: 700;
+    }
+    .method-card p { color: #636e72; font-size: 0.92rem; line-height: 1.6; }
+
+    .method-card:nth-child(1) { border-color: #fdcb6e; }
+    .method-card:nth-child(2) { border-color: #55efc4; }
+    .method-card:nth-child(3) { border-color: #74b9ff; }
+    .method-card:nth-child(4) { border-color: #fd79a8; }
+    .method-card:nth-child(5) { border-color: #a29bfe; }
+    .method-card:nth-child(6) { border-color: #ffeaa7; }
+
+    .tip-box {
+      background: linear-gradient(135deg, #a29bfe22, #fd79a822);
+      border-radius: 16px;
+      padding: 1.5rem 2rem;
+      border: 2px dashed var(--primary);
+      text-align: center;
+    }
+    .tip-box h3 { font-size: 1.1rem; color: var(--primary); margin-bottom: 0.5rem; }
+    .tip-box p { color: #636e72; font-size: 0.95rem; line-height: 1.7; }
+  </style>
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+
+  <div class="page-container">
+    <div class="earn-hero">
+      <div class="earn-hero-icon">💰</div>
+      <h1>달란트 적립 방법</h1>
+      <p>다양한 활동으로 달란트를 모아 보세요!</p>
+    </div>
+
+    <div id="earnTabBar" style="display:flex;gap:0.5rem;margin-bottom:1.2rem;justify-content:center;">
+      <button class="filter-btn active" id="earnTabStudent" onclick="switchEarnTab('student')" style="padding:0.5rem 1.2rem;font-size:0.95rem;">🎒 학생</button>
+      <button class="filter-btn" id="earnTabTeacher" onclick="switchEarnTab('teacher')" style="padding:0.5rem 1.2rem;font-size:0.95rem;display:none;">👩‍🏫 교사</button>
+    </div>
+
+    <div class="method-grid" id="earnStudentGrid">
+      <div class="method-card" data-talent-aliases="출석,주일 어린이예배,어린이예배">
+        <span class="m-icon">⛪</span>
+        <h3>주일 어린이예배</h3>
+        <span class="m-talent">매주 출석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>주일 어린이예배에<br/>참석하면 달란트를<br/>받을 수 있어요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="토요일 센터,센터 출석,SGS,특별 활동">
+        <span class="m-icon">📚</span>
+        <h3>토요일 센터<br/>(SGS기간)</h3>
+        <span class="m-talent">센터 출석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>SGS 기간 중<br/>토요일 센터에 참석하면<br/>달란트를 받아요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="말씀 암송,말씀암송,매주 말씀암송">
+        <span class="m-icon">✍️</span>
+        <h3>매주 말씀암송</h3>
+        <span class="m-talent">선생님 확인 후 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>매주 정해진 말씀을<br/>암송하고 확인받으면<br/>달란트를 받아요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="미션북 시상,미션 완료,특별 활동">
+        <span class="m-icon">🏆</span>
+        <h3>미션북 시상</h3>
+        <span class="m-talent">미션 완료 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>미션북의 과제를<br/>완료하고 시상을 받으면<br/>달란트가 지급돼요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="예배 태도,찬양,선행">
+        <span class="m-icon">🙏</span>
+        <h3>예배 태도</h3>
+        <span class="m-talent">선생님 평가 후 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>예배 중 바른 태도로<br/>참여하면 선생님이<br/>달란트를 줘요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="친구 초대,전도,새신자,전도/새신자">
+        <span class="m-icon">🤝</span>
+        <h3>전도/새신자</h3>
+        <span class="m-talent">특별 항목</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>친구를 교회에 초대하거나<br/>새신자를 데려오면<br/>큰 달란트를 받아요!</p>
+      </div>
+    </div>
+
+    <div class="method-grid" id="earnTeacherGrid" style="display:none;">
+      <div class="method-card" data-talent-aliases="예배 참석,주일 어린이예배,어린이예배">
+        <span class="m-icon">⛪</span>
+        <h3>주일 어린이예배</h3>
+        <span class="m-talent">예배 참석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>주일 어린이예배에<br/>교사로 참석하면<br/>달란트를 받아요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="주일 아침기도회,아침기도회,특별 활동 참여">
+        <span class="m-icon">🌅</span>
+        <h3>주일 아침기도회</h3>
+        <span class="m-talent">기도회 참석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>주일 아침기도회에<br/>참석하면 달란트를<br/>받을 수 있어요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="WAY MAKER 기도회,웨이메이커 기도회,특별 활동 참여">
+        <span class="m-icon">🔥</span>
+        <h3>WAY MAKER<br/>기도회</h3>
+        <span class="m-talent">기도회 참석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>WAY MAKER 기도회에<br/>참석하면 달란트를<br/>받아요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="초등부 기도회,기도회,특별 활동 참여">
+        <span class="m-icon">🙏</span>
+        <h3>초등부 기도회</h3>
+        <span class="m-talent">기도회 참석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>초등부 기도회에<br/>참석하면 달란트를<br/>받을 수 있어요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="교회행사,교회 행사,봉사 활동,특별 활동 참여">
+        <span class="m-icon">🎉</span>
+        <h3>교회행사</h3>
+        <span class="m-talent">행사 참여 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>교회에서 진행하는<br/>각종 행사에 참여하면<br/>달란트를 받아요!</p>
+      </div>
+      <div class="method-card" data-talent-aliases="월례회,교사 회의 참석,교사회의 참석">
+        <span class="m-icon">📋</span>
+        <h3>월례회</h3>
+        <span class="m-talent">월례회 참석 시 지급</span>
+        <span class="m-amount">금액 불러오는 중</span>
+        <p>매월 진행되는<br/>월례회에 참석하면<br/>달란트를 받아요!</p>
+      </div>
+    </div>
+
+    <div class="tip-box">
+      <h3>💡 달란트 적립 TIP!</h3>
+      <p>
+        달란트 항목과 금액은 선생님이 정한 설정에 따라 달라질 수 있어요.<br/>
+        열심히 활동하고 선생님께 확인받으면 내 달란트에 쌓여요!<br/>
+        모은 달란트는 <strong>달란트 상점</strong>에서 원하는 상품과 교환할 수 있어요! 🎁
+      </p>
+    </div>
+  </div>
+
+  <script>
+    function switchEarnTab(tab) {
+      document.getElementById('earnTabStudent').classList.toggle('active', tab === 'student');
+      document.getElementById('earnTabTeacher').classList.toggle('active', tab === 'teacher');
+      document.getElementById('earnStudentGrid').style.display = tab === 'student' ? '' : 'none';
+      document.getElementById('earnTeacherGrid').style.display = tab === 'teacher' ? '' : 'none';
+    }
+  </script>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script src="js/talent.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    autoLogPageView();
+
+    (async () => {
+      await navInit();
+      const session = await loadAuthSession();
+      if (session) navUpdateAuth(session);
+      await initTheme();
+      if (session && session.permissionRank >= 40) {
+        document.getElementById('earnTabTeacher').style.display = '';
+      }
+      switchEarnTab(session && session.userType === 'teacher' ? 'teacher' : 'student');
+      await loadEarnTalentAmounts();
+    })();
+
+    function normalizeTalentName(value) {
+      return String(value || '')
+        .toLowerCase()
+        .replace(/\s+/g, '')
+        .replace(/[()（）/·ㆍ.-]/g, '');
+    }
+
+    function findMatchingTalentItem(card, items) {
+      const title = card.querySelector('h3')?.innerText || '';
+      const aliases = (card.dataset.talentAliases || '')
+        .split(',')
+        .map(v => v.trim())
+        .filter(Boolean);
+      const targets = [title, ...aliases].map(normalizeTalentName).filter(Boolean);
+      const activeItems = (items || []).filter(item => item && item.is_active !== false);
+
+      return activeItems.find(item => targets.includes(normalizeTalentName(item.name)))
+        || activeItems.find(item => targets.some(target => normalizeTalentName(item.name).includes(target) || target.includes(normalizeTalentName(item.name))));
+    }
+
+    async function fillTalentAmounts(targetType, gridId) {
+      const grid = document.getElementById(gridId);
+      if (!grid) return;
+      const badges = grid.querySelectorAll('.m-amount');
+      badges.forEach(badge => {
+        badge.textContent = '금액 불러오는 중';
+        badge.classList.remove('missing');
+      });
+
+      const { data, error } = await fetchTalentItems(targetType);
+      if (error) {
+        badges.forEach(badge => {
+          badge.textContent = '금액 확인 필요';
+          badge.classList.add('missing');
+        });
+        return;
+      }
+
+      grid.querySelectorAll('.method-card').forEach(card => {
+        const badge = card.querySelector('.m-amount');
+        const ruleEl = card.querySelector('.m-talent');
+        const descEl = card.querySelector('p');
+        const item = findMatchingTalentItem(card, data || []);
+        if (item) {
+          badge.textContent = `+${Number(item.talent_amount || 0).toLocaleString()} 달란트`;
+          badge.title = `DB 달란트 항목: ${item.name}`;
+          badge.classList.remove('missing');
+          if (ruleEl && item.giving_rule) ruleEl.textContent = item.giving_rule;
+          if (descEl && item.giving_description) descEl.innerHTML = item.giving_description.replace(/\n/g, '<br/>');
+        } else {
+          badge.textContent = '항목 금액 미설정';
+          badge.title = '관리 > 달란트 항목에서 연결할 항목명을 확인해주세요.';
+          badge.classList.add('missing');
+        }
+      });
+    }
+
+    async function loadEarnTalentAmounts() {
+      if (!_sb || typeof fetchTalentItems !== 'function') return;
+      await Promise.all([
+        fillTalentAmounts('student', 'earnStudentGrid'),
+        fillTalentAmounts('teacher', 'earnTeacherGrid')
+      ]);
+    }
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

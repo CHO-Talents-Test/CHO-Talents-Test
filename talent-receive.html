@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 수령 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <style>
+    .qr-hero { text-align: center; margin-bottom: 1.5rem; }
+    .qr-hero h1 { font-size: 1.6rem; color: var(--c-primary); }
+    .qr-hero p { color: var(--c-text-muted); font-size: 0.9rem; }
+    .qr-container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+    .qr-input-area { background: #fff; border: 2px dashed var(--c-border); border-radius: 16px; padding: 2rem; text-align: center; margin-bottom: 1.5rem; }
+    .qr-input-area.success { border-color: #2b8a3e; background: #f0fff4; }
+    .qr-input-area.error { border-color: #e03131; background: #fff5f5; }
+    .qr-input { width: 100%; max-width: 360px; padding: 0.8rem 1rem; font-size: 1.1rem; border: 2px solid var(--c-border); border-radius: 12px; text-align: center; letter-spacing: 2px; font-weight: 700; box-sizing: border-box; }
+    .qr-input:focus { border-color: var(--c-primary); outline: none; }
+    .btn-scan { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding: 0.7rem 1.5rem; background: var(--c-primary); color: #fff; border: none; border-radius: 50px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+    .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; }
+    .qr-result { margin-top: 1rem; padding: 1rem; border-radius: 12px; font-size: 0.95rem; display: none; }
+    .qr-result.show { display: block; }
+    .qr-result.ok { background: #d3f9d8; color: #2b8a3e; }
+    .qr-result.fail { background: #ffe3e3; color: #e03131; }
+    .scan-history { margin-top: 2rem; }
+    .scan-history h3 { font-size: 1rem; margin: 0; }
+    .scan-item { display: flex; justify-content: space-between; align-items: center; padding: 0.6rem 0.8rem; background: #f8f9fa; border-radius: 8px; margin-bottom: 0.4rem; font-size: 0.85rem; }
+    .scan-item .amt { font-weight: 700; color: #2b8a3e; }
+    #cameraWrap { display: none; width: 100%; max-width: 360px; margin: 1rem auto; position: relative; border-radius: 12px; overflow: hidden; border: 3px solid var(--c-primary); }
+    #cameraWrap video { width: 100%; display: block; }
+    #cameraWrap canvas { display: none; }
+    .scan-overlay { position: absolute; inset: 0; pointer-events: none; }
+    .scan-overlay .scan-frame { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 65%; height: 65%; border: 2px solid rgba(255,255,255,0.7); border-radius: 12px; }
+    .scan-overlay .scan-frame::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; background: #51cf66; animation: scanLine 2s ease-in-out infinite; }
+    @keyframes scanLine { 0%, 100% { top: 0; } 50% { top: 100%; } }
+    .scan-status { position: absolute; bottom: 8px; left: 0; right: 0; text-align: center; font-size: 0.78rem; color: #fff; background: rgba(0,0,0,0.5); padding: 4px 0; }
+    .scan-detected { animation: flashGreen 0.3s; }
+    @keyframes flashGreen { 0% { border-color: var(--c-primary); } 50% { border-color: #51cf66; } 100% { border-color: var(--c-primary); } }
+  </style>
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+
+  <div class="qr-container">
+    <div class="qr-hero">
+      <h1>📱 달란트 수령</h1>
+      <p>QR 코드를 스캔하거나 코드를 입력하여 달란트를 수령하세요</p>
+    </div>
+
+    <div class="qr-input-area" id="qrArea">
+      <div id="adminInputWrap" style="display:none;">
+        <input type="text" class="qr-input" id="qrInput" placeholder="QR 코드 입력" maxlength="30" autocomplete="off" />
+        <div style="display:flex;gap:0.5rem;justify-content:center;flex-wrap:wrap;margin-top:0.5rem;">
+          <button class="btn-scan" id="btnScan" onclick="scanCode()">🔍 코드 확인</button>
+        </div>
+      </div>
+
+      <div id="cameraWrap">
+        <video id="cameraVideo" playsinline muted></video>
+        <canvas id="cameraCanvas"></canvas>
+        <div class="scan-overlay">
+          <div class="scan-frame"></div>
+        </div>
+        <div class="scan-status" id="scanStatus">QR 코드를 카메라에 비춰주세요</div>
+      </div>
+
+      <button class="btn-scan" id="btnCamera" onclick="toggleCamera()" style="background:#868e96;">📷 카메라</button>
+      <div class="qr-result" id="qrResult"></div>
+    </div>
+    <div id="qrCodeListSection" style="margin-top:1.5rem;"></div>
+
+    <div class="scan-history" id="historySection" style="display:none;">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.8rem;">
+        <h3>📋 최근 수령 내역</h3>
+        <span id="historyPageSizeWrap"></span>
+      </div>
+      <div id="historyList"></div>
+      <div id="historyPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script src="js/page-size.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let cameraStream = null;
+    let scanAnimFrame = null;
+    let scanPaused = false;
+    let scanProcessing = false;
+    let scanCooldownUntil = 0;
+    let scanCooldownTimer = null;
+    const SCAN_COOLDOWN_MS = 5000;
+    let QR_PAGE_SIZE = 5;
+    let allQRCodes = [];
+    let qrPages = { student: 1, teacher: 1 };
+    let historyItems = [];
+    let historyPage = 1;
+    let historyPageSize = null;
+
+    (async () => {
+      await navInit();
+      session = await initPage(20, 'login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      const myRank = session.permissionRank || 0;
+      if (myRank >= 90) {
+        document.getElementById('adminInputWrap').style.display = '';
+      }
+      autoLogPageView();
+      QR_PAGE_SIZE = await loadPageSize('talent_receive', 5);
+      historyPageSize = await loadPageSize('talent_receive_history', 5);
+      updateNavOrderBadge();
+      loadHistory();
+      loadQRList();
+    })();
+
+    function isScanCoolingDown() {
+      return Date.now() < scanCooldownUntil;
+    }
+
+    function startScanCooldown() {
+      const statusEl = document.getElementById('scanStatus');
+      scanPaused = true;
+      scanCooldownUntil = Date.now() + SCAN_COOLDOWN_MS;
+      if (statusEl) statusEl.textContent = '처리 중입니다. 5초 후 다시 스캔할 수 있습니다';
+
+      if (scanCooldownTimer) clearTimeout(scanCooldownTimer);
+      scanCooldownTimer = setTimeout(() => {
+        scanCooldownTimer = null;
+        scanCooldownUntil = 0;
+        scanPaused = false;
+        if (cameraStream && statusEl) statusEl.textContent = 'QR 코드를 카메라에 비춰주세요';
+      }, SCAN_COOLDOWN_MS);
+    }
+
+    function clearScanCooldown() {
+      if (scanCooldownTimer) {
+        clearTimeout(scanCooldownTimer);
+        scanCooldownTimer = null;
+      }
+      scanCooldownUntil = 0;
+      scanPaused = false;
+    }
+
+    async function scanCode(options = {}) {
+      const fromCamera = options.fromCamera === true;
+      const code = document.getElementById('qrInput').value.trim();
+      if (!code) { showResult('fail', '코드를 입력해주세요.'); return; }
+      if (scanProcessing) return;
+      scanProcessing = true;
+      const btn = document.getElementById('btnScan');
+      btn.disabled = true;
+      btn.textContent = '확인 중...';
+      try {
+        const { data: qr, error } = await _sb.from('talent_qr_codes')
+          .select('*').eq('code', code).eq('is_active', true).single();
+        if (error || !qr) { showResult('fail', '유효하지 않은 코드입니다.'); return; }
+
+        const now = new Date();
+        if (qr.valid_from && new Date(qr.valid_from) > now) {
+          showResult('fail', '아직 유효하지 않은 코드입니다.'); return;
+        }
+        if (qr.valid_until && new Date(qr.valid_until) < now) {
+          showResult('fail', '만료된 코드입니다.'); return;
+        }
+        if (qr.expires_at && new Date(qr.expires_at) < now) {
+          showResult('fail', '만료된 코드입니다.'); return;
+        }
+        if (qr.valid_start_time || qr.valid_end_time) {
+          const nowKST = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+          const currentTime =
+            String(nowKST.getHours()).padStart(2, '0') + ':' +
+            String(nowKST.getMinutes()).padStart(2, '0') + ':' +
+            String(nowKST.getSeconds()).padStart(2, '0');
+          const startTime = qr.valid_start_time ? String(qr.valid_start_time).slice(0, 8) : '00:00:00';
+          const endTime = qr.valid_end_time ? String(qr.valid_end_time).slice(0, 8) : '23:59:59';
+          if (currentTime < startTime || currentTime > endTime) {
+            showResult('fail', '현재는 수령 가능한 시간이 아닙니다.\n수령 가능 시간: ' + startTime.slice(0, 5) + ' ~ ' + endTime.slice(0, 5));
+            return;
+          }
+        }
+        if (qr.max_uses > 0 && (qr.used_count || 0) >= qr.max_uses) {
+          showResult('fail', '사용 횟수가 초과된 코드입니다.'); return;
+        }
+
+        const { data: myProfile } = await _sb.from('profiles').select('user_type').eq('id', session.id).single();
+        const myType = myProfile?.user_type || 'student';
+        if (qr.target_type && qr.target_type !== myType) {
+          const targetLabel = qr.target_type === 'teacher' ? '교사' : '학생';
+          showResult('fail', '⚠️ 이 QR 코드는 ' + targetLabel + ' 전용입니다.\n현재 계정 유형이 일치하지 않아 수령할 수 없습니다.');
+          return;
+        }
+
+        if (qr.location_lat && qr.location_lng && qr.location_radius) {
+          try {
+            const pos = await new Promise((resolve, reject) => {
+              if (!navigator.geolocation) { reject(new Error('위치 서비스를 지원하지 않는 브라우저입니다.')); return; }
+              navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 });
+            });
+            const dist = haversineDistance(pos.coords.latitude, pos.coords.longitude, qr.location_lat, qr.location_lng);
+            if (dist > qr.location_radius) {
+              const radiusText = qr.location_radius >= 1000 ? (qr.location_radius/1000) + 'km' : qr.location_radius + 'm';
+              const locName = qr.location_name || '지정 위치';
+              showResult('fail', '📍 위치 제한 코드입니다.\n📌 ' + locName + '\n반경 ' + radiusText + ' 이내에서만 수령 가능합니다.\n현재 거리: 약 ' + Math.round(dist) + 'm');
+              return;
+            }
+          } catch (geoErr) {
+            const locName = qr.location_name ? ' (' + qr.location_name + ')' : '';
+            showResult('fail', '📍 위치 확인이 필요한 코드입니다.' + locName + '\n위치 권한을 허용해주세요.\n(' + (geoErr.message || geoErr) + ')');
+            return;
+          }
+        }
+
+        if (qr.talent_item_id) {
+          const wkStart = _getWeekStartKST();
+          try {
+            const { data: adminEarns } = await _sb.from('talent_transactions')
+              .select('id').eq('user_id', session.id)
+              .eq('talent_item_id', qr.talent_item_id)
+              .eq('type', 'earn').eq('source', 'admin')
+              .gte('created_at', wkStart.toISOString());
+            if (adminEarns && adminEarns.length > 0) {
+              showResult('fail', '이번 주에 관리자로부터 이미 해당 항목을 지급받았습니다.'); return;
+            }
+          } catch (srcErr) {
+            const { data: allEarns } = await _sb.from('talent_transactions')
+              .select('id, created_by').eq('user_id', session.id)
+              .eq('talent_item_id', qr.talent_item_id)
+              .eq('type', 'earn')
+              .gte('created_at', wkStart.toISOString());
+            if (allEarns && allEarns.some(e => e.created_by !== session.id)) {
+              showResult('fail', '이번 주에 관리자로부터 이미 해당 항목을 지급받았습니다.'); return;
+            }
+          }
+        }
+
+        const repeatType = qr.repeat_type || 'none';
+        if (repeatType !== 'none') {
+          const canReceive = checkRepeatEligibility(qr);
+          if (!canReceive.ok) {
+            showResult('fail', canReceive.msg); return;
+          }
+          const todayStart = getTodayStartKST();
+          const todayEnd = getTodayEndKST();
+          const { data: todayScans } = await _sb.from('talent_qr_scans')
+            .select('id').eq('qr_code_id', qr.id).eq('user_id', session.id)
+            .gte('scanned_at', todayStart).lte('scanned_at', todayEnd);
+          if (todayScans && todayScans.length > 0) {
+            showResult('fail', '오늘은 이미 수령한 코드입니다.\n(매일 00:00에 초기화됩니다)'); return;
+          }
+        }
+
+        const { data: rpcResult, error: rpcErr } = await _sb.rpc('scan_qr_talent', {
+          p_qr_code_id: qr.id,
+          p_user_id: session.id
+        });
+
+        if (rpcErr) {
+          console.error('[QR-SCAN] RPC error:', rpcErr);
+          showResult('fail', '수령 처리 중 오류: ' + (rpcErr.message || rpcErr));
+          return;
+        }
+        if (rpcResult && rpcResult.success === false) {
+          if (rpcResult.error === 'Already received') {
+            showResult('fail', '이미 수령한 코드입니다.');
+          } else {
+            showResult('fail', '수령 실패: ' + rpcResult.error);
+          }
+          return;
+        }
+
+        session.talentBalance = rpcResult.balance;
+        setSession(session);
+
+        const itemName = qr.description || 'QR 달란트';
+        await logInfo('qr_scan', { 항목명: itemName, 금액: rpcResult.amount });
+        showResult('ok', `✅ ${rpcResult.amount} 달란트를 수령했습니다! (${itemName})`);
+        document.getElementById('qrInput').value = '';
+        loadHistory();
+      } catch (e) {
+        console.error('[QR-SCAN] Exception:', e);
+        showResult('fail', '오류가 발생했습니다: ' + (e.message || e));
+      } finally {
+        scanProcessing = false;
+        btn.disabled = false;
+        btn.textContent = '🔍 코드 확인';
+        if (!fromCamera && !isScanCoolingDown()) scanPaused = false;
+      }
+    }
+
+    function _getWeekStartKST() {
+      const now = new Date();
+      const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const day = kst.getUTCDay();
+      const diff = day === 0 ? 6 : day - 1;
+      kst.setUTCDate(kst.getUTCDate() - diff);
+      kst.setUTCHours(0, 0, 0, 0);
+      return new Date(kst.getTime() - 9 * 60 * 60 * 1000);
+    }
+
+    function getTodayStartKST() {
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0).toISOString();
+    }
+    function getTodayEndKST() {
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString();
+    }
+    function getWeekOfMonth(d) {
+      const first = new Date(d.getFullYear(), d.getMonth(), 1);
+      return Math.ceil((d.getDate() + first.getDay()) / 7);
+    }
+    function checkRepeatEligibility(qr) {
+      const now = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Seoul' }));
+      const rt = qr.repeat_type;
+      if (rt === 'daily') return { ok: true };
+      const today = now.getDay();
+      if (rt === 'weekday') {
+        const days = qr.repeat_days || [];
+        if (!days.includes(today)) {
+          const DAY_N = ['일','월','화','수','목','금','토'];
+          return { ok: false, msg: '오늘은 수령 가능한 요일이 아닙니다.\n수령 가능: ' + days.map(d => DAY_N[d]).join(', ') };
+        }
+        return { ok: true };
+      }
+      if (rt === 'week_weekday') {
+        const days = qr.repeat_days || [];
+        const weeks = qr.repeat_weeks || [];
+        const weekNum = getWeekOfMonth(now);
+        if (!weeks.includes(weekNum)) {
+          return { ok: false, msg: '이번 주는 수령 가능한 주차가 아닙니다.\n수령 가능: ' + weeks.map(w => w + '주차').join(', ') };
+        }
+        if (!days.includes(today)) {
+          const DAY_N = ['일','월','화','수','목','금','토'];
+          return { ok: false, msg: '오늘은 수령 가능한 요일이 아닙니다.\n수령 가능: ' + days.map(d => DAY_N[d]).join(', ') };
+        }
+        return { ok: true };
+      }
+      return { ok: true };
+    }
+
+    function haversineDistance(lat1, lon1, lat2, lon2) {
+      const R = 6371000;
+      const dLat = (lat2 - lat1) * Math.PI / 180;
+      const dLon = (lon2 - lon1) * Math.PI / 180;
+      const a = Math.sin(dLat/2) * Math.sin(dLat/2)
+        + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
+        * Math.sin(dLon/2) * Math.sin(dLon/2);
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function showResult(type, msg) {
+      const el = document.getElementById('qrResult');
+      const area = document.getElementById('qrArea');
+      el.className = 'qr-result show ' + type;
+      el.textContent = msg;
+      area.className = 'qr-input-area ' + (type === 'ok' ? 'success' : type === 'fail' ? 'error' : '');
+      setTimeout(() => { area.className = 'qr-input-area'; }, 3000);
+    }
+
+    async function loadHistory() {
+      try {
+        const { data } = await _sb.from('talent_transactions')
+          .select('*')
+          .eq('user_id', session.id).eq('type', 'earn')
+          .order('created_at', { ascending: false }).limit(100);
+        historyItems = data || [];
+        historyPage = 1;
+        renderHistory();
+      } catch (e) { /* column may not exist yet */ }
+    }
+
+    function getHistoryPageSize() {
+      return historyPageSize || 5;
+    }
+
+    function renderHistory() {
+      const sec = document.getElementById('historySection');
+      const list = document.getElementById('historyList');
+      const sizeWrap = document.getElementById('historyPageSizeWrap');
+      const paging = document.getElementById('historyPaging');
+      if (!historyItems.length) {
+        sec.style.display = 'none';
+        if (list) list.innerHTML = '';
+        if (sizeWrap) sizeWrap.innerHTML = '';
+        if (paging) paging.innerHTML = '';
+        return;
+      }
+      sec.style.display = '';
+      const pageSize = getHistoryPageSize();
+      const totalPages = Math.max(1, Math.ceil(historyItems.length / pageSize));
+      if (historyPage > totalPages) historyPage = totalPages;
+      const startIdx = (historyPage - 1) * pageSize;
+      const pageItems = historyItems.slice(startIdx, startIdx + pageSize);
+      list.innerHTML = pageItems.map(t => {
+          const dt = new Date(t.created_at);
+          const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+          const srcLabel = t.source === 'qr'
+            ? '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#d0ebff;color:#1971c2;margin-right:0.3rem;">📱 QR</span>'
+            : '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#fff3bf;color:#e67700;margin-right:0.3rem;">👨‍💼 관리자</span>';
+          const desc = (t.description || '-').replace(/\[[0-9a-f-]{36}\]\s*/gi, '');
+          return `<div class="scan-item">${srcLabel}<span>${dateStr} - ${desc}</span><span class="amt">+${t.amount || 0} 달란트</span></div>`;
+        }).join('');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('talent_receive_history', pageSize, 'onHistoryPageSizeChange(this.value)');
+      if (paging) paging.innerHTML = buildPagingButtons(historyPage, totalPages, 'goHistoryPage(__PAGE__)');
+    }
+
+    function goHistoryPage(page) {
+      historyPage = page;
+      renderHistory();
+    }
+
+    async function onHistoryPageSizeChange(val) {
+      historyPageSize = parseInt(val, 10) || 5;
+      historyPage = 1;
+      await savePageSize('talent_receive_history', historyPageSize);
+      renderHistory();
+    }
+
+    async function toggleCamera() {
+      const wrap = document.getElementById('cameraWrap');
+      const video = document.getElementById('cameraVideo');
+      const btn = document.getElementById('btnCamera');
+
+      if (cameraStream) {
+        stopCamera();
+        return;
+      }
+
+      try {
+        btn.textContent = '카메라 시작 중...';
+        btn.disabled = true;
+
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
+        });
+
+        wrap.style.display = 'block';
+        video.srcObject = cameraStream;
+        video.setAttribute('playsinline', '');
+        video.setAttribute('webkit-playsinline', '');
+        video.muted = true;
+        await video.play();
+
+        btn.textContent = '📷 카메라 끄기';
+        btn.style.background = '#e03131';
+        btn.disabled = false;
+        startQRScan();
+      } catch (e) {
+        wrap.style.display = 'none';
+        btn.textContent = '📷 카메라';
+        btn.style.background = '#868e96';
+        btn.disabled = false;
+        if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+        alert('카메라를 사용할 수 없습니다: ' + (e.message || e));
+      }
+    }
+
+    function stopCamera() {
+      if (scanAnimFrame) { cancelAnimationFrame(scanAnimFrame); scanAnimFrame = null; }
+      clearScanCooldown();
+      if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+      const video = document.getElementById('cameraVideo');
+      video.srcObject = null;
+      document.getElementById('cameraWrap').style.display = 'none';
+      const btn = document.getElementById('btnCamera');
+      btn.textContent = '📷 카메라';
+      btn.style.background = '#868e96';
+    }
+
+    function startQRScan() {
+      const video = document.getElementById('cameraVideo');
+      const canvas = document.getElementById('cameraCanvas');
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const statusEl = document.getElementById('scanStatus');
+
+      function tick() {
+        if (!cameraStream) return;
+        if (video.readyState === video.HAVE_ENOUGH_DATA && !scanPaused && !scanProcessing && !isScanCoolingDown()) {
+          canvas.width = video.videoWidth;
+          canvas.height = video.videoHeight;
+          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const qrResult = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
+
+          if (qrResult && qrResult.data) {
+            statusEl.textContent = '✅ QR 코드 감지됨';
+            document.getElementById('cameraWrap').classList.add('scan-detected');
+            setTimeout(() => document.getElementById('cameraWrap').classList.remove('scan-detected'), 300);
+
+            document.getElementById('qrInput').value = qrResult.data;
+            startScanCooldown();
+            scanCode({ fromCamera: true });
+          } else {
+            statusEl.textContent = 'QR 코드를 카메라에 비춰주세요';
+          }
+        }
+        scanAnimFrame = requestAnimationFrame(tick);
+      }
+      tick();
+    }
+
+    document.getElementById('qrInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') scanCode();
+    });
+
+    async function loadQRList() {
+      try {
+        const { data } = await _sb.from('talent_qr_codes')
+          .select('id, code, description, amount, target_type, valid_from, valid_until, valid_start_time, valid_end_time, expires_at, is_active, max_uses, used_count, talent_item_id')
+          .eq('is_active', true).order('created_at', { ascending: false });
+        allQRCodes = (data || []).filter(q => {
+          const now = new Date();
+          if (q.max_uses > 0 && (q.used_count || 0) >= q.max_uses) return false;
+          return true;
+        });
+        renderQRList();
+      } catch (e) {}
+    }
+
+    function renderQRList() {
+      const sec = document.getElementById('qrCodeListSection');
+      const now = new Date();
+      const studentCodes = allQRCodes.filter(q => q.target_type === 'student' || !q.target_type);
+      const teacherCodes = allQRCodes.filter(q => q.target_type === 'teacher');
+      studentCodes.sort((a, b) => {
+        const aExp = (a.valid_until && new Date(a.valid_until) < now) || (a.expires_at && new Date(a.expires_at) < now);
+        const bExp = (b.valid_until && new Date(b.valid_until) < now) || (b.expires_at && new Date(b.expires_at) < now);
+        if (aExp !== bExp) return aExp ? 1 : -1;
+        return 0;
+      });
+      teacherCodes.sort((a, b) => {
+        const aExp = (a.valid_until && new Date(a.valid_until) < now) || (a.expires_at && new Date(a.expires_at) < now);
+        const bExp = (b.valid_until && new Date(b.valid_until) < now) || (b.expires_at && new Date(b.expires_at) < now);
+        if (aExp !== bExp) return aExp ? 1 : -1;
+        return 0;
+      });
+      let html = '';
+      if (studentCodes.length > 0) html += renderQRGroup('🎒 학생 대상', studentCodes, 'student', now);
+      if (teacherCodes.length > 0) html += renderQRGroup('👩‍🏫 교사 대상', teacherCodes, 'teacher', now);
+      if (!html) html = '<p style="text-align:center;color:var(--c-text-muted);font-size:0.85rem;">현재 활성 QR 코드가 없습니다.</p>';
+      sec.innerHTML = html;
+    }
+
+    function renderQRGroup(title, codes, groupKey, now) {
+      const total = Math.ceil(codes.length / QR_PAGE_SIZE);
+      if ((qrPages[groupKey] || 1) > total) qrPages[groupKey] = total;
+      const page = qrPages[groupKey] || 1;
+      const start = (page - 1) * QR_PAGE_SIZE;
+      const slice = codes.slice(start, start + QR_PAGE_SIZE);
+      const pageSizeHtml = codes.length > 0 ? renderPageSizeSelector('talent_receive', QR_PAGE_SIZE, "onQRPageSizeChange(this.value)") : '';
+      let html = '<div style="margin-bottom:1.5rem;"><div style="display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid '+(groupKey==='student'?'#51cf66':'#4dabf7')+';padding-bottom:0.3rem;margin-bottom:0.5rem;"><h3 style="font-size:0.95rem;margin:0;">'+title+' <span style="font-size:0.8rem;color:var(--c-text-muted);">('+codes.length+'개)</span></h3><span>'+pageSizeHtml+'</span></div>';
+      slice.forEach(q => {
+        const expired = (q.valid_until && new Date(q.valid_until) < now) || (q.expires_at && new Date(q.expires_at) < now);
+        const bg = expired ? '#f8f9fa' : '#fff';
+        const opacity = expired ? '0.6' : '1';
+        const badge = expired ? '<span style="background:#e03131;color:#fff;font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:4px;">만료</span>' : '<span style="background:#2b8a3e;color:#fff;font-size:0.7rem;padding:0.1rem 0.4rem;border-radius:4px;">활성</span>';
+        html += '<div style="background:'+bg+';opacity:'+opacity+';border:1px solid var(--c-border);border-radius:8px;padding:0.6rem 0.8rem;margin-bottom:0.4rem;display:flex;justify-content:space-between;align-items:center;font-size:0.85rem;">';
+        html += '<div><strong>'+((q.description||'QR 달란트'))+'</strong> <span style="color:#2b8a3e;font-weight:700;">+'+q.amount+'</span> '+badge+'</div>';
+        if (q.valid_until || q.expires_at) {
+          const exp = new Date(q.valid_until || q.expires_at);
+          html += '<span style="font-size:0.75rem;color:var(--c-text-muted);">~'+exp.getFullYear()+'-'+String(exp.getMonth()+1).padStart(2,'0')+'-'+String(exp.getDate()).padStart(2,'0')+'</span>';
+        } else {
+          html += '<span style="font-size:0.75rem;color:var(--c-text-muted);">무기한</span>';
+        }
+        html += '</div>';
+      });
+      if (total > 1) {
+        html += '<div style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;">'
+          + buildPagingButtons(page, total, "goQRPage('" + groupKey + "',__PAGE__)") + '</div>';
+      }
+      html += '</div>';
+      return html;
+    }
+
+    function goQRPage(group, page) {
+      qrPages[group] = page;
+      renderQRList();
+    }
+
+    async function onQRPageSizeChange(val) {
+      QR_PAGE_SIZE = parseInt(val) || 5;
+      await savePageSize('talent_receive', QR_PAGE_SIZE);
+      qrPages = { student: 1, teacher: 1 };
+      renderQRList();
+    }
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

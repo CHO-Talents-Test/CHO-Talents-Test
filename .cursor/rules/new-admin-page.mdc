@@ -1,0 +1,85 @@
+---
+description: 신규 admin HTML 페이지 생성 시 필수 스크립트 및 구조 가이드
+globs: admin/*.html
+alwaysApply: false
+---
+
+# 신규 Admin 페이지 생성 가이드
+
+## 필수 스크립트 로드 순서
+
+신규 `admin/*.html` 페이지를 만들 때 반드시 아래 순서로 스크립트를 포함해야 한다.
+순서가 틀리거나 누락되면 **세션 인식 실패 → 로그인 리다이렉트 무한 루프**가 발생한다.
+
+```html
+<!-- 1. Supabase CDN (필수 — window.supabase 객체 제공) -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- 2. 프로젝트 공개 설정 (필수) -->
+<script src="../config/public-config.js?v=VERSION"></script>
+<!-- 3. Supabase 초기화 모듈 (필수) -->
+<script src="../js/supabase-config.js?v=VERSION"></script>
+<!-- 4. 활동 로그 — loadAuthSession() 정의 (auth.js보다 먼저!) -->
+<script src="../js/activity-log.js?v=VERSION"></script>
+<!-- 5. 인증/권한 (필수) -->
+<script src="../js/auth.js?v=VERSION"></script>
+<!-- 6. 테마 -->
+<script src="../js/theme.js?v=VERSION"></script>
+<!-- 7. 네비게이션 -->
+<script src="../js/nav.js?v=VERSION"></script>
+<!-- 8. 추가 모듈 (필요시) -->
+<script src="../js/user-mgmt.js?v=VERSION"></script>
+```
+
+## 필수 초기화 코드
+
+인라인 `<script>` 블록 첫 줄에 반드시 `initSupabase()` 호출:
+
+```html
+<script>
+  initSupabase();  // ← 반드시 첫 줄에!
+  // ...변수 선언...
+
+  (async () => {
+    await navInit();
+    const session = await initPage(최소권한, '../login.html');
+    if (!session) return;
+    navUpdateAuth(session);
+    autoLogPageView();
+    // ...페이지 고유 로직...
+  })();
+</script>
+```
+
+## 체크리스트
+
+신규 페이지 생성 시 반드시 아래 항목을 확인한다:
+
+- [ ] Supabase CDN (`@supabase/supabase-js@2`) 포함
+- [ ] `config/public-config.js` 포함
+- [ ] `activity-log.js`가 `auth.js`보다 **먼저** 로드
+- [ ] 인라인 스크립트 첫 줄에 `initSupabase()` 호출
+- [ ] `initPage(최소권한, '../login.html')` 권한 레벨 정확히 설정
+- [ ] `nav.js`의 NAV_MENU에 신규 페이지 메뉴 항목 추가
+- [ ] DB 기반 접근 제어가 필요한 경우 `auth.js`의 `detectCurrentPageId()`와 `admin/page-access.html`의 `PAGE_LIST`에 page_id 추가
+- [ ] `index.html`의 ALL_SHORTCUTS에 즐겨찾기 항목 추가 (minRank 설정)
+- [ ] 캐시 버스팅 버전(`?v=VERSION`)이 현재 버전과 일치
+
+## 현재 운영 룰 페이지 권한
+
+| 페이지 | 최소 권한 | 비고 |
+|---|---:|---|
+| `docs/page-permission-rules.html` | 80 | 페이지 권한 룰 문서 |
+| `admin/log-rules.html` | 80 | 로그 작성 룰 문서 |
+| `admin/slack-rules.html` | 80 | Slack 알림 룰 문서 |
+| `admin/audit-rules.html` | 80 | 작업 이력 룰 문서 |
+
+운영 룰 문서는 부장 교사 이상이 열람할 수 있지만, 실제 로그 조회/작업 이력 조회/페이지 접근 설정 변경은 관리자(100+) 이상 권한을 유지한다.
+
+## 과거 발생한 문제
+
+| 누락 항목 | 증상 |
+|-----------|------|
+| Supabase CDN | `window.supabase` 미정의 → `initSupabase()` 실패 → `_sb=null` → 세션 인식 불가 → 로그인 리다이렉트 |
+| public-config.js | Supabase URL/Key 로드 실패 |
+| activity-log.js 순서 | `loadAuthSession()` 미정의 → `initPage()` 에러 |
+| initSupabase() 누락 | `_sb=null` → `loadAuthSession()` 즉시 null 반환 |

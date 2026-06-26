@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>계정 등록 신청 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/admin.css?v=3.52.0" />
+  <style>
+    .login-wrapper { background: linear-gradient(135deg, #f8f5ff 0%, #e0f7fa 50%, #e8f5e9 100%); }
+    .login-card { max-width: 460px; }
+    .login-title { font-size: 1.5rem; }
+    .back-link { display: block; text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--admin-primary); text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+    .result-box { text-align: center; padding: 1.5rem; }
+    .result-box .r-icon { font-size: 3rem; margin-bottom: 0.5rem; }
+    .result-box h3 { font-size: 1.2rem; margin-bottom: 0.5rem; }
+    .result-box p { color: #636e72; font-size: 0.9rem; line-height: 1.6; }
+  </style>
+</head>
+<body class="admin-body">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div style="text-align:center;font-size:2.5rem;margin-bottom:0.5rem;">📝</div>
+      <div class="login-title">계정 등록 신청</div>
+      <p class="login-sub">정보를 입력하면 관리자 승인 후 사용할 수 있어요</p>
+
+      <div id="formArea">
+        <div class="form-error" id="errorMsg"></div>
+
+        <div class="form-group">
+          <label>희망 아이디</label>
+          <div style="display:flex;gap:0.5rem;">
+            <input type="text" id="rUsername" placeholder="영문, 숫자, _, - (한글 불가)" style="flex:1;" autocomplete="off" />
+            <button type="button" id="btnCheckId" onclick="checkDuplicate()" style="padding:0.6rem 1rem;background:var(--admin-primary);color:#fff;border:none;border-radius:8px;font-weight:700;font-size:0.85rem;cursor:pointer;white-space:nowrap;">중복확인</button>
+          </div>
+          <div id="idCheckResult" style="font-size:0.8rem;margin-top:0.3rem;"></div>
+        </div>
+        <div class="form-group">
+          <label>이름</label>
+          <input type="text" id="rDisplayName" placeholder="실명을 입력해주세요" />
+        </div>
+
+        <div class="form-group">
+          <label>소속 부서 <span style="color:#e03131;">*필수</span></label>
+          <select id="rDept" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+            <option value="">부서를 선택해주세요</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label>신청 사유 (선택)</label>
+          <textarea id="rReason" style="width:100%;min-height:60px;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;resize:vertical;" placeholder="간단히 작성해주세요"></textarea>
+        </div>
+
+        <button class="btn-primary" id="btnSubmit" onclick="submitRequest()">신청하기</button>
+      </div>
+
+      <div id="resultArea" style="display:none;">
+        <div class="result-box">
+          <div class="r-icon">✅</div>
+          <h3>신청이 완료되었어요!</h3>
+          <p>관리자가 신청 내용을 확인한 후<br/>승인이 되면 로그인할 수 있어요.<br/>초기 비밀번호는 <strong>1234</strong>입니다.</p>
+        </div>
+      </div>
+
+      <a href="login.html" class="back-link">← 로그인 페이지로 돌아가기</a>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/slack-notify.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    autoLogPageView();
+    let idChecked = false;
+    let checkedUsername = '';
+
+    loadDepts();
+
+    document.getElementById('rUsername').addEventListener('input', function() {
+      const cleaned = this.value.replace(/[^a-zA-Z0-9_\-]/g, '');
+      if (cleaned !== this.value) {
+        this.value = cleaned;
+        document.getElementById('idCheckResult').innerHTML = '<span style="color:#e67700;">&#9888;&#65039; 영문, 숫자, _, - 만 사용 가능합니다.</span>';
+      } else {
+        document.getElementById('idCheckResult').innerHTML = '';
+      }
+      idChecked = false;
+      checkedUsername = '';
+    });
+
+    async function loadDepts() {
+      const { data } = await _sb.from('departments').select('id, name').eq('is_active', true).order('name');
+      const sel = document.getElementById('rDept');
+      (data || []).forEach(d => {
+        sel.innerHTML += `<option value="${d.id}">${d.name}</option>`;
+      });
+    }
+
+    async function checkDuplicate() {
+      const username = document.getElementById('rUsername').value.trim();
+      const resultEl = document.getElementById('idCheckResult');
+
+      if (!username) { resultEl.innerHTML = '<span style="color:#e03131;">아이디를 입력해주세요.</span>'; return; }
+      if (!/^[a-zA-Z0-9_-]+$/.test(username)) { resultEl.innerHTML = '<span style="color:#e03131;">아이디는 영문, 숫자, _, - 만 사용 가능합니다.</span>'; return; }
+
+      resultEl.innerHTML = '<span style="color:#636e72;">확인 중...</span>';
+
+      const { data: available, error: chkErr } = await _sb.rpc('check_username_available', { p_username: username });
+      if (chkErr) {
+        resultEl.innerHTML = '<span style="color:#e03131;">확인 중 오류가 발생했습니다.</span>';
+        idChecked = false; return;
+      }
+      if (!available) {
+        resultEl.innerHTML = '<span style="color:#e03131;">❌ 이미 사용 중이거나 신청 중인 아이디입니다.</span>';
+        idChecked = false; return;
+      }
+
+      resultEl.innerHTML = '<span style="color:#2b8a3e;">✅ 사용 가능한 아이디입니다.</span>';
+      idChecked = true;
+      checkedUsername = username;
+    }
+
+    async function submitRequest() {
+      const errEl = document.getElementById('errorMsg');
+      errEl.classList.remove('show');
+      const username = document.getElementById('rUsername').value.trim();
+      const displayName = document.getElementById('rDisplayName').value.trim();
+      const deptId = document.getElementById('rDept').value;
+      const reason = document.getElementById('rReason').value.trim();
+
+      if (!username) { errEl.textContent = '아이디를 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!/^[a-zA-Z0-9_-]+$/.test(username)) { errEl.textContent = '아이디는 영문, 숫자, _, - 만 사용 가능합니다.'; errEl.classList.add('show'); return; }
+      if (!idChecked || checkedUsername !== username) { errEl.textContent = '아이디 중복확인을 해주세요.'; errEl.classList.add('show'); return; }
+      if (!displayName) { errEl.textContent = '이름을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!deptId) { errEl.textContent = '소속 부서를 선택해주세요.'; errEl.classList.add('show'); return; }
+
+      const btn = document.getElementById('btnSubmit');
+      btn.disabled = true;
+      btn.textContent = '신청 중...';
+
+      const { error } = await _sb.from('registration_requests').insert({
+        username, display_name: displayName,
+        user_type: 'student', permission_level: 'student',
+        department_id: deptId, reason: reason || null
+      });
+
+      if (error) {
+        logError('REGISTER_REQUEST_FAIL', { username, error: error.message });
+        errEl.textContent = '신청 중 오류가 발생했습니다: ' + tErr(error.message); errEl.classList.add('show');
+        btn.disabled = false; btn.textContent = '신청하기'; return;
+      }
+
+      await logInfo('REGISTER_REQUEST', { username });
+      var deptSel = document.getElementById('rDept');
+      var deptName = deptSel.options[deptSel.selectedIndex] ? deptSel.options[deptSel.selectedIndex].text : '-';
+      sendSlackNotify('user_register', { 아이디: username, 이름: displayName, 부서: deptName });
+      document.getElementById('formArea').style.display = 'none';
+      document.getElementById('resultArea').style.display = 'block';
+    }
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>내 구매 상품 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+
+  <div class="page-container" id="mainContent">
+    <div class="empty-state"><div class="empty-state-icon">⏳</div><p>로딩 중...</p></div>
+  </div>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/page-size.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script src="js/slack-notify.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let myOrders = [];
+    let myOrderPageSize = null;
+    function getMyOrderPageSize() { return myOrderPageSize || (window.innerWidth <= 768 ? 10 : 20); }
+    let myOrderPage = 1;
+
+    function formatKSTShort(isoStr) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    }
+
+    (async () => {
+      await navInit();
+      session = await initPage(20, 'login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updateNavOrderBadge();
+      myOrderPageSize = await loadPageSize('my_orders', window.innerWidth <= 768 ? 10 : 20);
+      await loadOrders();
+    })();
+
+    async function loadOrders() {
+      try {
+        const { data, error } = await _sb.from('product_orders').select('*').eq('user_id', session.id).order('created_at', { ascending: false });
+        if (error) { logWarn('MY_ORDERS_FETCH', { 오류: error.message }); myOrders = []; }
+        else { myOrders = (data || []).filter(o => o.status !== 'cancelled'); }
+      } catch (e) { myOrders = []; }
+      renderMyOrders();
+    }
+
+    function renderMyOrders() {
+      const main = document.getElementById('mainContent');
+      const orders = myOrders;
+      const statusMap = (typeof codeMap === 'function') ? codeMap('product_orders.status', 'value') : { requested:'구매 신청', preparing:'상품 준비', purchased:'상품 구매', delivered:'상품 지급' };
+      const statusColor = (typeof codeMap === 'function') ? codeMap('product_orders.status', 'color') : { requested:'#868e96', preparing:'#e67700', purchased:'#1971c2', delivered:'#2b8a3e' };
+      const statusEmoji = (typeof codeMap === 'function') ? codeMap('product_orders.status', 'emoji') : { requested:'🛒', preparing:'📦', purchased:'💳', delivered:'✅' };
+
+      let html = `<h1 class="page-title">🛒 내 구매 상품</h1>
+        <p class="page-sub">${session.displayName || session.username}님의 구매 내역입니다</p>`;
+
+      if (orders.length === 0) {
+        html += '<div class="empty-state"><div class="empty-state-icon">📦</div><p>구매 내역이 없습니다.</p></div>';
+      } else {
+        const pageSize = getMyOrderPageSize();
+        const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+        if (myOrderPage > totalPages) myOrderPage = totalPages;
+        const startIdx = (myOrderPage - 1) * pageSize;
+        const pageOrders = orders.slice(startIdx, startIdx + pageSize);
+
+        html += `<div class="data-table-wrap">
+          <div class="data-table-header"><div class="data-table-title">구매 내역 (${orders.length}건)</div><span id="myOrderPageSizeWrap" style="margin-left:auto;"></span></div>
+          <table class="data-table">
+            <thead><tr><th>날짜</th><th>상품명</th><th>가격</th><th>현재 상태</th></tr></thead>
+            <tbody>` + pageOrders.map(o => `<tr>
+              <td>${formatKSTShort(o.requested_at || o.created_at)}</td>
+              <td>${o.product_name || '-'}</td>
+              <td style="font-weight:700;">${fmtNum(o.price)} 달란트</td>
+              <td>
+                <span style="display:inline-flex;align-items:center;gap:0.3rem;padding:0.2rem 0.6rem;border-radius:6px;font-size:0.82rem;font-weight:600;background:${statusColor[o.status]||'#868e96'}15;color:${statusColor[o.status]||'#868e96'};">${statusEmoji[o.status]||''} ${statusMap[o.status]||o.status}</span>
+                ${o.status === 'requested' ? `<button onclick="cancelOrder('${o.id}','${(o.product_name||'').replace(/'/g,"\\'")}',${o.price},'${o.product_id||''}')" style="margin-left:0.4rem;padding:0.15rem 0.5rem;font-size:0.75rem;border:1px solid #e03131;color:#e03131;background:#fff;border-radius:4px;cursor:pointer;">\ucde8\uc18c</button>` : ''}
+              </td>
+            </tr>`).join('') + '</tbody></table>';
+        html += `<div id="myOrderPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div></div>`;
+      }
+
+      main.innerHTML = html;
+      if (orders.length > 0) {
+        const totalPages = Math.max(1, Math.ceil(orders.length / getMyOrderPageSize()));
+        renderMyOrderPaging(totalPages);
+      }
+    }
+
+    function renderMyOrderPaging(totalPages) {
+      const wrap = document.getElementById('myOrderPaging');
+      if (!wrap) return;
+      wrap.innerHTML = buildPagingButtons(myOrderPage, totalPages, 'goMyOrderPage(__PAGE__)');
+      const sizeWrap = document.getElementById('myOrderPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('my_orders', getMyOrderPageSize(), 'onMyOrderPageSizeChange(this.value)');
+    }
+
+    function goMyOrderPage(p) {
+      myOrderPage = p;
+      renderMyOrders();
+    }
+
+    async function onMyOrderPageSizeChange(val) {
+      myOrderPageSize = parseInt(val, 10) || 20;
+      myOrderPage = 1;
+      await savePageSize('my_orders', myOrderPageSize);
+      renderMyOrders();
+    }
+
+    async function cancelOrder(orderId, productName, price, productId) {
+      if (!confirm(`"${productName}" 구매를 취소하시겠습니까?\n${price} 달란트가 복원됩니다.`)) return;
+      try {
+        let cancelled = false;
+
+        // 1) RPC 기반 취소 시도 (서버 사이드 권한 검증)
+        try {
+          const { data: rpcResult, error: rpcErr } = await _sb.rpc('cancel_product_order', {
+            p_order_id: orderId,
+            p_user_id: session.id
+          });
+          if (!rpcErr && rpcResult && rpcResult.success !== false) {
+            cancelled = true;
+          } else if (rpcErr && /does not exist|Could not find/i.test(rpcErr.message)) {
+            // RPC 미존재 시 직접 업데이트 시도
+          } else if (rpcErr) {
+            throw new Error(rpcErr.message);
+          } else if (rpcResult && rpcResult.success === false) {
+            throw new Error(rpcResult.error || '취소 처리에 실패했습니다.');
+          }
+        } catch (rpcE) {
+          if (!/does not exist|Could not find/i.test(rpcE.message || '')) throw rpcE;
+        }
+
+        // 2) RPC 미존재 시 직접 테이블 업데이트 (select로 결과 검증)
+        if (!cancelled) {
+          let query = _sb.from('product_orders').update({ status: 'cancelled' }).eq('id', orderId).eq('user_id', session.id).eq('status', 'requested');
+          if (productId) query = query.eq('product_id', productId);
+          const { data: updated, error: upErr } = await query.select();
+          if (upErr) throw upErr;
+          if (!updated || updated.length === 0) {
+            throw new Error('취소할 수 있는 주문이 없습니다. 권한이 부족하거나 이미 처리된 주문입니다.');
+          }
+          cancelled = true;
+        }
+
+        // 3) 취소 확인 후 달란트 반환 처리
+        const { data: prof } = await _sb.from('profiles').select('pending_talent').eq('id', session.id).single();
+        const newPending = Math.max(0, ((prof && prof.pending_talent) || 0) - price);
+        const { error: profErr } = await _sb.from('profiles').update({ pending_talent: newPending }).eq('id', session.id).select();
+        if (profErr) {
+          await logWarn('ORDER_CANCEL_REFUND_FAIL', { orderId, 상품명: productName, 금액: price, 오류: profErr.message });
+        }
+
+        await logInfo('ORDER_CANCEL', { orderId, productId, 상품명: productName, 금액: price });
+        alert('구매가 취소되었습니다.');
+        await loadOrders();
+      } catch (e) {
+        alert('취소 실패: ' + tErr(e.message || e));
+      }
+    }
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

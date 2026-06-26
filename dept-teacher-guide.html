@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>부서 담당 교사 가이드 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.52.0" />
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+  <main class="guide-container">
+    <section class="guide-hero">
+      <div class="guide-kicker">부서 담당 교사 · 60등급</div>
+      <h1>부서 담당 교사 가이드</h1>
+      <p>담당 부서 안의 학생과 교사, 달란트 지급, 상품 신청, Q&amp;A 답변을 관리하는 권한자용 안내입니다. 일반 교사가 없는 부서에서는 현장 지급과 운영 확인까지 함께 맡습니다.</p>
+    </section>
+
+    <div class="guide-switcher">
+      <a href="guide.html">학생 가이드</a>
+      <a href="teacher-guide.html">교사 가이드</a>
+      <a href="dept-teacher-guide.html" class="active">부서 담당 교사 가이드</a>
+      <a href="purchase-teacher-guide.html">구매 담당 교사 가이드</a>
+      <a href="chief-teacher-guide.html">부장 교사 가이드</a>
+      <a href="evangelist-guide.html">전도사님 가이드</a>
+      <a href="admin-guide.html">관리자 가이드</a>
+    </div>
+
+    <section class="guide-section">
+      <h2>📌 핵심 역할</h2>
+      <div class="guide-grid">
+        <div class="guide-mini-card">
+          <div class="icon">👥</div>
+          <h3>담당 부서 사용자 확인</h3>
+          <p>사용자 관리에서 담당 부서 학생과 교사를 확인하고, 담당 학생의 반 정보와 초기 비밀번호 문제를 처리합니다.</p>
+        </div>
+        <div class="guide-mini-card">
+          <div class="icon">💰</div>
+          <h3>달란트 지급 운영</h3>
+          <p>일반 교사와 같은 달란트 지급 화면을 쓰되, 담당 부서 범위로 더 넓게 학생을 확인할 수 있습니다.</p>
+        </div>
+        <div class="guide-mini-card">
+          <div class="icon">🛒</div>
+          <h3>담당 부서 구매 처리</h3>
+          <p>구매 관리에서 담당 부서 주문을 상품 준비, 상품 구매, 상품 지급 단계로 진행합니다. 상태명과 정렬 순서는 공통 구매 상태 코드 기준을 따릅니다.</p>
+        </div>
+        <div class="guide-mini-card">
+          <div class="icon">💬</div>
+          <h3>질문 답변</h3>
+          <p>Q&amp;A에서 질문에 답변을 남기고 필요한 질문을 FAQ로 전환할 수 있습니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>✅ 일반 교사가 없는 부서에서 해야 할 일</h2>
+      <ol class="guide-steps">
+        <li><strong>달란트 &gt; 달란트 관리</strong>에서 담당 부서 학생 목록이 정상 표시되는지 확인합니다.</li>
+        <li>출석, 성경 읽기, 말씀 암송 등 실제 활동 항목을 선택해 학생에게 달란트를 지급합니다.</li>
+        <li>학생이 상품 구매 신청을 했는지 <strong>상품 &gt; 구매 관리</strong>에서 확인하고, 담당 부서 주문을 처리합니다.</li>
+        <li>학생 계정 문제가 생기면 <strong>관리 &gt; 사용자 관리</strong>에서 반 변경 또는 비밀번호 초기화를 처리합니다.</li>
+        <li>학생이나 보호자가 남긴 질문은 Q&amp;A에서 답변하고, 반복 질문은 FAQ로 등록합니다.</li>
+      </ol>
+      <div class="guide-note">부서 담당 교사는 담당 부서 학생의 반 변경과 비밀번호 초기화가 가능합니다. 삭제, 부서 이동 승인, 달란트 반환은 부장 교사 이상 권한이 필요합니다.</div>
+      <div class="guide-note">권한명, 사용자 유형, 상품 카테고리, 구매 상태 같은 구분값은 공통 코드 기준으로 표시됩니다. 담당 부서 화면과 전체 운영 화면에서 같은 코드값은 같은 이름으로 보입니다.</div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🧭 메뉴별 할 수 있는 일</h2>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead><tr><th>메뉴</th><th>가능 작업</th><th>주의</th></tr></thead>
+          <tbody>
+            <tr><td>대시보드</td><td>가입 대기, 사용자/부서/보고서 요약 통계 카드와 이슈 로그 확인</td><td>최근 이슈 로그 카드는 관리자만 표시됩니다. v3.50.0부터 바로가기 박스는 제거되었습니다.</td></tr>
+            <tr><td>사용자 관리</td><td>담당 부서 사용자 조회, 가입 신청 처리, 담당 학생 반 변경, 비밀번호 초기화</td><td>상위 권한자나 담당 범위 밖 사용자는 처리 제한이 있습니다.</td></tr>
+            <tr><td>달란트 관리</td><td>담당 부서 학생/교사 달란트 지급, 상세 조회 (누적적립/총사용/총반환/잔여 4칸 요약)</td><td>수동 적립은 관리자만 표시됩니다. 달란트 반환은 부장 교사 이상입니다.</td></tr>
+            <tr><td>상품 관리</td><td>상품 등록/수정, 목록 확인</td><td>상품 삭제는 전도사님 이상 권한입니다.</td></tr>
+            <tr><td>구매 관리</td><td>담당 부서 주문 준비/구매 확정/지급 처리</td><td>구매 담당 교사가 아니면 전체 부서 주문 처리는 제한됩니다.</td></tr>
+            <tr><td>구매 통계</td><td>담당 부서 구매 통계 확인</td><td>전체 부서 필터는 부장 교사 이상 또는 구매 담당 교사에게 넓게 열립니다.</td></tr>
+            <tr><td>Q&amp;A</td><td>답변, 댓글, FAQ 등록</td><td>질문 삭제는 전도사님 이상입니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>💰 달란트 상세 조회 (v3.48.0)</h2>
+      <div class="guide-card">
+        <h3>상세 팝업 요약 4칸</h3>
+        <p>달란트 관리에서 <strong>상세</strong>를 누르면 팝업 상단에 다음 네 가지가 구분되어 표시됩니다.</p>
+        <ul class="guide-list">
+          <li><strong>누적적립</strong> — 지금까지 받은 달란트 합계</li>
+          <li><strong>총사용</strong> — 실제 상품 구매 등으로 차감된 달란트 (구매 확정 기준)</li>
+          <li><strong>총반환</strong> — 잘못 지급되어 되돌린 달란트 (사용과 별도 집계)</li>
+          <li><strong>잔여</strong> — 현재 사용 가능한 달란트</li>
+        </ul>
+      </div>
+      <div class="guide-card">
+        <h3>내역 유형 3종</h3>
+        <p>상세 팝업의 내역 테이블 <strong>유형</strong> 열에는 <strong>적립</strong>, <strong>사용</strong>, <strong>반환</strong>이 구분됩니다. 반환은 사용과 별도로 집계되며, 총사용에는 실제 상품 구매로 확정된 건만 포함됩니다.</p>
+        <div class="guide-note">달란트 반환 처리는 부장 교사(80+) 이상 권한입니다. 부서 담당 교사는 내역 확인과 지급만 담당합니다.</div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>⏱️ 세션 관리 · 📱 모바일 네비게이션</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>24시간 유휴 자동 로그아웃</h3>
+          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>모바일 상단 우측 (768px 이하)</h3>
+          <p>좁은 화면에서는 상단 우측에 아래 순서로 표시됩니다.</p>
+          <ul class="guide-list" style="margin-top:0.5rem;font-size:0.9rem;">
+            <li>테마 스위치 → 햄버거 메뉴(☰) → 로그아웃 → (권한 이모지) 이름</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🔎 매주 확인 체크리스트</h2>
+      <div class="guide-card">
+        <ul class="guide-list">
+          <li>담당 부서 학생의 소속 부서와 반이 맞는지 확인합니다.</li>
+          <li>출석/활동 달란트가 누락된 학생이 없는지 달란트 관리와 통계에서 확인합니다.</li>
+          <li>구매 신청 상태에 오래 머무는 주문이 있는지 구매 관리 칸반 카드를 확인합니다.</li>
+          <li>Q&amp;A 미답변 배지가 있으면 담당 부서 관련 질문부터 답변합니다.</li>
+          <li>일반 교사가 새로 배정되면 계정 권한과 담당 부서/반 설정을 요청합니다.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    (async () => {
+      await navInit();
+      const session = await loadAuthSession();
+      if (!session || (session.permissionRank || 0) < 60) {
+        location.href = session && (session.permissionRank || 0) >= 40 ? 'teacher-guide.html' : 'guide.html';
+        return;
+      }
+      navUpdateAuth(session);
+      await initTheme();
+      const rank = session.permissionRank || 0;
+      document.querySelectorAll('.guide-switcher a').forEach(a => {
+        if (a.href.includes('purchase-teacher-guide') && rank < 70) a.style.display = 'none';
+        if (a.href.includes('chief-teacher-guide') && rank < 80) a.style.display = 'none';
+        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
+      });
+      autoLogPageView();
+    })();
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

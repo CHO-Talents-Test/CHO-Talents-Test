@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>버전 이력 - 관리자</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <style>
+    .ver-current {
+      background: linear-gradient(135deg, #f3f0ff, #e8f5e9);
+      border-radius: 16px; padding: 1.5rem 2rem; margin-bottom: 2rem;
+      display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap;
+    }
+    .ver-current-badge {
+      font-size: 2rem; font-weight: 900; color: var(--admin-primary);
+      background: #fff; padding: 0.8rem 1.5rem; border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(108,92,231,0.15);
+    }
+    .ver-current-info { flex: 1; }
+    .ver-current-info h3 { font-size: 1.1rem; margin-bottom: 0.2rem; }
+    .ver-current-info p { color: #636e72; font-size: 0.9rem; }
+
+    .ver-timeline { position: relative; padding-left: 2rem; }
+    .ver-timeline::before {
+      content: ''; position: absolute; left: 0.6rem; top: 0; bottom: 0;
+      width: 3px; background: linear-gradient(to bottom, var(--admin-primary), #dfe6e9);
+      border-radius: 3px;
+    }
+    .ver-item { position: relative; margin-bottom: 2rem; }
+    .ver-item::before {
+      content: ''; position: absolute; left: -1.65rem; top: 0.4rem;
+      width: 14px; height: 14px; border-radius: 50%;
+      background: var(--admin-primary); border: 3px solid #fff;
+      box-shadow: 0 0 0 2px var(--admin-primary);
+    }
+    .ver-item.latest::before { background: #51cf66; box-shadow: 0 0 0 2px #51cf66; }
+
+    .ver-card {
+      background: #fff; border-radius: 12px; padding: 1.2rem 1.5rem;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-left: 4px solid var(--admin-primary);
+    }
+    .ver-item.latest .ver-card { border-left-color: #51cf66; }
+
+    .ver-card-header { display: flex; align-items: center; gap: 0.8rem; margin-bottom: 0.6rem; flex-wrap: wrap; }
+    .ver-tag {
+      font-weight: 800; font-size: 1rem; color: var(--admin-primary);
+      background: rgba(108,92,231,0.08); padding: 0.2rem 0.8rem; border-radius: 50px;
+    }
+    .ver-item.latest .ver-tag { background: rgba(81,207,102,0.12); color: #2b8a3e; }
+    .ver-date { font-size: 0.85rem; color: #b2bec3; }
+    .ver-title { font-weight: 700; font-size: 0.95rem; }
+
+    .ver-changes { margin: 0; padding-left: 1.2rem; }
+    .ver-changes li {
+      font-size: 0.88rem; color: #495057; line-height: 1.8;
+      list-style: none; position: relative; padding-left: 0.5rem;
+    }
+    .ver-changes li::before { content: '✓'; position: absolute; left: -1rem; color: var(--admin-primary); font-weight: 700; }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">📋 버전 이력 관리</h2>
+
+    <div class="ver-current" id="currentVersion"></div>
+    <div class="ver-timeline" id="timeline"></div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/version.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    (async () => {
+      await navInit();
+      session = await initPage(80, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateBadge();
+      renderPage();
+    })();
+
+    async function updateBadge() { await updateLogBadge(); }
+
+    function renderPage() {
+      const history = getVersionHistory();
+      const current = history[0];
+
+      document.getElementById('currentVersion').innerHTML = `
+        <div class="ver-current-badge">v${current.version}</div>
+        <div class="ver-current-info">
+          <h3>${current.title}</h3>
+          <p>최종 업데이트: ${current.date} | 전체 ${history.length}개 버전</p>
+        </div>
+      `;
+
+      document.getElementById('timeline').innerHTML = history.map((v, i) => `
+        <div class="ver-item ${i === 0 ? 'latest' : ''}">
+          <div class="ver-card">
+            <div class="ver-card-header">
+              <span class="ver-tag">v${v.version}</span>
+              <span class="ver-date">${v.date}</span>
+              <span class="ver-title">${v.title}</span>
+            </div>
+            <ul class="ver-changes">
+              ${v.changes.map(c => `<li>${c}</li>`).join('')}
+            </ul>
+          </div>
+        </div>
+      `).join('');
+    }
+  </script>
+</body>
+</html>

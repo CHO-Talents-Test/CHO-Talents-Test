@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>구매 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">🛒 구매 관리</h2>
+
+    <div class="kanban-board">
+      <div class="kanban-card active" id="tabAll" data-status="all" onclick="switchPurchaseTab('all')">
+        <div class="kanban-card-top" style="background:#6c5ce7;"></div>
+        <div class="kanban-card-body">
+          <span class="kanban-label">📊 전체</span>
+          <span class="kanban-count" id="countAll">0</span>
+        </div>
+      </div>
+      <div class="kanban-card" id="tabRequested" data-status="requested" onclick="switchPurchaseTab('requested')">
+        <div class="kanban-card-top" style="background:#868e96;"></div>
+        <div class="kanban-card-body">
+          <span class="kanban-label">📋 구매 신청</span>
+          <span class="kanban-count" id="countRequested">0</span>
+        </div>
+      </div>
+      <div class="kanban-card" id="tabPreparing" data-status="preparing" onclick="switchPurchaseTab('preparing')">
+        <div class="kanban-card-top" style="background:#e67700;"></div>
+        <div class="kanban-card-body">
+          <span class="kanban-label">📦 상품 준비</span>
+          <span class="kanban-count" id="countPreparing">0</span>
+        </div>
+      </div>
+      <div class="kanban-card" id="tabPurchased" data-status="purchased" onclick="switchPurchaseTab('purchased')">
+        <div class="kanban-card-top" style="background:#1971c2;"></div>
+        <div class="kanban-card-body">
+          <span class="kanban-label">💳 상품 구매</span>
+          <span class="kanban-count" id="countPurchased">0</span>
+        </div>
+      </div>
+      <div class="kanban-card" id="tabDelivered" data-status="delivered" onclick="switchPurchaseTab('delivered')">
+        <div class="kanban-card-top" style="background:#2b8a3e;"></div>
+        <div class="kanban-card-body">
+          <span class="kanban-label">✅ 상품 지급</span>
+          <span class="kanban-count" id="countDelivered">0</span>
+        </div>
+      </div>
+      <div class="kanban-card" id="tabCancelled" data-status="cancelled" onclick="switchPurchaseTab('cancelled')">
+        <div class="kanban-card-top" style="background:#e03131;"></div>
+        <div class="kanban-card-body">
+          <span class="kanban-label">❌ 구매 취소</span>
+          <span class="kanban-count" id="countCancelled">0</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="statusFilterWrap" style="margin-bottom:0.8rem;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+      <select id="statusFilter" onchange="orderPage=1;renderOrders()" style="padding:0.4rem 0.8rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;">
+        <option value="">전체 상태</option>
+        <option value="requested">📋 구매 신청</option>
+        <option value="preparing">📦 상품 준비</option>
+        <option value="purchased">💳 상품 구매</option>
+        <option value="delivered">✅ 상품 지급</option>
+        <option value="cancelled">❌ 구매 취소</option>
+      </select>
+      <select id="deptFilter" onchange="orderPage=1;renderOrders()" style="padding:0.4rem 0.8rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;">
+        <option value="">전체 부서</option>
+      </select>
+      <span style="margin-left:0.3rem;font-size:0.82rem;color:var(--admin-text-muted);">기간:</span>
+      <input type="date" id="dateFrom" onchange="orderPage=1;renderOrders()" style="padding:0.3rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.82rem;" />
+      <span style="font-size:0.82rem;">~</span>
+      <input type="date" id="dateTo" onchange="orderPage=1;renderOrders()" style="padding:0.3rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.82rem;" />
+      <span style="display:inline-flex;gap:0.2rem;">
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setOrderPeriod('today')">오늘</button>
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setOrderPeriod('week')">1주</button>
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setOrderPeriod('month')">1달</button>
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setOrderPeriod('year')">1년</button>
+      </span>
+    </div>
+
+    <div id="productSummary" style="display:none;margin-bottom:1rem;"></div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">전체 목록</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span id="orderPageSizeWrap"></span>
+        <div id="bulkActions" style="display:none;">
+          <button class="btn-confirm" id="btnBulkPrepare" onclick="bulkPrepare()" style="display:none;padding:0.4rem 1rem;font-size:0.85rem;">📦 일괄 상품 준비</button>
+          <button class="btn-confirm" id="btnBulkPurchase" onclick="bulkPurchase()" style="display:none;padding:0.4rem 1rem;font-size:0.85rem;">💳 일괄 구매 확정</button>
+          <button class="btn-confirm" id="btnBulkDeliver" onclick="bulkDeliver()" style="display:none;padding:0.4rem 1rem;font-size:0.85rem;">✅ 선택 지급 완료</button>
+        </div>
+        </div>
+      </div>
+      <table class="admin-table" id="purchaseTable">
+        <thead>
+          <tr id="tableHead"></tr>
+        </thead>
+        <tbody id="orderList"><tr><td colspan="7" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="orderPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <style>
+    .kanban-board{display:flex;gap:0.6rem;flex-wrap:wrap;margin-bottom:1rem;}
+    .kanban-card{flex:1 1 120px;min-width:110px;max-width:180px;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:10px;cursor:pointer;overflow:hidden;transition:transform 0.2s ease,box-shadow 0.2s ease,border-color 0.2s ease;user-select:none;}
+    .kanban-card:hover{transform:translateY(-2px);box-shadow:0 4px 12px rgba(0,0,0,0.1);}
+    .kanban-card.active{transform:translateY(-3px);box-shadow:0 6px 20px rgba(0,0,0,0.15);border-color:transparent;}
+    .kanban-card-top{height:4px;width:100%;}
+    .kanban-card-body{padding:0.65rem 0.75rem;display:flex;flex-direction:column;gap:0.25rem;}
+    .kanban-label{font-size:0.78rem;color:var(--t-text, #333);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .kanban-count{font-size:1.35rem;font-weight:700;color:var(--t-text, #333);line-height:1.2;transition:color 0.2s ease;}
+    .kanban-card.active .kanban-count{font-size:1.45rem;}
+    @media (max-width:768px){.kanban-card{flex:1 1 calc(33% - 0.5rem);min-width:95px;max-width:none;}.kanban-label{font-size:0.72rem;}.kanban-count{font-size:1.15rem;}}
+    .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:140px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script src="../js/slack-notify.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let currentPTab = 'all';
+    let allOrders = [];
+    let profileMap = {};
+    let processorMap = {};
+    let orderPageSize = null;
+    function getOrderPageSize() {
+      if (orderPageSize !== null) return orderPageSize;
+      return window.innerWidth <= 768 ? 10 : 20;
+    }
+    let orderPage = 1;
+
+    const ORDER_STATUS_GROUP = 'product_orders.status';
+    const STATUS_LABEL = (typeof codeMap === 'function') ? codeMap(ORDER_STATUS_GROUP, 'value') : { requested:'구매 신청', preparing:'상품 준비', purchased:'상품 구매', delivered:'상품 지급', cancelled:'구매 취소' };
+    const STATUS_COLOR = (typeof codeMap === 'function') ? codeMap(ORDER_STATUS_GROUP, 'color') : { requested:'#868e96', preparing:'#e67700', purchased:'#1971c2', delivered:'#2b8a3e', cancelled:'#e03131' };
+    const STATUS_EMOJI = (typeof codeMap === 'function') ? codeMap(ORDER_STATUS_GROUP, 'emoji') : {};
+    const TAB_IDS = ['all','requested','preparing','purchased','delivered','cancelled'];
+
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      orderPageSize = await loadPageSize('purchases', 20);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      setOrderPeriod('week');
+      await loadOrders();
+    })();
+
+    function setOrderPeriod(type) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      let fromStr = todayStr;
+      if (type === 'week') { const d = new Date(today); d.setDate(d.getDate() - 6); fromStr = d.toISOString().slice(0, 10); }
+      else if (type === 'month') { fromStr = todayStr.slice(0, 8) + '01'; }
+      else if (type === 'year') { fromStr = todayStr.slice(0, 4) + '-01-01'; }
+      document.getElementById('dateFrom').value = fromStr;
+      document.getElementById('dateTo').value = todayStr;
+      orderPage = 1;
+      renderOrders();
+    }
+
+    function switchPurchaseTab(tab) {
+      orderPage = 1;
+      currentPTab = tab;
+      TAB_IDS.forEach(t => {
+        const el = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (el) el.classList.toggle('active', t === tab);
+      });
+      document.getElementById('statusFilter').style.display = tab === 'all' ? '' : 'none';
+      renderOrders();
+    }
+
+    async function loadOrders() {
+      const { data, error } = await _sb.from('product_orders').select('*').order('created_at', { ascending: false });
+      if (error) {
+        logError('PURCHASE_LOAD_FAIL', { 오류: error.message });
+        document.getElementById('orderList').innerHTML = '<tr><td colspan="7" class="empty-state">데이터 조회 실패</td></tr>';
+        return;
+      }
+      allOrders = data || [];
+
+      if (!session.isSuperAdmin) {
+        const { data: saRows } = await _sb.from('profiles').select('id').eq('is_super_admin', true);
+        if (saRows && saRows.length) {
+          const saIds = new Set(saRows.map(r => r.id));
+          allOrders = allOrders.filter(o => !saIds.has(o.user_id));
+        }
+      }
+
+      const myRank = session.permissionRank || 0;
+      const isPurchaseTeacher = (session.permissionLevel === 'purchase_teacher');
+      const scopedDeptId = (myRank >= 60 && myRank < 80 && !isPurchaseTeacher) ? (session.managedDeptId || session.departmentId) : null;
+      let scopedUsers = null;
+      if (scopedDeptId) {
+        const { data: users, error: userErr } = await fetchUsers({ departmentId: scopedDeptId });
+        if (userErr) {
+          await logWarn('PURCHASE_SCOPE_USERS_FAIL', { departmentId: scopedDeptId, 오류: userErr });
+          allOrders = [];
+        } else {
+          scopedUsers = users || [];
+          const scopedIds = new Set(scopedUsers.map(u => u.id));
+          allOrders = allOrders.filter(o => scopedIds.has(o.user_id));
+        }
+      }
+
+      const userIds = [...new Set(allOrders.map(o => o.user_id))];
+      const procIds = [...new Set(allOrders.flatMap(o => [o.prepared_by, o.purchased_by, o.delivered_by].filter(Boolean)))];
+      const allIds = [...new Set([...userIds, ...procIds])];
+
+      if (allIds.length > 0) {
+        let profiles = [];
+        if (scopedUsers) {
+          const scopedMap = new Map(scopedUsers.map(u => [u.id, u]));
+          profiles = userIds.map(id => scopedMap.get(id)).filter(Boolean);
+          const missingProcIds = procIds.filter(id => !scopedMap.has(id));
+          if (missingProcIds.length > 0) {
+            const { data: processors } = await _sb.from('profiles').select('id,display_name,username,department_id').in('id', missingProcIds);
+            profiles = profiles.concat(processors || []);
+          }
+        } else {
+          const { data: profileRows } = await _sb.from('profiles').select('id,display_name,username,department_id,class_number').in('id', allIds);
+          profiles = profileRows || [];
+        }
+        profileMap = {};
+        processorMap = {};
+        profiles.forEach(p => {
+          profileMap[p.id] = p;
+          processorMap[p.id] = p.display_name || p.username || '-';
+        });
+      }
+
+      const deptRes = await _sb.from('departments').select('id,name');
+      const deptMap = {};
+      (deptRes.data || []).forEach(d => { deptMap[d.id] = d.name; });
+      allOrders.forEach(o => {
+        const prof = profileMap[o.user_id];
+        o._userName = prof ? (prof.display_name || prof.username) : '-';
+        o._deptId = prof ? prof.department_id : null;
+        o._deptName = prof && prof.department_id ? (deptMap[prof.department_id] || '-') : '-';
+        o._classNum = prof ? (prof.class_number || 0) : 0;
+      });
+
+      const deptSel = document.getElementById('deptFilter');
+      const deptNames = [...new Set(allOrders.map(o => o._deptName).filter(d => d && d !== '-'))].sort();
+      deptSel.innerHTML = '<option value="">전체 부서</option>' + deptNames.map(d => `<option value="${d}">${d}</option>`).join('');
+
+      renderOrders();
+      updateOrderBadge();
+    }
+
+    const _ORDER_STATUS_RANK = { requested:1, preparing:2, purchased:3, delivered:4, cancelled:5 };
+    function getVisibleOrders() {
+      let orders;
+      if (currentPTab === 'all') {
+        const filterVal = document.getElementById('statusFilter').value;
+        orders = filterVal ? allOrders.filter(o => o.status === filterVal) : [...allOrders];
+      } else {
+        orders = allOrders.filter(o => o.status === currentPTab);
+      }
+      const deptVal = document.getElementById('deptFilter').value;
+      if (deptVal) orders = orders.filter(o => o._deptName === deptVal);
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+      if (dateFrom) orders = orders.filter(o => (o.created_at || '').slice(0, 10) >= dateFrom);
+      if (dateTo) orders = orders.filter(o => (o.created_at || '').slice(0, 10) <= dateTo);
+      orders.sort((a, b) => {
+        const sA = _ORDER_STATUS_RANK[a.status] ?? 9;
+        const sB = _ORDER_STATUS_RANK[b.status] ?? 9;
+        if (sA !== sB) return sA - sB;
+        const dateA = a.requested_at || a.created_at || '';
+        const dateB = b.requested_at || b.created_at || '';
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        const pCmp = (a.product_name || '').localeCompare(b.product_name || '', 'ko');
+        if (pCmp !== 0) return pCmp;
+        const dCmp = (a._deptName || '').localeCompare(b._deptName || '', 'ko');
+        if (dCmp !== 0) return dCmp;
+        return (a._userName || '').localeCompare(b._userName || '', 'ko');
+      });
+      return orders;
+    }
+
+    function canProcessOrder(order) {
+      const myRank = session.permissionRank || 0;
+      if (order.status === 'delivered') return false;
+      if (myRank >= 90) return true;
+      if (session.permissionLevel === 'purchase_teacher') return true;
+      if (myRank >= 60 && session.managedDeptId && order._deptId === session.managedDeptId) return true;
+      return false;
+    }
+
+    function getProcessorInfo(order, stage) {
+      let byField, atField, label;
+      if (stage === 'preparing') {
+        byField = order.prepared_by; atField = order.prepared_at; label = '준비';
+      } else if (stage === 'purchased') {
+        byField = order.purchased_by; atField = order.purchased_at; label = '구매';
+      } else if (stage === 'delivered') {
+        byField = order.delivered_by; atField = order.delivered_at; label = '지급';
+      }
+      if (!byField) return '';
+      const name = processorMap[byField] || '-';
+      const time = atField ? formatKSTShort(atField) : '-';
+      return `<div style="font-size:0.75rem;color:#636e72;">${label}: ${name}<br>${time}</div>`;
+    }
+
+    function renderProductSummary(orders) {
+      const el = document.getElementById('productSummary');
+      if (currentPTab === 'all') {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      const map = {};
+      orders.forEach(o => {
+        const name = o.product_name || '-';
+        if (!map[name]) map[name] = { qty: 0, amount: 0 };
+        map[name].qty += (o.quantity || 1);
+        map[name].amount += (o.total_price || o.price || 0);
+      });
+      const rows = Object.entries(map).sort((a, b) => a[0].localeCompare(b[0], 'ko'));
+      if (rows.length === 0) {
+        el.style.display = 'none';
+        el.innerHTML = '';
+        return;
+      }
+      el.style.display = '';
+      el.innerHTML = `<div style="font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">상품별 합계</div>
+        <table class="admin-table" style="margin-bottom:0;font-size:0.82rem;">
+          <thead><tr><th>상품명</th><th>수량 합계</th><th>금액 합계</th></tr></thead>
+          <tbody>${rows.map(([name, v]) => `<tr><td>${name}</td><td>${v.qty}</td><td>${fmtNum(v.amount)}</td></tr>`).join('')}</tbody>
+        </table>`;
+    }
+
+    function buildMgmtMenu(o, canProc, isAllTab) {
+      const items = [];
+      if (isAllTab) items.push(`<a onclick="showOrderDetail('${o.id}')">📋 상세</a>`);
+      if (o.status === 'requested' && canProc) {
+        items.push(`<a onclick="updateStatus('${o.id}','preparing')">📦 상품 준비</a>`);
+      } else if (o.status === 'preparing' && canProc) {
+        items.push(`<a onclick="confirmPurchase('${o.id}')">💳 구매 확정</a>`);
+        items.push(`<a onclick="revertStatus('${o.id}','requested')">↩ 되돌리기</a>`);
+      } else if (o.status === 'purchased' && canProc) {
+        items.push(`<a onclick="updateStatus('${o.id}','delivered')">✅ 지급 완료</a>`);
+        items.push(`<a onclick="revertStatus('${o.id}','preparing')">↩ 되돌리기</a>`);
+      } else if (o.status === 'delivered' && canProc) {
+        items.push(`<a onclick="revertStatus('${o.id}','purchased')">↩ 되돌리기</a>`);
+      }
+      if (items.length === 0) return '-';
+      return `<div class="mgmt-dropdown">
+        <button class="filter-btn" style="font-size:0.78rem;padding:0.3rem 0.6rem;" onclick="toggleMgmt(event, this)">관리 ▾</button>
+        <div class="mgmt-menu">${items.join('')}</div>
+      </div>`;
+    }
+
+    function updateKanbanCounts() {
+      let orders = [...allOrders];
+      const deptVal = document.getElementById('deptFilter').value;
+      if (deptVal) orders = orders.filter(o => o._deptName === deptVal);
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+      if (dateFrom) orders = orders.filter(o => (o.created_at || '').slice(0, 10) >= dateFrom);
+      if (dateTo) orders = orders.filter(o => (o.created_at || '').slice(0, 10) <= dateTo);
+      const counts = { all: orders.length, requested: 0, preparing: 0, purchased: 0, delivered: 0, cancelled: 0 };
+      orders.forEach(o => {
+        if (counts[o.status] !== undefined) counts[o.status]++;
+      });
+      TAB_IDS.forEach(t => {
+        const countEl = document.getElementById('count' + t.charAt(0).toUpperCase() + t.slice(1));
+        if (countEl) countEl.textContent = counts[t] ?? 0;
+      });
+    }
+
+    let _currentOrders = [];
+    function renderOrders() {
+      updateKanbanCounts();
+      const orders = getVisibleOrders();
+      _currentOrders = orders;
+      const tbody = document.getElementById('orderList');
+      const title = document.getElementById('tableTitle');
+      const isAllTab = currentPTab === 'all';
+      const tabLabel = isAllTab ? '전체' : STATUS_LABEL[currentPTab];
+      title.textContent = `${tabLabel} 목록 (${orders.length}건)`;
+
+      renderProductSummary(orders);
+
+      const myRank = session.permissionRank || 0;
+      const showBulk = !isAllTab && currentPTab !== 'delivered' && myRank >= 60;
+      const bulkEl = document.getElementById('bulkActions');
+      const btnPrepare = document.getElementById('btnBulkPrepare');
+      const btnPurchase = document.getElementById('btnBulkPurchase');
+      const btnDeliver = document.getElementById('btnBulkDeliver');
+      if (showBulk) {
+        bulkEl.style.display = '';
+        btnPrepare.style.display = currentPTab === 'requested' ? '' : 'none';
+        btnPurchase.style.display = currentPTab === 'preparing' ? '' : 'none';
+        btnDeliver.style.display = currentPTab === 'purchased' ? '' : 'none';
+      } else {
+        bulkEl.style.display = 'none';
+      }
+
+      let headCols = '';
+      if (showBulk) headCols += '<th style="width:30px;"><input type="checkbox" onchange="toggleAllOrders(this)"></th>';
+      if (isAllTab) headCols += '<th data-sort-key="status">상태</th>';
+      headCols += '<th data-sort-key="created_at" data-sort-type="date">신청일</th><th data-sort-key="product_name">상품명</th><th data-sort-key="price" data-sort-type="number">가격</th><th data-sort-key="_userName">신청자</th><th data-sort-key="_deptName">부서</th>';
+
+      if (currentPTab === 'preparing' || (isAllTab)) headCols += '<th>이전 처리</th>';
+      else if (currentPTab === 'purchased') headCols += '<th>준비 처리</th>';
+      else if (currentPTab === 'delivered') headCols += '<th>구매 처리</th>';
+
+      headCols += '<th>관리</th>';
+      document.getElementById('tableHead').innerHTML = headCols;
+
+      const colCount = document.getElementById('tableHead').children.length;
+      if (orders.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${colCount}" class="empty-state">해당 상태의 주문이 없습니다.</td></tr>`;
+        renderOrderPaging(1);
+        return;
+      }
+
+      const pageSize = getOrderPageSize();
+      const totalPages = Math.max(1, Math.ceil(orders.length / pageSize));
+      if (orderPage > totalPages) orderPage = totalPages;
+      const startIdx = (orderPage - 1) * pageSize;
+      const pageOrders = orders.slice(startIdx, startIdx + pageSize);
+
+      orders.forEach(o => { o.created_at = o.requested_at || o.created_at; });
+      tbody.innerHTML = pageOrders.map(o => {
+        const canProc = canProcessOrder(o);
+
+        let procInfo = '';
+        if (currentPTab === 'preparing') {
+          procInfo = '-';
+        } else if (currentPTab === 'purchased') {
+          procInfo = getProcessorInfo(o, 'preparing') || '-';
+        } else if (currentPTab === 'delivered') {
+          procInfo = getProcessorInfo(o, 'purchased') || '-';
+        } else if (isAllTab) {
+          procInfo = '-';
+        }
+
+        const mgmtMenu = buildMgmtMenu(o, canProc, isAllTab);
+        const chkTd = showBulk && o.status === currentPTab ? `<td><input type="checkbox" class="order-chk" value="${o.id}"></td>` : (showBulk ? '<td></td>' : '');
+        const statusBadge = `<span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.78rem;background:${STATUS_COLOR[o.status] || '#868e96'}22;color:${STATUS_COLOR[o.status] || '#868e96'};font-weight:600;">${STATUS_EMOJI[o.status] || ''} ${STATUS_LABEL[o.status] || o.status}</span>`;
+
+        let row = '<tr>';
+        row += chkTd;
+        if (isAllTab) row += `<td>${statusBadge}</td>`;
+        row += `<td style="font-size:0.8rem;">${formatKSTShort(o.requested_at || o.created_at)}</td>`;
+        row += `<td>${o.product_name}</td>`;
+        row += `<td>${fmtNum(o.price)}</td>`;
+        row += `<td>${o._userName}</td>`;
+        row += `<td>${o._deptName}</td>`;
+        if (currentPTab !== 'requested') row += `<td>${procInfo}</td>`;
+        else if (isAllTab) row += `<td>${procInfo}</td>`;
+        row += `<td>${mgmtMenu}</td>`;
+        row += '</tr>';
+        return row;
+      }).join('');
+      renderOrderPaging(totalPages);
+      initSortableHeaders('purchaseTable', function(){ return _currentOrders; }, function(d){ _currentOrders = d; orderPage = 1; renderOrders(); });
+    }
+
+    function renderOrderPaging(totalPages) {
+      const wrap = document.getElementById('orderPaging');
+      wrap.innerHTML = buildPagingButtons(orderPage, totalPages, 'goOrderPage(__PAGE__)');
+      const headerWrap = document.getElementById('orderPageSizeWrap');
+      if (headerWrap) headerWrap.innerHTML = renderPageSizeSelector('purchases', getOrderPageSize(), "onPurchasesPageSizeChange(this.value)");
+    }
+
+    async function onPurchasesPageSizeChange(val) {
+      orderPageSize = parseInt(val) || 20;
+      await savePageSize('purchases', orderPageSize);
+      orderPage = 1;
+      renderOrders();
+    }
+
+    function goOrderPage(p) {
+      orderPage = p;
+      renderOrders();
+    }
+
+    async function updateStatus(orderId, newStatus) {
+      try {
+        const updateFields = { status: newStatus };
+        if (newStatus === 'preparing') { updateFields.prepared_at = new Date().toISOString(); updateFields.prepared_by = session.id; }
+        if (newStatus === 'delivered') { updateFields.delivered_at = new Date().toISOString(); updateFields.delivered_by = session.id; }
+
+        const { error } = await _sb.from('product_orders').update(updateFields).eq('id', orderId);
+        if (error) {
+          await logError('ORDER_STATUS_CHANGE_FAIL', { orderId, 변경상태: newStatus, 오류: error.message });
+          alert('상태 변경 실패: ' + tErr(error.message));
+          return;
+        }
+        const o = allOrders.find(x => x.id === orderId);
+        await logInfo('ORDER_STATUS_CHANGE', { orderId, 변경상태: newStatus });
+        if (o && o.status === 'requested' && newStatus === 'preparing') {
+          sendSlackNotify('purchase_status', { 상품명: o.product_name || '-', 신청자: o._userName || '-', 이전상태: 'requested', 변경상태: 'preparing', 처리자: session.displayName || session.username });
+        }
+        await loadOrders();
+      } catch (err) {
+        await logError('ORDER_STATUS_CHANGE_ERROR', { orderId, 변경상태: newStatus, 오류: String(err) });
+        alert('상태 변경 중 오류: ' + tErr(err.message));
+      }
+    }
+
+    async function revertStatus(orderId, prevStatus) {
+      if (!confirm(`"${STATUS_LABEL[prevStatus] || prevStatus}" 단계로 되돌리시겠습니까?`)) return;
+      try {
+        const updateFields = { status: prevStatus };
+        if (prevStatus === 'requested') { updateFields.prepared_at = null; updateFields.prepared_by = null; }
+        if (prevStatus === 'preparing') { updateFields.purchased_at = null; updateFields.purchased_by = null; }
+        if (prevStatus === 'purchased') { updateFields.delivered_at = null; updateFields.delivered_by = null; }
+        const { error } = await _sb.from('product_orders').update(updateFields).eq('id', orderId);
+        if (error) {
+          await logError('ORDER_REVERT_FAIL', { orderId, 변경상태: prevStatus, 오류: error.message });
+          alert('되돌리기 실패: ' + tErr(error.message));
+          return;
+        }
+        const ro = allOrders.find(x => x.id === orderId);
+        await logInfo('ORDER_REVERT', { orderId, 변경상태: prevStatus });
+        await loadOrders();
+      } catch (err) {
+        await logError('ORDER_REVERT_ERROR', { orderId, 변경상태: prevStatus, 오류: String(err) });
+        alert('되돌리기 중 오류: ' + tErr(err.message));
+      }
+    }
+
+    function showOrderDetail(orderId) {
+      const o = allOrders.find(x => x.id === orderId);
+      if (!o) return;
+      const infos = [getProcessorInfo(o, 'preparing'), getProcessorInfo(o, 'purchased'), getProcessorInfo(o, 'delivered')].filter(Boolean).join('<hr style="margin:0.4rem 0;border:none;border-top:1px solid #e9ecef;">');
+      const statusBadge = `<span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.82rem;background:${STATUS_COLOR[o.status] || '#868e96'}22;color:${STATUS_COLOR[o.status] || '#868e96'};font-weight:600;">${STATUS_EMOJI[o.status] || ''} ${STATUS_LABEL[o.status] || o.status}</span>`;
+      const html = `<div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.4);z-index:1000;display:flex;align-items:center;justify-content:center;" onclick="this.remove()">
+        <div style="background:#fff;border-radius:12px;padding:1.5rem;max-width:420px;width:90%;box-shadow:0 8px 32px rgba(0,0,0,0.2);" onclick="event.stopPropagation()">
+          <h3 style="margin:0 0 0.8rem;">📋 주문 상세</h3>
+          <div style="font-size:0.88rem;margin-bottom:0.5rem;"><strong>${o.product_name}</strong> - ${fmtNum(o.price)} 달란트</div>
+          <div style="font-size:0.85rem;margin-bottom:0.5rem;">신청자: ${o._userName} | 부서: ${o._deptName}</div>
+          <div style="font-size:0.85rem;margin-bottom:0.8rem;">상태: ${statusBadge}</div>
+          <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.5rem;">처리 이력</div>
+          <div style="background:#f8f9fa;border-radius:8px;padding:0.8rem;font-size:0.82rem;">${infos || '<span style="color:#adb5bd;">처리 이력 없음</span>'}</div>
+          <div style="text-align:right;margin-top:1rem;"><button onclick="this.closest('[style*=fixed]').remove()" style="padding:0.4rem 1rem;border:1px solid #ddd;border-radius:8px;background:#fff;cursor:pointer;">닫기</button></div>
+        </div>
+      </div>`;
+      document.body.insertAdjacentHTML('beforeend', html);
+    }
+
+    async function confirmPurchase(orderId) {
+      if (!confirm('상품 구매를 확정하시겠습니까?\n달란트가 실제 차감됩니다.')) return;
+      try {
+        const { data, error } = await _sb.rpc('confirm_product_purchase', {
+          p_order_id: orderId,
+          p_admin_id: session.id
+        });
+        if (error) {
+          await logError('ORDER_PURCHASE_CONFIRM_FAIL', { orderId, 오류: error.message });
+          alert('구매 확정 실패: ' + tErr(error.message));
+          return;
+        }
+        if (data && data.success === false) {
+          await logWarn('ORDER_PURCHASE_CONFIRM_DENIED', { orderId, 사유: data.error });
+          alert(tErr(data.error));
+          return;
+        }
+        const co = allOrders.find(x => x.id === orderId);
+        await logInfo('ORDER_PURCHASE_CONFIRM', { orderId });
+        await loadOrders();
+      } catch (err) {
+        await logError('ORDER_PURCHASE_CONFIRM_ERROR', { orderId, 오류: String(err) });
+        alert('구매 확정 중 오류: ' + tErr(err.message));
+      }
+    }
+
+    function toggleAllOrders(chk) {
+      document.querySelectorAll('.order-chk').forEach(c => c.checked = chk.checked);
+    }
+
+    function toggleMgmt(e, btn) {
+      e.stopPropagation();
+      document.querySelectorAll('.mgmt-menu.show').forEach(m => { if (m !== btn.nextElementSibling) m.classList.remove('show'); });
+      btn.nextElementSibling.classList.toggle('show');
+    }
+    document.addEventListener('click', () => document.querySelectorAll('.mgmt-menu.show').forEach(m => m.classList.remove('show')));
+
+    async function bulkPrepare() {
+      const ids = [...document.querySelectorAll('.order-chk:checked')].map(c => c.value);
+      if (ids.length === 0) { alert('상품 준비 처리할 항목을 선택해주세요.'); return; }
+      if (!confirm(`${ids.length}건을 상품 준비 처리하시겠습니까?`)) return;
+
+      let failCount = 0;
+      for (const id of ids) {
+        const { error } = await _sb.from('product_orders').update({
+          status: 'preparing',
+          prepared_at: new Date().toISOString(),
+          prepared_by: session.id
+        }).eq('id', id);
+        if (error) { failCount++; await logError('ORDER_BULK_PREPARE_ITEM_FAIL', { orderId: id, 오류: error.message }); }
+      }
+      if (failCount > 0) alert(`${failCount}건 처리 실패. 로그를 확인해주세요.`);
+      await logInfo('ORDER_BULK_PREPARE', { 건수: ids.length, 실패건수: failCount });
+      sendSlackNotify('purchase_status', { 상품명: '일괄 처리', 이전상태: 'requested', 변경상태: 'preparing', 처리자: session.displayName || session.username, 건수: ids.length, 실패건수: failCount });
+      await loadOrders();
+    }
+
+    async function bulkPurchase() {
+      const ids = [...document.querySelectorAll('.order-chk:checked')].map(c => c.value);
+      if (ids.length === 0) { alert('구매 확정할 항목을 선택해주세요.'); return; }
+      if (!confirm(`${ids.length}건을 구매 확정하시겠습니까?\n달란트가 실제 차감됩니다.`)) return;
+
+      let failCount = 0;
+      for (const id of ids) {
+        const { data, error } = await _sb.rpc('confirm_product_purchase', {
+          p_order_id: id,
+          p_admin_id: session.id
+        });
+        if (error) {
+          failCount++;
+          await logError('ORDER_BULK_PURCHASE_ITEM_FAIL', { orderId: id, 오류: error.message });
+        } else if (data && data.success === false) {
+          failCount++;
+          await logWarn('ORDER_BULK_PURCHASE_DENIED', { orderId: id, 사유: data.error });
+        }
+      }
+      if (failCount > 0) alert(`${failCount}건 처리 실패. 잔액 부족 등의 사유일 수 있습니다.`);
+      await logInfo('ORDER_BULK_PURCHASE', { 건수: ids.length, 실패건수: failCount });
+      await loadOrders();
+    }
+
+    async function bulkDeliver() {
+      const ids = [...document.querySelectorAll('.order-chk:checked')].map(c => c.value);
+      if (ids.length === 0) { alert('지급 완료 처리할 항목을 선택해주세요.'); return; }
+      if (!confirm(`${ids.length}건을 지급 완료 처리하시겠습니까?`)) return;
+
+      let failCount = 0;
+      for (const id of ids) {
+        const { error } = await _sb.from('product_orders').update({
+          status: 'delivered',
+          delivered_at: new Date().toISOString(),
+          delivered_by: session.id
+        }).eq('id', id);
+        if (error) { failCount++; await logError('ORDER_BULK_DELIVER_ITEM_FAIL', { orderId: id, 오류: error.message }); }
+      }
+      if (failCount > 0) alert(`${failCount}건 처리 실패. 로그를 확인해주세요.`);
+      await logInfo('ORDER_BULK_DELIVER', { 건수: ids.length, 실패건수: failCount });
+      await loadOrders();
+    }
+
+    async function updateOrderBadge() {
+      const myRank = session.permissionRank || 0;
+      if (myRank < 60) return;
+      try {
+        let query = _sb.from('product_orders').select('user_id,status', { count: 'exact' }).neq('status', 'delivered');
+        const { data: orders, count } = await query;
+        let processableCount = 0;
+        if (myRank >= 90) {
+          processableCount = count || 0;
+        } else if (session.managedDeptId) {
+          processableCount = (orders || []).filter(o => {
+            const prof = profileMap[o.user_id];
+            return prof && prof.department_id === session.managedDeptId;
+          }).length;
+        }
+        const badge = document.getElementById('navOrderBadge');
+        if (badge && processableCount > 0) {
+          badge.textContent = processableCount;
+          badge.classList.remove('hidden');
+        }
+      } catch (e) {}
+    }
+
+    function formatKSTShort(dateStr) {
+      if (!dateStr) return '-';
+      const d = new Date(dateStr);
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      const h = String(d.getHours()).padStart(2, '0');
+      const min = String(d.getMinutes()).padStart(2, '0');
+      return `${m}-${day} ${h}:${min}`;
+    }
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>
