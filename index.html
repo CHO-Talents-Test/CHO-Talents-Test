@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 마을 - CHO Talents</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/style.css?v=3.52.0" />
+</head>
+<body>
+  <div class="falling-stars" id="fallingStars"></div>
+
+  <div id="nav-container"></div>
+
+  <main class="main">
+    <section class="hero">
+      <div class="hero-badge">✝ 금란교회 초등부</div>
+      <h1 class="hero-title">
+        <span class="wave-text" style="--i:0">달</span><span class="wave-text" style="--i:1">란</span><span class="wave-text" style="--i:2">트</span>
+        <span class="wave-text space" style="--i:3">&nbsp;</span>
+        <span class="wave-text highlight" style="--i:4">마</span><span class="wave-text highlight" style="--i:5">을</span>
+      </h1>
+      <p class="hero-sub">우리의 달란트로 세상을 아름답게! ❤️</p>
+
+      <div class="village-layout">
+        <div class="village-center">
+          <div class="mascots">
+            <div class="mascot bounce-1">🌟</div>
+            <div class="mascot bounce-2">🎁</div>
+            <div class="mascot bounce-3">🏆</div>
+          </div>
+          <div class="feature-cards-header" id="favHeader" style="display:none;">
+            <button class="fav-setting-btn" onclick="openFavModal()">⭐ 즐겨찾기 설정</button>
+          </div>
+          <div class="feature-cards" id="featureCards">
+            <a href="earn-talents.html" class="card" style="border-color:var(--accent)">
+              <div class="card-icon">💰</div>
+              <h3>달란트 적립</h3>
+              <p>열심히 활동하고<br/>달란트를 모아요!</p>
+            </a>
+            <a href="shop.html" class="card" style="border-color:var(--mint)">
+              <div class="card-icon">🛒</div>
+              <h3>상품 구매</h3>
+              <p>모은 달란트로<br/>원하는 상품을 골라요!</p>
+            </a>
+            <a href="my-talents.html" class="card" style="border-color:var(--sky)">
+              <div class="card-icon">🏅</div>
+              <h3>내 달란트</h3>
+              <p>내가 모은 달란트를<br/>확인해 봐요!</p>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="guest-guide-banner" id="guestGuideBanner" style="display:none;">
+        <div class="guest-guide-inner">
+          <span class="guest-guide-icon">📖</span>
+          <div class="guest-guide-text">
+            <strong>처음 방문하셨나요?</strong>
+            <span>사용 가이드에서 달란트 마을 이용 방법을 확인해 보세요!</span>
+          </div>
+          <a href="guide.html" class="guest-guide-btn">가이드 보기</a>
+        </div>
+      </div>
+
+      <div class="status-box" id="statusBox">
+        <div class="status-icon">🔗</div>
+        <div class="status-text">
+          <span class="status-label">서버 연결 상태</span>
+          <span class="status-value" id="statusValue">확인 중...</span>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <!-- Favorites Modal -->
+  <div class="fav-overlay" id="favOverlay" style="display:none;" onclick="closeFavModal()">
+    <div class="fav-modal" onclick="event.stopPropagation()">
+      <div class="fav-modal-header">
+        <h3>⭐ 즐겨찾기 설정</h3>
+        <button class="fav-modal-close" onclick="closeFavModal()">&times;</button>
+      </div>
+      <p class="fav-modal-desc" id="favModalDesc">메인 화면에 표시할 바로가기를 선택하세요 (최소 1개)</p>
+      <div class="fav-list" id="favList"></div>
+      <div class="fav-modal-footer">
+        <button class="fav-btn-reset" onclick="resetFavorites()">↩ 기본값 복원</button>
+        <button class="fav-btn-save" onclick="saveFavorites()">💾 저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script src="js/app.js?v=3.52.0"></script>
+  <script>
+    const ALL_SHORTCUTS = [
+      { id:'earn-talents',  href:'earn-talents.html',        icon:'💰', title:'달란트 적립',   desc:'열심히 활동하고 달란트를 모아요!',           color:'var(--accent)',  minRank:0 },
+      { id:'shop',          href:'shop.html',                icon:'🛒', title:'상품 구매',     desc:'모은 달란트로 원하는 상품을 골라요!',         color:'var(--mint)',    minRank:0 },
+      { id:'my-talents',    href:'my-talents.html',          icon:'🏅', title:'내 달란트',     desc:'내가 모은 달란트를 확인해 봐요!',             color:'var(--sky)',     minRank:0 },
+      { id:'my-orders',     href:'my-orders.html',           icon:'📦', title:'내 구매 상품',   desc:'주문한 상품의 상태를 확인해요!',              color:'#a29bfe',       minRank:20 },
+      { id:'talent-receive',href:'talent-receive.html',      icon:'📱', title:'달란트 수령',   desc:'QR 코드로 달란트를 수령해요!',               color:'#fd79a8',       minRank:20 },
+      { id:'qna',           href:'qna.html',                 icon:'❓', title:'Q&A',          desc:'궁금한 점을 질문해 보세요!',                  color:'#00b894',       minRank:0 },
+      { id:'guide',         href:'guide.html',               icon:'📖', title:'학생 가이드',   desc:'사용 방법을 확인해 보세요!',                  color:'#636e72',       minRank:0 },
+      { id:'teacher-guide', href:'teacher-guide.html',       icon:'👩‍🏫', title:'교사 가이드',  desc:'교사 전용 사용 가이드',                      color:'#e17055',       minRank:40 },
+      { id:'admin-guide',   href:'admin-guide.html',         icon:'🛠️', title:'관리자 가이드', desc:'관리자 전용 사용 가이드',                     color:'#d63031',       minRank:60 },
+      { id:'admin-dash',    href:'admin/index.html',         icon:'📊', title:'대시보드',      desc:'관리 현황을 한눈에 확인!',                    color:'#6c5ce7',       minRank:60 },
+      { id:'admin-talents', href:'admin/talents.html',       icon:'🎯', title:'달란트 관리',   desc:'달란트를 지급하고 관리해요!',                 color:'#fdcb6e',       minRank:40 },
+      { id:'admin-stats',   href:'admin/talent-stats.html',  icon:'📈', title:'달란트 통계',   desc:'달란트 통계를 확인해요!',                     color:'#55efc4',       minRank:60 },
+      { id:'admin-users',   href:'admin/users.html',         icon:'👥', title:'사용자 관리',   desc:'사용자를 관리해요!',                          color:'#74b9ff',       minRank:60 },
+      { id:'admin-purch',   href:'admin/purchases.html',     icon:'💳', title:'구매 관리',     desc:'구매 요청을 처리해요!',                       color:'#ffeaa7',       minRank:60 },
+      { id:'admin-depts',   href:'admin/departments.html',   icon:'🏢', title:'부서 관리',     desc:'부서를 관리해요!',                            color:'#81ecec',       minRank:60 },
+      { id:'admin-qr',      href:'admin/talent-qr.html',     icon:'📷', title:'QR 관리',      desc:'달란트 QR 코드를 관리해요!',                  color:'#fab1a0',       minRank:90 },
+      { id:'admin-shop',    href:'admin/shop.html',          icon:'🏪', title:'상품 관리',     desc:'상품을 등록하고 관리해요!',                   color:'#dfe6e9',       minRank:60 },
+      { id:'admin-items',   href:'admin/talent-items.html',  icon:'🎯', title:'달란트 항목',   desc:'달란트 항목을 등록하고 관리해요!',             color:'#00b894',       minRank:60 },
+      { id:'admin-bulk',    href:'admin/bulk-register.html', icon:'📋', title:'학생 일괄 등록', desc:'엑셀로 학생 계정을 일괄 생성해요!',            color:'#2d3436',       minRank:80 },
+      { id:'admin-mgrs',    href:'admin/managers.html',      icon:'👑', title:'관리자 관리',   desc:'관리자를 등록하고 관리해요!',                  color:'#e67700',       minRank:80 },
+      { id:'admin-perm',    href:'docs/page-permission-rules.html', icon:'🔐', title:'페이지 권한 룰', desc:'페이지별 접근 권한을 확인해요!',       color:'#636e72',       minRank:80 },
+      { id:'admin-logrule', href:'admin/log-rules.html',     icon:'📝', title:'로그 작성 룰',   desc:'로그 작성 규칙을 확인해요!',                  color:'#b2bec3',       minRank:80 },
+      { id:'admin-auditrule',href:'admin/audit-rules.html',  icon:'📃', title:'작업 이력 룰',   desc:'작업 이력 작성 규칙을 확인해요!',             color:'#dfe6e9',       minRank:80 },
+      { id:'admin-ver',     href:'admin/versions.html',      icon:'🔖', title:'버전',          desc:'버전 업데이트 이력을 확인해요!',               color:'#636e72',       minRank:80 },
+      { id:'admin-report',  href:'admin/reports.html',       icon:'📑', title:'보고서',         desc:'운영 보고서를 확인해요!',                     color:'#00cec9',       minRank:80 },
+      { id:'admin-access',  href:'admin/page-access.html',   icon:'🔑', title:'페이지 접근',   desc:'페이지 접근 권한을 설정해요!',                color:'#e17055',       minRank:100 },
+      { id:'admin-feat',    href:'admin/page-features.html', icon:'⚙️', title:'페이지 기능',   desc:'페이지 기능 권한을 설정해요!',                color:'#d63031',       minRank:100 },
+      { id:'admin-audit',   href:'admin/audit.html',         icon:'📜', title:'작업 이력',      desc:'작업 이력을 확인해요!',                       color:'#6c5ce7',       minRank:100 },
+      { id:'admin-logs',    href:'admin/logs.html',          icon:'🗂️', title:'로그',           desc:'시스템 로그를 확인해요!',                     color:'#fd79a8',       minRank:100 },
+    ];
+    const DEFAULT_FAV_IDS = ['earn-talents','shop','my-talents'];
+    const MAX_FAV_MOBILE = 10;
+    const MAX_FAV_PC = 10;
+
+    let _favSession = null, _favRank = 0;
+
+    function _favKey() { return _favSession ? 'cho_fav_' + _favSession.id : ''; }
+    function _getMaxFav() { return window.innerWidth <= 768 ? MAX_FAV_MOBILE : MAX_FAV_PC; }
+
+    function _normalizeFavIds(ids) {
+      if (!Array.isArray(ids)) return [];
+      return Array.from(new Set(ids.filter(Boolean)));
+    }
+
+    function _getNavItemRule(href) {
+      if (typeof NAV_MENU === 'undefined' || !Array.isArray(NAV_MENU)) return null;
+      const allItems = NAV_MENU.flatMap(group => group.items || []);
+      return allItems.find(item => item.href === href) || null;
+    }
+
+    function _isShortcutVisible(shortcut) {
+      const navRule = _getNavItemRule(shortcut.href);
+      const minRank = navRule && typeof navRule.minPerm === 'number' ? navRule.minPerm : (shortcut.minRank || 0);
+      const authOnly = !!(navRule && navRule.authOnly);
+      if (authOnly && !_favSession) return false;
+      return _favRank >= minRank;
+    }
+
+    async function loadFavIds() {
+      if (_favSession && _sb) {
+        try {
+          const { data } = await _sb.from('user_preferences').select('favorite_shortcuts').eq('user_id', _favSession.id).single();
+          if (data && data.favorite_shortcuts) return _normalizeFavIds(data.favorite_shortcuts);
+        } catch(e) {}
+      }
+      try {
+        const k = _favKey();
+        if (k) {
+          const r = localStorage.getItem(k);
+          if (r) return _normalizeFavIds(JSON.parse(r));
+        }
+      } catch(e) {}
+      return null;
+    }
+
+    function getAvailable() {
+      return ALL_SHORTCUTS.filter(_isShortcutVisible);
+    }
+
+    function getSanitizedFavIds(ids) {
+      const availableIds = new Set(getAvailable().map(s => s.id));
+      return _normalizeFavIds(ids).filter(id => availableIds.has(id)).slice(0, _getMaxFav());
+    }
+
+    async function renderFavCards() {
+      const ids = getSanitizedFavIds(await loadFavIds() || DEFAULT_FAV_IDS);
+      const avail = getAvailable();
+      const cards = ids.map(id => avail.find(s => s.id === id)).filter(Boolean);
+      if (!cards.length) DEFAULT_FAV_IDS.forEach(id => { const f = avail.find(s => s.id === id); if (f) cards.push(f); });
+      const el = document.getElementById('featureCards');
+      el.innerHTML = cards.map(c =>
+        `<a href="${c.href}" class="card" style="border-color:${c.color}">` +
+          `<div class="card-icon">${c.icon}</div>` +
+          `<h3>${c.title}</h3>` +
+          `<p>${c.desc}</p>` +
+        `</a>`
+      ).join('');
+      const cols = Math.min(cards.length, window.innerWidth <= 480 ? 2 : window.innerWidth <= 768 ? 3 : 5);
+      el.style.gridTemplateColumns = `repeat(${cols}, 1fr)`;
+    }
+
+    async function openFavModal() {
+      const ids = getSanitizedFavIds(await loadFavIds() || DEFAULT_FAV_IDS);
+      const avail = getAvailable();
+      const maxFav = _getMaxFav();
+      document.getElementById('favModalDesc').textContent =
+        `메인 화면에 표시할 바로가기를 선택하세요 (최소 1개, 최대 ${maxFav}개)`;
+      document.getElementById('favList').innerHTML = avail.map(s => {
+        const chk = ids.includes(s.id) ? 'checked' : '';
+        return `<label class="fav-item">` +
+          `<span class="fav-item-icon">${s.icon}</span>` +
+          `<span class="fav-item-info"><span class="fav-item-title">${s.title}</span><span class="fav-item-desc">${s.desc}</span></span>` +
+          `<input type="checkbox" class="fav-check" value="${s.id}" ${chk}/>` +
+          `<span class="fav-toggle"></span>` +
+        `</label>`;
+      }).join('');
+      document.getElementById('favOverlay').style.display = '';
+    }
+
+    function closeFavModal() { document.getElementById('favOverlay').style.display = 'none'; }
+
+    async function saveFavorites() {
+      const checked = document.querySelectorAll('#favList .fav-check:checked');
+      const ids = getSanitizedFavIds(Array.from(checked).map(c => c.value));
+      const maxFav = _getMaxFav();
+      if (!ids.length) { alert('최소 1개 이상의 바로가기를 선택해주세요.'); return; }
+      if (ids.length > maxFav) { alert(`최대 ${maxFav}개까지 선택할 수 있습니다.`); return; }
+      if (_favSession && _sb) {
+        try {
+          await _sb.from('user_preferences').upsert({ user_id: _favSession.id, favorite_shortcuts: ids, updated_at: new Date().toISOString() });
+        } catch(e) {}
+      }
+      try { localStorage.setItem(_favKey(), JSON.stringify(ids)); } catch(e) {}
+      await renderFavCards();
+      closeFavModal();
+    }
+
+    async function resetFavorites() {
+      if (_favSession && _sb) {
+        try { await _sb.from('user_preferences').delete().eq('user_id', _favSession.id); } catch(e) {}
+      }
+      try { localStorage.removeItem(_favKey()); } catch(e) {}
+      await renderFavCards();
+      closeFavModal();
+    }
+
+    (async () => {
+      if (!_sb) initSupabase();
+      await navInit();
+
+      let s = null;
+      try { s = await loadAuthSession(); } catch (e) {}
+      if (s) {
+        const rank = s.permissionRank || 0;
+        navUpdateAuth(s);
+        _favSession = s;
+        _favRank = rank;
+        document.getElementById('favHeader').style.display = '';
+
+        const lsKey = _favKey();
+        if (lsKey) {
+          try {
+            const lsData = localStorage.getItem(lsKey);
+            if (lsData) {
+              const { data: existing } = await _sb.from('user_preferences').select('user_id').eq('user_id', s.id).single();
+              if (!existing) {
+                await _sb.from('user_preferences').insert({ user_id: s.id, favorite_shortcuts: JSON.parse(lsData) });
+              }
+            }
+          } catch(e) {}
+        }
+        await renderFavCards();
+      } else {
+        const guestBanner = document.getElementById('guestGuideBanner');
+        if (guestBanner) guestBanner.style.display = '';
+      }
+
+      await initTheme();
+    })();
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

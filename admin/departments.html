@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>부서 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">부서 관리</h2>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">부서 목록</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-left:auto;">
+          <span id="deptPageSizeWrap"></span>
+          <button class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="openAddModal()">+ 부서 등록</button>
+        </div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>부서명</th><th>설명</th><th>반</th><th>전체</th><th>교사</th><th>학생</th><th>관리</th></tr></thead>
+        <tbody id="deptList"><tr><td colspan="7" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="deptPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="deptModal">
+    <div class="modal-box">
+      <h3 class="modal-title" id="modalTitle">부서 등록</h3>
+      <div class="form-error" id="modalError"></div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">부서명</label>
+        <input type="text" id="mName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">설명</label>
+        <textarea id="mDesc" style="width:100%;min-height:60px;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">반 개수</label>
+        <input type="number" id="mClassCount" min="0" max="20" value="0" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+        <div style="font-size:0.75rem;color:#b2bec3;margin-top:0.2rem;">0 = 반 구분 없음</div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" onclick="saveDept()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:120px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let editingId = null;
+    let allUsers = [];
+    let allDeptData = [];
+    let deptPage = 1;
+    let deptPageSize = null;
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateBadge();
+      deptPageSize = await loadPageSize('departments', window.innerWidth <= 768 ? 10 : 20);
+      const myRank = session.permissionRank || 0;
+      if (myRank < 90) {
+        document.querySelector('.filter-btn[onclick="openAddModal()"]').style.display = 'none';
+      }
+      loadDepts();
+    })();
+
+    async function updateBadge() { await updateLogBadge(); }
+
+    async function loadDepts() {
+      const { data: depts } = await fetchDepartments();
+      const { data: users } = await _sb.from('profiles')
+        .select('id, username, user_type, permission_level, department_id, managed_dept_id, display_name, is_super_admin, last_login_at, class_number');
+      allUsers = users || [];
+      if (!session.isSuperAdmin) {
+        allUsers = allUsers.filter(u => !u.is_super_admin);
+      }
+
+      const myRank = session.permissionRank || 0;
+      const myManagedDept = session.managedDeptId || session.departmentId;
+
+      let filteredDepts = depts || [];
+      if (myRank < 80) {
+        filteredDepts = myManagedDept ? filteredDepts.filter(d => d.id === myManagedDept) : [];
+      }
+
+      allDeptData = (filteredDepts || []).sort((a, b) => (a.name || '').localeCompare(b.name || '', 'ko'));
+      renderDeptTable();
+    }
+
+    function getDeptPageSize() {
+      return deptPageSize || (window.innerWidth <= 768 ? 10 : 20);
+    }
+
+    function renderDeptTable() {
+      const tbody = document.getElementById('deptList');
+      const list = allDeptData || [];
+      document.getElementById('tableTitle').textContent = `부서 목록 (${list.length}개)`;
+
+      const sizeWrap = document.getElementById('deptPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('departments', getDeptPageSize(), 'onDeptPageSizeChange(this.value)');
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">등록된 부서가 없습니다.</td></tr>';
+        document.getElementById('deptPaging').innerHTML = '';
+        return;
+      }
+
+      const pageSize = getDeptPageSize();
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      if (deptPage > totalPages) deptPage = totalPages;
+      const startIdx = (deptPage - 1) * pageSize;
+      const pageList = list.slice(startIdx, startIdx + pageSize);
+      const myRank = session.permissionRank || 0;
+      const myManagedDept = session.managedDeptId || session.departmentId;
+
+      tbody.innerHTML = pageList.map(d => {
+        const deptUsers = (allUsers || []).filter(u => u.department_id === d.id);
+        const teachers = deptUsers.filter(u => u.user_type === 'teacher');
+        const students = deptUsers.filter(u => u.user_type === 'student');
+        const classLabel = d.class_count > 0 ? d.class_count + '개' : '없음';
+
+        return `<tr>
+          <td><strong>${d.name}</strong></td>
+          <td>${d.description || '-'}</td>
+          <td>${classLabel}</td>
+          <td style="font-weight:700;">${deptUsers.length}명</td>
+          <td>${teachers.length}명</td>
+          <td>${students.length}명</td>
+          <td>
+            <div class="mgmt-dropdown">
+              <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
+              <div class="mgmt-menu">
+                <a onclick="showMembers('${d.name}','${d.id}')">👥 소속보기</a>
+                ${(myRank >= 90 || d.id === myManagedDept) ? `<a onclick="openEditModal('${d.id}')">✏️ 수정</a>` : ''}
+                ${myRank >= 90 ? `<a onclick="confirmDelete('${d.id}','${d.name}')">🗑️ 삭제</a>` : ''}
+              </div>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+      document.getElementById('deptPaging').innerHTML = buildPagingButtons(deptPage, totalPages, 'goDeptPage(__PAGE__)');
+    }
+
+    function goDeptPage(page) {
+      deptPage = page;
+      renderDeptTable();
+    }
+
+    async function onDeptPageSizeChange(val) {
+      deptPageSize = parseInt(val, 10) || 20;
+      deptPage = 1;
+      await savePageSize('departments', deptPageSize);
+      renderDeptTable();
+    }
+
+    function toggleMgmt(e,btn){e.stopPropagation();document.querySelectorAll('.mgmt-menu.show').forEach(m=>{if(m!==btn.nextElementSibling)m.classList.remove('show');});btn.nextElementSibling.classList.toggle('show');}
+    document.addEventListener('click',()=>document.querySelectorAll('.mgmt-menu.show').forEach(m=>m.classList.remove('show')));
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = '부서 등록';
+      document.getElementById('mName').value = '';
+      document.getElementById('mDesc').value = '';
+      document.getElementById('mClassCount').value = '0';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('deptModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      editingId = id;
+      const dept = allDeptData.find(d => d.id === id);
+      document.getElementById('modalTitle').textContent = '부서 수정';
+      document.getElementById('mName').value = dept ? dept.name : '';
+      document.getElementById('mDesc').value = dept ? (dept.description || '') : '';
+      document.getElementById('mClassCount').value = dept ? (dept.class_count || 0) : 0;
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('deptModal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('deptModal').classList.add('hidden'); }
+
+    async function saveDept() {
+      const errEl = document.getElementById('modalError');
+      const name = document.getElementById('mName').value.trim();
+      const desc = document.getElementById('mDesc').value.trim();
+      const classCount = parseInt(document.getElementById('mClassCount').value) || 0;
+      if (!name) { errEl.textContent = '부서명을 입력해주세요.'; errEl.classList.add('show'); return; }
+
+      if (editingId) {
+        const dept = allDeptData.find(d => d.id === editingId);
+        const { error } = await updateDepartment(editingId, { name, description: desc || null, class_count: classCount });
+        if (error) { await logError('DEPT_UPDATE_FAIL', { id: editingId, 대상: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        const 변경Parts = [];
+        if (dept) {
+          if (dept.name !== name) 변경Parts.push(`부서명: ${dept.name} → ${name}`);
+          if ((dept.description || '') !== desc) 변경Parts.push(`설명: ${dept.description || '-'} → ${desc || '-'}`);
+          if ((dept.class_count || 0) !== classCount) 변경Parts.push(`반 수: ${dept.class_count || 0} → ${classCount}`);
+        }
+        await logInfo('DEPT_UPDATE', { id: editingId, 대상: name, 변경내역: 변경Parts.length ? 변경Parts.join(', ') : `부서명: ${name}` });
+      } else {
+        const { error } = await createDepartment(name, desc || null, classCount);
+        if (error) { await logError('DEPT_CREATE_FAIL', { 대상: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        await logInfo('DEPT_CREATE', { 대상: name, 변경내역: `부서 등록: ${name}, 반 수: ${classCount}` });
+      }
+      closeModal();
+      await loadDepts();
+    }
+
+    async function confirmDelete(id, name) {
+      if (!confirm(`"${name}" 부서를 비활성화하시겠습니까?`)) return;
+      await deleteDepartment(id);
+      await logInfo('DEPT_DEACTIVATE', { id, 대상: name, 변경내역: `부서 비활성화: ${name}` });
+      await loadDepts();
+    }
+
+    const PERM_RANK_MAP = { admin:100, evangelist:90, chief:80, purchase_teacher:70, dept_teacher:60, teacher:40, student:20 };
+    let _modalMembers = [];
+    function showMembers(deptName, deptId) {
+      const deptNameFn = () => deptName;
+      const members = sortUserList(allUsers.filter(u => u.department_id === deptId), deptNameFn);
+      _modalMembers = members;
+      const dept = allDeptData.find(d => d.id === deptId);
+      const hasClasses = dept && dept.class_count > 0;
+      const isAdmin = (session.permissionRank || 0) >= 100;
+
+      const nameMap = resolveDisplayNames(members);
+      let html = `<strong>${deptName}</strong> 소속 인원 (${members.length}명)<br/><br/>`;
+      if (members.length === 0) {
+        html += '<div style="color:#636e72;">소속 인원이 없습니다.</div>';
+      } else {
+        html += `<table class="admin-table" id="memberTable" style="font-size:0.85rem;"><thead><tr><th data-sort-key="user_type">역할</th><th data-sort-key="permission_level">권한</th><th data-sort-key="display_name">이름</th>${hasClasses ? '<th data-sort-key="class_number" data-sort-type="number">반</th>' : ''}${isAdmin ? '<th data-sort-key="last_login_at" data-sort-type="date">마지막 로그인</th>' : ''}</tr></thead><tbody>`;
+        html += members.map(u => {
+          const typeLabel = `${getCodeEmoji('profiles.user_type', u.user_type, u.user_type === 'student' ? '🎒' : '👩‍🏫')} ${getCodeLabel('profiles.user_type', u.user_type, u.user_type === 'student' ? '학생' : '교사')}`;
+          const permLabel = (PERMISSION_EMOJI[u.permission_level]||'') + ' ' + (PERMISSION_LABELS[u.permission_level]||u.permission_level);
+          const dn = nameMap[u.id] || u.display_name || '-';
+          const isSelf = u.id === session.id;
+          const classNum = u.class_number ? u.class_number + '반' : '-';
+          return `<tr><td>${typeLabel}</td><td>${permLabel}</td><td>${dn}${(isSelf || isAdminLevel(session)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>${hasClasses ? '<td>' + classNum + '</td>' : ''}${isAdmin ? `<td>${u.last_login_at ? formatKSTShort(u.last_login_at) : '-'}</td>` : ''}</tr>`;
+        }).join('');
+        html += '</tbody></table>';
+      }
+
+      document.getElementById('modalTitle').textContent = '부서 소속 인원';
+      document.getElementById('mName').parentElement.style.display = 'none';
+      document.getElementById('mDesc').parentElement.style.display = 'none';
+      document.getElementById('mClassCount').parentElement.style.display = 'none';
+      document.querySelector('#deptModal .modal-actions .btn-confirm').style.display = 'none';
+      document.getElementById('modalError').innerHTML = html;
+      document.getElementById('modalError').style.display = 'block';
+      document.getElementById('modalError').style.background = 'transparent';
+      document.getElementById('modalError').style.color = 'inherit';
+      document.getElementById('deptModal').classList.remove('hidden');
+      initSortableHeaders('memberTable', function(){ return _modalMembers; }, function(d){ _modalMembers = d; showMembers(deptName, deptId); });
+    }
+
+    const origCloseModal = closeModal;
+    closeModal = function() {
+      document.getElementById('mName').parentElement.style.display = '';
+      document.getElementById('mDesc').parentElement.style.display = '';
+      document.getElementById('mClassCount').parentElement.style.display = '';
+      document.querySelector('#deptModal .modal-actions .btn-confirm').style.display = '';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('modalError').style.display = '';
+      document.getElementById('modalError').style.background = '';
+      document.getElementById('modalError').style.color = '';
+      document.getElementById('modalError').innerHTML = '';
+      document.getElementById('deptModal').classList.add('hidden');
+    };
+
+    document.getElementById('deptModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

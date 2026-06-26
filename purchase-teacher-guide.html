@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>구매 담당 교사 가이드 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.52.0" />
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+  <main class="guide-container">
+    <section class="guide-hero">
+      <div class="guide-kicker">구매 담당 교사 · 70등급</div>
+      <h1>구매 담당 교사 가이드</h1>
+      <p>전체 부서의 상품 주문을 확인하고 구매 흐름을 진행하는 권한자용 안내입니다. 구매 담당 교사는 부서 담당 교사와 같은 관리 메뉴를 사용하면서, 구매 관리와 상품 배지에서 전체 부서 주문을 처리합니다.</p>
+    </section>
+
+    <div class="guide-switcher">
+      <a href="guide.html">학생 가이드</a>
+      <a href="teacher-guide.html">교사 가이드</a>
+      <a href="dept-teacher-guide.html">부서 담당 교사 가이드</a>
+      <a href="purchase-teacher-guide.html" class="active">구매 담당 교사 가이드</a>
+      <a href="chief-teacher-guide.html">부장 교사 가이드</a>
+      <a href="evangelist-guide.html">전도사님 가이드</a>
+      <a href="admin-guide.html">관리자 가이드</a>
+    </div>
+
+    <section class="guide-section">
+      <h2>🛒 구매 담당 교사의 핵심 업무</h2>
+      <ol class="guide-steps">
+        <li><strong>상품 &gt; 구매 관리</strong>에서 전체 부서 주문이 들어왔는지 확인합니다.</li>
+        <li>칸반 카드에서 <strong>구매 신청</strong> 건을 눌러 처리할 주문만 필터링합니다.</li>
+        <li>실제 주문 확인 후 <strong>상품 준비</strong> 상태로 변경합니다. 이 전환만 Slack 상품 관리 채널 알림이 발송됩니다.</li>
+        <li>실제 구매가 끝났으면 <strong>상품 구매</strong>로 확정합니다. 이때 사용자의 달란트가 실제 차감됩니다.</li>
+        <li>상품 전달이 끝나면 <strong>상품 지급</strong>으로 완료 처리합니다.</li>
+      </ol>
+      <div class="guide-note">구매 신청 단계에서는 달란트가 사용 대기로만 묶입니다. 실제 차감은 상품 구매 확정 단계에서 발생하므로, 실구매 전 확정하지 않도록 주의합니다.</div>
+      <div class="guide-note">구매 상태 이름, 색상, 표시 순서는 공통 코드 기준으로 관리됩니다. 구매 관리, 구매 통계, 내 구매 상품에서 같은 주문 상태는 같은 이름으로 표시됩니다.</div>
+    </section>
+
+    <section class="guide-section">
+      <h2>📊 구매 관련 화면</h2>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead><tr><th>화면</th><th>해야 할 일</th><th>권한 특성</th></tr></thead>
+          <tbody>
+            <tr><td>구매 관리</td><td>전체 부서 주문 조회, 상태 변경, 일괄 상품 준비/구매 확정/지급 처리</td><td>부서 제한 없이 전체 주문 처리 가능</td></tr>
+            <tr><td>구매 통계</td><td>전체/부서별/사용자별/유형별 구매 현황 확인</td><td>전체 부서 통계를 볼 수 있음</td></tr>
+            <tr><td>상품 관리</td><td>상품 등록/수정, 가격/카테고리/이미지 점검</td><td>상품 삭제는 전도사님 이상</td></tr>
+            <tr><td>내 구매 상품</td><td>본인 명의 구매 신청 상태 확인</td><td>대리 구매나 학생 주문은 학생 명의로 기록됨</td></tr>
+            <tr><td>상단 상품 배지</td><td>처리 가능한 주문 건수 확인</td><td>구매 담당 교사는 전체 부서 주문이 집계됨</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🔔 구매 알림 기준</h2>
+      <div class="guide-card">
+        <ul class="guide-list">
+          <li>학생/교사 구매 신청 또는 대리 구매 신청은 신청자 소속 부서 Slack 채널로 전송됩니다.</li>
+          <li>구매 관리에서 <strong>구매 신청 → 상품 준비</strong>로 바뀔 때만 상품 관리 채널로 전송됩니다.</li>
+          <li>상품 구매 확정, 상품 지급, 되돌리기, 취소는 현재 Slack 알림 대상이 아닙니다.</li>
+          <li>Slack 실패는 사용자 작업을 막지 않고 콘솔 경고만 남깁니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>✅ 구매 전 확인 사항</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>상품 정보</h3>
+          <p>상품명, 가격, 카테고리, 대상(학생용/교사용)이 실제 구매 품목과 맞는지 확인합니다. 카테고리와 대상은 공통 코드 기준 선택값으로 관리됩니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>주문 대상</h3>
+          <p>신청자 이름, 부서, 반, 대리 구매 여부를 확인합니다. 대리 구매는 학생 명의 주문입니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>달란트 차감</h3>
+          <p>상품 구매 확정 시점에 실제 차감됩니다. 잘못 확정했다면 권한자에게 반환/정정 절차를 요청합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>💰 달란트 상세 조회 (v3.48.0)</h2>
+      <div class="guide-card">
+        <p>구매 확정 전후로 학생 달란트 잔액을 확인할 때 <strong>달란트 &gt; 달란트 관리 &gt; 상세</strong> 팝업을 활용합니다.</p>
+        <ul class="guide-list">
+          <li>상단 요약: <strong>누적적립</strong>, <strong>총사용</strong>, <strong>총반환</strong>, <strong>잔여</strong> 4칸 표시</li>
+          <li>내역 유형: <strong>적립</strong> / <strong>사용</strong> / <strong>반환</strong> 3종 구분</li>
+          <li><strong>총사용</strong>에는 실제 상품 구매 확정 건만 집계되며, 반환은 별도로 <strong>총반환</strong>에 표시됩니다.</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>⏱️ 세션 관리 · 📱 모바일 네비게이션</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>24시간 유휴 자동 로그아웃</h3>
+          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>모바일 상단 우측 (768px 이하)</h3>
+          <p>좁은 화면에서는 상단 우측에 아래 순서로 표시됩니다.</p>
+          <ul class="guide-list" style="margin-top:0.5rem;font-size:0.9rem;">
+            <li>테마 스위치 → 햄버거 메뉴(☰) → 로그아웃 → (권한 이모지) 이름</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    (async () => {
+      await navInit();
+      const session = await loadAuthSession();
+      if (!session || (session.permissionRank || 0) < 70) {
+        location.href = session && (session.permissionRank || 0) >= 60 ? 'dept-teacher-guide.html' : 'teacher-guide.html';
+        return;
+      }
+      navUpdateAuth(session);
+      await initTheme();
+      const rank = session.permissionRank || 0;
+      document.querySelectorAll('.guide-switcher a').forEach(a => {
+        if (a.href.includes('chief-teacher-guide') && rank < 80) a.style.display = 'none';
+        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
+      });
+      autoLogPageView();
+    })();
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

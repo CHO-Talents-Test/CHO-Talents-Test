@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 통계 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <style>
+    .stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; margin-bottom: 1.5rem; }
+    .stat-card { background: linear-gradient(135deg, var(--t-subtle-surface, #f8f9fa) 0%, var(--t-card, #fff) 100%); border: 1px solid var(--t-border, #e9ecef); border-radius: 14px; padding: 1rem 1.2rem; text-align: center; transition: transform 0.15s, box-shadow 0.15s; }
+    .stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .stat-card .stat-icon { font-size: 1.5rem; margin-bottom: 0.3rem; }
+    .stat-card .stat-label { font-size: 0.78rem; color: var(--admin-text-muted); font-weight: 600; }
+    .stat-card .stat-value { font-size: 1.6rem; font-weight: 800; margin-top: 0.1rem; }
+    .stat-card .stat-value.green { color: #2b8a3e; }
+    .stat-card .stat-value.blue { color: #1971c2; }
+    .stat-card .stat-value.orange { color: #e67700; }
+    .stat-card .stat-value.purple { color: #7048e8; }
+    .stats-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .stats-table thead th { background: #f1f3f5; padding: 0.6rem 0.8rem; text-align: left; font-weight: 700; font-size: 0.82rem; border-bottom: 2px solid #dee2e6; }
+    .stats-table tbody tr { border-bottom: 1px solid var(--t-border, #e9ecef); transition: background 0.1s; }
+    .stats-table tbody tr:hover { background: #f8f9fa; }
+    .stats-table tbody tr:nth-child(even) { background: #fafbfc; }
+    .stats-table tbody tr:nth-child(even):hover { background: #f1f3f5; }
+    .stats-table td { padding: 0.55rem 0.8rem; }
+    .stats-table td.num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pct-bar { background: #e9ecef; border-radius: 4px; height: 20px; width: 100%; max-width: 160px; position: relative; overflow: hidden; }
+    .pct-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .pct-bar-text { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; font-weight: 700; color: #495057; }
+    .type-section { background: var(--t-card, #fff); border: 1px solid var(--t-border, #e9ecef); border-radius: 14px; overflow: hidden; margin-bottom: 1rem; }
+    .type-section-header { padding: 0.8rem 1rem; border-bottom: 1px solid var(--t-border, #e9ecef); font-weight: 700; display: flex; align-items: center; gap: 0.5rem; }
+    .type-detail-inline { display: flex; gap: 1.5rem; padding: 0.5rem 1rem; font-size: 0.85rem; color: var(--admin-text-muted); flex-wrap: wrap; }
+    .type-detail-inline span { white-space: nowrap; }
+    .type-detail-inline .val { font-weight: 700; color: #212529; }
+    .period-presets { display: inline-flex; gap: 0.25rem; }
+    .period-presets button { padding: 0.2rem 0.5rem; font-size: 0.75rem; border: 1px solid var(--admin-border); border-radius: 4px; background: var(--t-card, #fff); cursor: pointer; font-weight: 600; color: var(--admin-text-muted); }
+    .period-presets button:hover { background: #f1f3f5; color: #212529; }
+    .radio-inline { display: inline-flex; gap: 0.6rem; align-items: center; }
+    .radio-inline label { display: flex; align-items: center; gap: 0.2rem; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+    .radio-inline label input { margin: 0; }
+    @media(max-width:768px){.hide-mobile{display:none!important;}}
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container" style="max-width:100%;padding:0 1rem;">
+    <h2>📊 달란트 누적 적립 통계</h2>
+
+    <div class="filters" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <button class="filter-btn active" id="viewAll" onclick="switchView('all')">전체</button>
+      <button class="filter-btn" id="viewDept" onclick="switchView('dept')">부서별</button>
+      <button class="filter-btn" id="viewClass" onclick="switchView('class')">사용자별</button>
+      <button class="filter-btn" id="viewType" onclick="switchView('type')">유형별</button>
+      <select id="deptFilter" onchange="loadStats()" style="padding:0.4rem 0.8rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;">
+        <option value="">전체 부서</option>
+      </select>
+      <span class="radio-inline" id="userTypeRadio" style="gap:0.3rem;">
+        <label style="padding:0.3rem 0.7rem;border:2px solid #dee2e6;border-radius:20px;transition:all 0.15s;background:var(--t-card, #fff);"><input type="radio" name="userType" value="" checked onchange="loadStats();styleTypeRadio()" style="display:none;" /> 👥 전체</label>
+        <label style="padding:0.3rem 0.7rem;border:2px solid #dee2e6;border-radius:20px;transition:all 0.15s;background:var(--t-card, #fff);"><input type="radio" name="userType" value="student" onchange="loadStats();styleTypeRadio()" style="display:none;" /> 🎒 학생</label>
+        <label style="padding:0.3rem 0.7rem;border:2px solid #dee2e6;border-radius:20px;transition:all 0.15s;background:var(--t-card, #fff);"><input type="radio" name="userType" value="teacher" onchange="loadStats();styleTypeRadio()" style="display:none;" /> 👨‍🏫 교사</label>
+      </span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+        <label style="font-size:0.82rem;color:var(--admin-text-muted);">기간:</label>
+        <input type="date" id="dateFrom" onchange="loadStats()" style="padding:0.3rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.82rem;" />
+        <span style="font-size:0.82rem;">~</span>
+        <input type="date" id="dateTo" onchange="loadStats()" style="padding:0.3rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.82rem;" />
+        <span class="period-presets">
+          <button onclick="setPeriod('today')">오늘</button>
+          <button onclick="setPeriod('week')">1주</button>
+          <button onclick="setPeriod('month')">1달</button>
+          <button onclick="setPeriod('year')">1년</button>
+        </span>
+      </span>
+    </div>
+
+    <div id="statsContent" style="margin-top:1rem;">
+      <div style="text-align:center;color:var(--admin-text-muted);">불러오는 중...</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="deptDetailModal">
+    <div class="modal-box" style="max-width:640px;">
+      <h3 class="modal-title" id="deptDetailTitle">부서 상세</h3>
+      <div id="deptDetailSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.6rem;margin-bottom:1rem;"></div>
+      <div style="font-size:0.82rem;color:var(--admin-text-muted);margin-bottom:0.5rem;">전체 1인 평균 수령 달란트: <strong id="deptDetailOverallAvg" style="color:#212529;">0</strong></div>
+      <div class="admin-table-wrap" style="max-height:360px;overflow-y:auto;">
+        <table class="stats-table">
+          <thead><tr><th>항목</th><th style="text-align:right;">수령 수</th><th style="text-align:right;">전체 대비 비율</th><th style="text-align:right;">1인 평균</th></tr></thead>
+          <tbody id="deptDetailItems"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeDeptDetailModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="userDetailModal">
+    <div class="modal-box" style="max-width:560px;">
+      <h3 class="modal-title" id="userDetailTitle">사용자 상세</h3>
+      <div class="admin-table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table class="stats-table">
+          <thead><tr><th>항목명</th><th style="text-align:right;">수령 수</th><th style="text-align:right;">달란트</th><th style="text-align:right;">비율</th></tr></thead>
+          <tbody id="userDetailItems"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeUserDetailModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session, allTxns = [], allProfiles = [], allDepts = [];
+    let currentView = 'all';
+    let userStatPages = { teacher: 1, student: 1 };
+    let userStatTeacherPageSize = null;
+    let userStatStudentPageSize = null;
+
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      userStatTeacherPageSize = await loadPageSize('talent_stats_teacher', 20);
+      userStatStudentPageSize = await loadPageSize('talent_stats_student', 20);
+      setPeriod('week');
+      await loadData();
+      loadStats();
+    })();
+
+    function setPeriod(type) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      let fromStr = todayStr;
+      if (type === 'week') {
+        const d = new Date(today); d.setDate(d.getDate() - 6);
+        fromStr = d.toISOString().slice(0, 10);
+      } else if (type === 'month') {
+        fromStr = todayStr.slice(0, 8) + '01';
+      } else if (type === 'year') {
+        fromStr = todayStr.slice(0, 4) + '-01-01';
+      }
+      document.getElementById('dateFrom').value = fromStr;
+      document.getElementById('dateTo').value = todayStr;
+      if (allTxns.length > 0) loadStats();
+    }
+
+    function styleTypeRadio() {
+      document.querySelectorAll('#userTypeRadio label').forEach(l => {
+        const checked = l.querySelector('input').checked;
+        l.style.background = checked ? 'var(--admin-primary)' : '#fff';
+        l.style.color = checked ? '#fff' : '#333';
+        l.style.borderColor = checked ? 'var(--admin-primary)' : '#dee2e6';
+        l.style.fontWeight = checked ? '700' : '500';
+      });
+    }
+    setTimeout(styleTypeRadio, 0);
+
+    function isReturnTxn(t) {
+      return t && t.type === 'use' && String(t.description || '').startsWith('반환:');
+    }
+
+    function extractReturnedTxnId(desc) {
+      const m = String(desc || '').match(/\[([0-9a-f-]{36})\]/i);
+      return m ? m[1] : null;
+    }
+
+    function normalizeReturnDesc(desc) {
+      return String(desc || '')
+        .replace(/^반환:\s*/, '')
+        .replace(/^\[[0-9a-f-]{36}\]\s*/i, '')
+        .replace(/^반환:\s*/, '')
+        .trim();
+    }
+
+    function applyReturnAdjustments(earnTxns, returnTxns) {
+      const rows = (earnTxns || []).map(t => ({ ...t, amount: Number(t.amount || 0) }));
+      const byId = {};
+      const legacyBuckets = {};
+      rows.forEach(t => {
+        if (t.id) byId[t.id] = t;
+        const key = [t.user_id || '', Number(t.amount || 0), t.description || ''].join('|');
+        if (!legacyBuckets[key]) legacyBuckets[key] = [];
+        legacyBuckets[key].push(t);
+      });
+
+      (returnTxns || []).forEach(r => {
+        const returnAmount = Number(r.amount || 0);
+        if (returnAmount <= 0) return;
+        const txnId = extractReturnedTxnId(r.description);
+        const target = txnId ? byId[txnId] : null;
+        if (target) {
+          target.amount = Math.max(0, Number(target.amount || 0) - returnAmount);
+          return;
+        }
+
+        const key = [r.user_id || '', returnAmount, normalizeReturnDesc(r.description)].join('|');
+        const candidates = legacyBuckets[key] || [];
+        const legacyTarget = candidates.find(t => Number(t.amount || 0) > 0);
+        if (legacyTarget) legacyTarget.amount = Math.max(0, Number(legacyTarget.amount || 0) - returnAmount);
+      });
+
+      return rows.filter(t => Number(t.amount || 0) > 0);
+    }
+
+    async function loadData() {
+      const [txnRes, profRes, deptRes] = await Promise.all([
+        _sb.from('talent_transactions').select('id, user_id, type, amount, description, talent_item_id, created_at').in('type', ['earn', 'use']),
+        _sb.from('profiles').select('id, display_name, username, user_type, department_id, class_number, is_super_admin'),
+        _sb.from('departments').select('id, name')
+      ]);
+      const rawTxns = txnRes.data || [];
+      allTxns = applyReturnAdjustments(
+        rawTxns.filter(t => t.type === 'earn'),
+        rawTxns.filter(isReturnTxn)
+      );
+      allProfiles = profRes.data || [];
+      if (!session.isSuperAdmin) {
+        const saIds = new Set(allProfiles.filter(p => p.is_super_admin).map(p => p.id));
+        allProfiles = allProfiles.filter(p => !p.is_super_admin);
+        if (saIds.size) allTxns = allTxns.filter(t => !saIds.has(t.user_id));
+      }
+      allDepts = deptRes.data || [];
+      allDepts.sort((a, b) => {
+        const order = ['1부', '2부', '3부', '4부', '5부', '예배부'];
+        const ai = order.indexOf(a.name);
+        const bi = order.indexOf(b.name);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.name.localeCompare(b.name, 'ko');
+      });
+      const sel = document.getElementById('deptFilter');
+      const myRank = session.permissionRank || 0;
+      if (myRank >= 80) {
+        sel.style.display = '';
+        sel.innerHTML = '<option value="">전체 부서</option>' + allDepts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+      } else {
+        sel.style.display = 'none';
+      }
+    }
+
+    function switchView(view) {
+      currentView = view;
+      ['All', 'Dept', 'Class', 'Type'].forEach(v => {
+        const el = document.getElementById('view' + v);
+        if (el) el.classList.toggle('active', v.toLowerCase() === view);
+      });
+      loadStats();
+    }
+
+    function getFilteredData() {
+      const deptId = document.getElementById('deptFilter').value;
+      const userType = document.querySelector('input[name="userType"]:checked')?.value || '';
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+      let profiles = [...allProfiles];
+      let txns = [...allTxns];
+
+      if (deptId) profiles = profiles.filter(p => p.department_id === deptId);
+      if (userType) profiles = profiles.filter(p => p.user_type === userType);
+
+      const validIds = new Set(profiles.map(p => p.id));
+      txns = txns.filter(t => validIds.has(t.user_id));
+
+      if (dateFrom) txns = txns.filter(t => (t.created_at || '').slice(0, 10) >= dateFrom);
+      if (dateTo) txns = txns.filter(t => (t.created_at || '').slice(0, 10) <= dateTo);
+
+      return { txns, profiles };
+    }
+
+    function loadStats() {
+      const { txns, profiles } = getFilteredData();
+      if (currentView === 'all') renderOverallStats(txns, profiles);
+      else if (currentView === 'dept') renderDeptStats(txns, profiles);
+      else if (currentView === 'class') renderClassStats(txns, profiles);
+      else if (currentView === 'type') renderTypeStats(txns, profiles);
+    }
+
+    function renderOverallStats(txns, profiles) {
+      if (txns.length === 0) {
+        document.getElementById('statsContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><p>적립 데이터가 없습니다.</p></div>';
+        return;
+      }
+      const total = txns.reduce((s, t) => s + (t.amount || 0), 0);
+      const uniqueUsers = new Set(txns.map(t => t.user_id)).size;
+      const byItem = {};
+      txns.forEach(t => { const k = t.description || '기타'; if (!byItem[k]) byItem[k] = { amount: 0, count: 0 }; byItem[k].amount += t.amount || 0; byItem[k].count++; });
+      const sorted = Object.entries(byItem).sort((a, b) => b[1].amount - a[1].amount);
+
+      let html = `<div class="stats-summary">
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">달란트</div><div class="stat-value green">${fmtNum(total)}</div></div>
+        <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">항목</div><div class="stat-value blue">${fmtNum(txns.length)}개</div></div>
+        <div class="stat-card"><div class="stat-icon">📦</div><div class="stat-label">항목 수</div><div class="stat-value orange">${sorted.length}개</div></div>
+        <div class="stat-card"><div class="stat-icon">👤</div><div class="stat-label">활동 인원</div><div class="stat-value purple">${fmtNum(uniqueUsers)}명</div></div>
+      </div>`;
+      html += `<div style="background:var(--t-card, #fff);border:1px solid var(--t-border, #e9ecef);border-radius:14px;overflow:hidden;">
+        <div style="padding:0.8rem 1rem;border-bottom:1px solid #e9ecef;font-weight:700;">📊 항목별 적립 통계</div>
+        <table class="stats-table"><thead><tr><th>항목</th><th style="text-align:right;">달란트</th><th style="text-align:right;">항목</th><th style="text-align:right;">비율</th><th>그래프</th></tr></thead><tbody>`;
+      sorted.forEach(([name, v]) => {
+        const pct = total > 0 ? ((v.amount / total) * 100).toFixed(1) : 0;
+        html += `<tr><td style="font-weight:600;">${name}</td><td class="num">${fmtNum(v.amount)}</td><td class="num">${fmtNum(v.count)}</td><td class="num">${pct}%</td>
+          <td><div class="pct-bar"><div class="pct-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,#51cf66,#2b8a3e);"></div><div class="pct-bar-text">${pct}%</div></div></td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function renderDeptStats(txns, profiles) {
+      const profMap = {}; profiles.forEach(p => { profMap[p.id] = p; });
+      const deptMap = {}; allDepts.forEach(d => { deptMap[d.id] = d.name; });
+      const byDept = {};
+      txns.forEach(t => {
+        const prof = profMap[t.user_id];
+        const dName = prof && prof.department_id ? (deptMap[prof.department_id] || '미배정') : '미배정';
+        if (!byDept[dName]) byDept[dName] = { amount: 0, count: 0, users: new Set() };
+        byDept[dName].amount += t.amount || 0; byDept[dName].count++; byDept[dName].users.add(t.user_id);
+      });
+      const sorted = Object.entries(byDept).sort((a, b) =>
+        (b[1].amount - a[1].amount) ||
+        (a[1].users.size - b[1].users.size) ||
+        (a[1].count - b[1].count) ||
+        a[0].localeCompare(b[0], 'ko')
+      );
+      const total = txns.reduce((s, t) => s + (t.amount || 0), 0);
+      const totalUsers = new Set(txns.map(t => t.user_id)).size;
+
+      let html = `<div class="stats-summary">
+        <div class="stat-card"><div class="stat-icon">🏢</div><div class="stat-label">총 부서 수</div><div class="stat-value blue">${sorted.length}</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">총 적립 달란트</div><div class="stat-value green">${fmtNum(total)}</div></div>
+        <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">총 항목 수</div><div class="stat-value orange">${fmtNum(txns.length)}</div></div>
+        <div class="stat-card"><div class="stat-icon">👤</div><div class="stat-label">활동 인원</div><div class="stat-value purple">${fmtNum(totalUsers)}명</div></div>
+      </div>`;
+      html += `<div style="background:var(--t-card, #fff);border:1px solid var(--t-border, #e9ecef);border-radius:14px;overflow:hidden;">
+        <div style="padding:0.8rem 1rem;border-bottom:1px solid #e9ecef;font-weight:700;">🏢 부서별 적립 통계</div>
+        <table class="stats-table"><thead><tr><th>부서</th><th style="text-align:right;">달란트</th><th style="text-align:right;">항목</th><th style="text-align:right;">인원</th><th class="hide-mobile" style="text-align:right;">1인 평균</th><th style="text-align:right;">비율</th><th class="hide-mobile">그래프</th><th>상세</th></tr></thead><tbody>`;
+      sorted.forEach(([name, v]) => {
+        const pct = total > 0 ? ((v.amount / total) * 100).toFixed(1) : 0;
+        const avg = v.users.size > 0 ? Math.round(v.amount / v.users.size) : 0;
+        const safeName = name.replace(/'/g, "\\'");
+        html += `<tr><td style="font-weight:600;">${name}</td><td class="num">${fmtNum(v.amount)}</td><td class="num">${fmtNum(v.count)}</td><td class="num">${v.users.size}명</td><td class="num hide-mobile">${fmtNum(avg)}</td><td><div class="pct-bar" style="min-width:60px;"><div class="pct-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,#339af0,#1971c2);"></div><div class="pct-bar-text">${pct}%</div></div></td>
+          <td class="hide-mobile"><div class="pct-bar"><div class="pct-bar-fill" style="width:${pct}%;background:linear-gradient(90deg,#339af0,#1971c2);"></div><div class="pct-bar-text">${pct}%</div></div></td>
+          <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openDeptDetail('${safeName}')">상세</button></td></tr>`;
+      });
+      html += '</tbody></table></div>';
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function getUserStatPageSize(typeKey) {
+      if (typeKey === 'teacher' && userStatTeacherPageSize !== null) return userStatTeacherPageSize;
+      if (typeKey === 'student' && userStatStudentPageSize !== null) return userStatStudentPageSize;
+      return window.innerWidth <= 768 ? 10 : 20;
+    }
+
+    function renderUserGroupTable(typeKey, label, users, total) {
+      if (users.length === 0) return '';
+      const pageSize = getUserStatPageSize(typeKey);
+      const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
+      if (userStatPages[typeKey] > totalPages) userStatPages[typeKey] = totalPages;
+      const page = userStatPages[typeKey];
+      const startIdx = (page - 1) * pageSize;
+      const pageData = users.slice(startIdx, startIdx + pageSize);
+
+      let rows = pageData.map((u, i) => {
+        const rank = startIdx + i;
+        const medal = rank === 0 ? '🥇 ' : rank === 1 ? '🥈 ' : rank === 2 ? '🥉 ' : '';
+        return `<tr><td>${u.dept}</td><td style="font-weight:600;">${medal}${u.name}</td><td class="num">${fmtNum(u.amount)}</td><td class="num">${fmtNum(u.count)}</td>
+          <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openUserDetail('${u.id}')">상세</button></td></tr>`;
+      }).join('');
+
+      const prefKey = typeKey === 'teacher' ? 'talent_stats_teacher' : 'talent_stats_student';
+      const _pgHtml = buildPagingButtons(page, totalPages, "goUserStatPage('" + typeKey + "',__PAGE__)");
+      const paging = _pgHtml ? '<div style="padding:0.6rem 1rem;display:flex;align-items:center;gap:0.3rem;flex-wrap:wrap;border-top:1px solid #e9ecef;">' + _pgHtml + '</div>' : '';
+
+      const pageSizeHtml = renderPageSizeSelector(prefKey, pageSize, "onUserStatPageSizeChange('" + typeKey + "', this.value)");
+
+      return `<div style="background:var(--t-card, #fff);border:1px solid var(--t-border, #e9ecef);border-radius:14px;overflow:hidden;margin-bottom:1rem;">
+        <div style="padding:0.8rem 1rem;border-bottom:1px solid #e9ecef;font-weight:700;display:flex;align-items:center;justify-content:space-between;">${label} (${users.length}명) <span>${pageSizeHtml}</span></div>
+        <table class="stats-table" id="statUserTable_${typeKey}"><thead><tr><th data-sort-key="dept">부서</th><th data-sort-key="name">이름</th><th data-sort-key="amount" data-sort-type="number" style="text-align:right;">달란트</th><th data-sort-key="count" data-sort-type="number" style="text-align:right;">항목</th><th>상세</th></tr></thead><tbody>${rows}</tbody></table>${paging}</div>`;
+    }
+
+    function goUserStatPage(typeKey, p) {
+      userStatPages[typeKey] = p;
+      loadStats();
+    }
+
+    async function onUserStatPageSizeChange(typeKey, val) {
+      const size = parseInt(val) || 20;
+      const key = typeKey === 'teacher' ? 'talent_stats_teacher' : 'talent_stats_student';
+      if (typeKey === 'teacher') userStatTeacherPageSize = size;
+      else userStatStudentPageSize = size;
+      await savePageSize(key, size);
+      userStatPages[typeKey] = 1;
+      loadStats();
+    }
+
+    function renderClassStats(txns, profiles) {
+      const profMap = {}; profiles.forEach(p => { profMap[p.id] = p; });
+      const deptMap = {}; allDepts.forEach(d => { deptMap[d.id] = d.name; });
+      const byUser = {};
+      txns.forEach(t => {
+        const prof = profMap[t.user_id]; if (!prof) return;
+        const dName = prof.department_id ? (deptMap[prof.department_id] || '미배정') : '미배정';
+        const uName = prof.display_name || prof.username || '-';
+        const key = `${dName}|${uName}|${prof.id}`;
+        if (!byUser[key]) byUser[key] = { id: prof.id, dept: dName, name: uName, type: prof.user_type, classNum: prof.class_number || 0, permLevel: prof.permission_level || '', amount: 0, count: 0, items: {} };
+        byUser[key].amount += t.amount || 0; byUser[key].count++;
+        const desc = t.description || '기타';
+        byUser[key].items[desc] = (byUser[key].items[desc] || 0) + (t.amount || 0);
+      });
+      const allUsers = Object.values(byUser);
+      const _sortStatUsers = (arr) => arr.sort((a, b) => {
+        if (a.amount !== b.amount) return b.amount - a.amount;
+        if (a.count !== b.count) return a.count - b.count;
+        const d = a.dept.localeCompare(b.dept, 'ko'); if (d !== 0) return d;
+        return a.name.localeCompare(b.name, 'ko');
+      });
+      const teachers = _sortStatUsers(allUsers.filter(u => u.type === 'teacher'));
+      const students = _sortStatUsers(allUsers.filter(u => u.type !== 'teacher'));
+      const total = txns.reduce((s, t) => s + (t.amount || 0), 0);
+      const avgPP = allUsers.length > 0 ? Math.round(total / allUsers.length) : 0;
+
+      let html = `<div class="stats-summary">
+        <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-label">총 인원</div><div class="stat-value blue">${allUsers.length}명</div></div>
+        <div class="stat-card"><div class="stat-icon">💰</div><div class="stat-label">총 적립 달란트</div><div class="stat-value green">${fmtNum(total)}</div></div>
+        <div class="stat-card"><div class="stat-icon">📋</div><div class="stat-label">총 항목 수</div><div class="stat-value orange">${fmtNum(txns.length)}</div></div>
+        <div class="stat-card"><div class="stat-icon">📊</div><div class="stat-label">1인 평균</div><div class="stat-value purple">${fmtNum(avgPP)}</div></div>
+      </div>`;
+      html += renderUserGroupTable('teacher', '👩‍🏫 교사', teachers, total);
+      html += renderUserGroupTable('student', '🎒 학생', students, total);
+      if (allUsers.length === 0) {
+        html += '<div class="empty-state"><div class="empty-state-icon">👤</div><p>적립 데이터가 없습니다.</p></div>';
+      }
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function renderTypeStats(txns, profiles) {
+      const profMap = {}; profiles.forEach(p => { profMap[p.id] = p; });
+      const types = { student: { label: '학생', icon: '🎒', txns: [], color: '#ffd43b,#fab005' }, teacher: { label: '교사', icon: '👨‍🏫', txns: [], color: '#74c0fc,#339af0' } };
+      txns.forEach(t => {
+        const prof = profMap[t.user_id];
+        const type = (prof && prof.user_type === 'teacher') ? 'teacher' : 'student';
+        types[type].txns.push(t);
+      });
+      const total = txns.reduce((s, t) => s + (t.amount || 0), 0);
+
+      let html = `<div class="stats-summary">
+        <div class="stat-card"><div class="stat-icon">🎒</div><div class="stat-label">학생 총 달란트</div><div class="stat-value green">${fmtNum(types.student.txns.reduce((s, t) => s + (t.amount || 0), 0))}</div></div>
+        <div class="stat-card"><div class="stat-icon">👨‍🏫</div><div class="stat-label">교사 총 달란트</div><div class="stat-value blue">${fmtNum(types.teacher.txns.reduce((s, t) => s + (t.amount || 0), 0))}</div></div>
+        <div class="stat-card"><div class="stat-icon">🎒</div><div class="stat-label">학생 인원</div><div class="stat-value orange">${new Set(types.student.txns.map(t => t.user_id)).size}명</div></div>
+        <div class="stat-card"><div class="stat-icon">👨‍🏫</div><div class="stat-label">교사 인원</div><div class="stat-value purple">${new Set(types.teacher.txns.map(t => t.user_id)).size}명</div></div>
+      </div>`;
+
+      ['student', 'teacher'].forEach(typeKey => {
+        const info = types[typeKey];
+        const typeTxns = info.txns;
+        const typeTotal = typeTxns.reduce((s, t) => s + (t.amount || 0), 0);
+        const typeCount = typeTxns.length;
+        const typeUsers = new Set(typeTxns.map(t => t.user_id)).size;
+        const typeAvg = typeUsers > 0 ? Math.round(typeTotal / typeUsers) : 0;
+
+        const byItem = {};
+        typeTxns.forEach(t => { const k = t.description || '기타'; if (!byItem[k]) byItem[k] = { amount: 0, count: 0 }; byItem[k].amount += t.amount || 0; byItem[k].count++; });
+        const sorted = Object.entries(byItem).sort((a, b) => b[1].amount - a[1].amount);
+
+        html += `<div class="type-section">
+          <div class="type-section-header">${info.icon} ${info.label} 항목별 적립 통계</div>
+          <div class="type-detail-inline">
+            <span>달란트: <span class="val">${fmtNum(typeTotal)}</span></span>
+            <span>항목: <span class="val">${fmtNum(typeCount)}</span></span>
+            <span>인원: <span class="val">${typeUsers}명</span></span>
+            <span>1인 평균: <span class="val">${fmtNum(typeAvg)}</span></span>
+          </div>
+          <table class="stats-table"><thead><tr><th>항목</th><th style="text-align:right;">달란트</th><th style="text-align:right;">수령 수</th><th style="text-align:right;">비율</th><th>그래프</th></tr></thead><tbody>`;
+        if (sorted.length === 0) {
+          html += '<tr><td colspan="5" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+        } else {
+          sorted.forEach(([name, v]) => {
+            const pct = typeTotal > 0 ? ((v.amount / typeTotal) * 100).toFixed(1) : 0;
+            const grad = typeKey === 'student' ? 'linear-gradient(90deg,#ffd43b,#fab005)' : 'linear-gradient(90deg,#74c0fc,#339af0)';
+            html += `<tr><td style="font-weight:600;">${name}</td><td class="num">${fmtNum(v.amount)}</td><td class="num">${fmtNum(v.count)}</td><td class="num">${pct}%</td>
+              <td><div class="pct-bar"><div class="pct-bar-fill" style="width:${pct}%;background:${grad};"></div><div class="pct-bar-text">${pct}%</div></div></td></tr>`;
+          });
+        }
+        html += '</tbody></table></div>';
+      });
+
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function getDeptNameForTxn(t, profMap, deptMap) {
+      const prof = profMap[t.user_id];
+      return prof && prof.department_id ? (deptMap[prof.department_id] || '미배정') : '미배정';
+    }
+
+    function openDeptDetail(deptName) {
+      const { txns, profiles } = getFilteredData();
+      const profMap = {}; profiles.forEach(p => { profMap[p.id] = p; });
+      const deptMap = {}; allDepts.forEach(d => { deptMap[d.id] = d.name; });
+      const deptTxns = txns.filter(t => getDeptNameForTxn(t, profMap, deptMap) === deptName);
+      const totalAmount = deptTxns.reduce((s, t) => s + (t.amount || 0), 0);
+      const itemSet = new Set(deptTxns.map(t => t.description || '기타'));
+      const txnCount = deptTxns.length;
+      const users = new Set(deptTxns.map(t => t.user_id));
+      const allTotal = txns.reduce((s, t) => s + (t.amount || 0), 0);
+      const allUsers = new Set(txns.map(t => t.user_id)).size;
+      const overallAvg = allUsers > 0 ? Math.round(allTotal / allUsers) : 0;
+
+      const byItem = {};
+      deptTxns.forEach(t => {
+        const k = t.description || '기타';
+        if (!byItem[k]) byItem[k] = { count: 0, amount: 0 };
+        byItem[k].count++;
+        byItem[k].amount += t.amount || 0;
+      });
+      const sorted = Object.entries(byItem).sort((a, b) => b[1].amount - a[1].amount);
+
+      document.getElementById('deptDetailTitle').textContent = deptName;
+      document.getElementById('deptDetailSummary').innerHTML = `
+        <div class="stat-card" style="padding:0.6rem;"><div class="stat-label">총 수령 달란트</div><div class="stat-value green" style="font-size:1.2rem;">${fmtNum(totalAmount)}</div></div>
+        <div class="stat-card" style="padding:0.6rem;"><div class="stat-label">수령 달란트 항목 수</div><div class="stat-value blue" style="font-size:1.2rem;">${itemSet.size}개</div></div>
+        <div class="stat-card" style="padding:0.6rem;"><div class="stat-label">수령 횟수</div><div class="stat-value orange" style="font-size:1.2rem;">${fmtNum(txnCount)}</div></div>`;
+      document.getElementById('deptDetailOverallAvg').textContent = fmtNum(overallAvg);
+      const totalCount = deptTxns.length;
+      document.getElementById('deptDetailItems').innerHTML = sorted.map(([name, v]) => {
+        const pct = totalCount > 0 ? ((v.count / totalCount) * 100).toFixed(1) : 0;
+        const avgPerPerson = users.size > 0 ? Math.round(v.amount / users.size) : 0;
+        return `<tr><td style="font-weight:600;">${name}</td><td class="num">${fmtNum(v.count)}</td><td class="num"><div class="pct-bar" style="display:inline-block;max-width:80px;vertical-align:middle;"><div class="pct-bar-fill" style="width:${pct}%;background:linear-gradient(135deg,#ffd43b,#fab005);"></div><span class="pct-bar-text">${pct}%</span></div></td><td class="num">${fmtNum(avgPerPerson)}</td></tr>`;
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+      document.getElementById('deptDetailModal').classList.remove('hidden');
+    }
+
+    function closeDeptDetailModal() {
+      document.getElementById('deptDetailModal').classList.add('hidden');
+    }
+
+    function openUserDetail(userId) {
+      const { txns, profiles } = getFilteredData();
+      const userTxns = txns.filter(t => t.user_id === userId);
+      const prof = profiles.find(p => p.id === userId);
+      const userTotal = userTxns.reduce((s, t) => s + (t.amount || 0), 0);
+      const uName = prof ? (prof.display_name || prof.username || '-') : '-';
+
+      const byItem = {};
+      userTxns.forEach(t => {
+        const k = t.description || '기타';
+        if (!byItem[k]) byItem[k] = { amount: 0, count: 0 };
+        byItem[k].amount += t.amount || 0;
+        byItem[k].count++;
+      });
+      const sorted = Object.entries(byItem).sort((a, b) => b[1].amount - a[1].amount);
+
+      document.getElementById('userDetailTitle').textContent = `${uName} 달란트 상세`;
+      document.getElementById('userDetailItems').innerHTML = sorted.map(([name, v]) => {
+        const pct = userTotal > 0 ? ((v.amount / userTotal) * 100).toFixed(1) : 0;
+        return `<tr><td style="font-weight:600;">${name}</td><td class="num">${fmtNum(v.count)}</td><td class="num">${fmtNum(v.amount)}</td><td class="num"><div class="pct-bar" style="display:inline-block;max-width:80px;vertical-align:middle;"><div class="pct-bar-fill" style="width:${pct}%;background:linear-gradient(135deg,#74c0fc,#339af0);"></div><span class="pct-bar-text">${pct}%</span></div></td></tr>`;
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+      document.getElementById('userDetailModal').classList.remove('hidden');
+    }
+
+    function closeUserDetailModal() {
+      document.getElementById('userDetailModal').classList.add('hidden');
+    }
+
+    document.getElementById('deptDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeDeptDetailModal(); });
+    document.getElementById('userDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeUserDetailModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

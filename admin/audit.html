@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>작업 이력 - 달란트 마을</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">📝 작업 이력 관리</h2>
+    <p style="font-size:0.85rem;color:var(--admin-text-muted);margin-bottom:1rem;">관리자 작업(사용자 수정, 권한 변경, 부서 이동, 비밀번호 초기화 등)의 이력을 조회합니다.</p>
+
+    <div id="auditCategoryFilters" style="display:flex;flex-wrap:wrap;gap:0.4rem;margin-bottom:0.8rem;">
+      <button class="filter-btn active" onclick="setFilter('all')">전체</button>
+      <button class="filter-btn" onclick="setFilter('USER')">👤 사용자</button>
+      <button class="filter-btn" onclick="setFilter('REGISTER')">📝 등록</button>
+      <button class="filter-btn" onclick="setFilter('DEPT')">🏢 부서</button>
+      <button class="filter-btn" onclick="setFilter('TALENT')">💰 달란트</button>
+      <button class="filter-btn" onclick="setFilter('ORDER')">🛒 상품/주문</button>
+      <button class="filter-btn" onclick="setFilter('QNA')">❓ Q&A</button>
+      <button class="filter-btn" onclick="setFilter('AUTH')">🔑 인증</button>
+      <button class="filter-btn" onclick="setFilter('LOG_MGMT')">📋 로그 관리</button>
+      <button class="filter-btn" onclick="setFilter('PERM')">🔐 권한/설정</button>
+    </div>
+    <div class="filters" style="margin-bottom:1rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+      <input type="date" class="filter-input" id="auditDateFrom" />
+      <span style="font-size:0.8rem;color:#adb5bd;">~</span>
+      <input type="date" class="filter-input" id="auditDateTo" />
+      <span style="display:inline-flex;gap:0.2rem;">
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setAuditPeriod('today')">오늘</button>
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setAuditPeriod('week')">1주</button>
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setAuditPeriod('month')">1달</button>
+        <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setAuditPeriod('year')">1년</button>
+      </span>
+      <button class="filter-btn" onclick="loadAuditLogs()">조회</button>
+      <input type="text" id="auditSearch" placeholder="작업자/대상 검색..." class="filter-input" style="flex:1;min-width:120px;" oninput="auditPage=1;renderAudit()" />
+    </div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="auditTitle">작업 이력 (0건)</div>
+        <div class="filters" style="display:flex;align-items:center;gap:0.3rem;margin-left:auto;">
+          <span id="auditPageSizeWrap"></span>
+        </div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>시간</th><th>작업자</th><th>작업 유형</th><th>대상</th><th>상세</th></tr></thead>
+        <tbody id="auditList"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="auditPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="auditDetailModal">
+    <div class="modal-box" style="max-width:650px;max-height:80vh;overflow-y:auto;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 class="modal-title">작업 상세 정보</h3>
+        <button class="btn-cancel" onclick="closeDetailModal()">닫기</button>
+      </div>
+      <div id="auditDetailBody" style="font-size:0.85rem;"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session, allAuditLogs = [], currentFilter = 'all';
+    let auditPageSize = 20;
+    function getAuditPageSize() { return auditPageSize; }
+    let auditPage = 1;
+
+    const AUDIT_ACTIONS = {
+      // === USER (사용자) ===
+      USER_CREATE: { label: '사용자 등록', category: 'USER', emoji: '➕' },
+      USER_UPDATE: { label: '사용자 수정', category: 'USER', emoji: '✏️' },
+      USER_DELETE: { label: '사용자 삭제', category: 'USER', emoji: '🗑️' },
+      USER_PW_RESET: { label: '비밀번호 초기화', category: 'USER', emoji: '🔑' },
+      PASSWORD_RESET: { label: '비밀번호 초기화', category: 'USER', emoji: '🔑' },
+      // === REGISTER (등록) ===
+      REGISTER_REQUEST: { label: '가입 신청', category: 'REGISTER', emoji: '📝' },
+      REGISTER_APPROVE: { label: '가입 승인', category: 'REGISTER', emoji: '✅' },
+      REGISTER_REJECT: { label: '가입 거부', category: 'REGISTER', emoji: '❌' },
+      // === DEPT (부서) ===
+      DEPT_CREATE: { label: '부서 등록', category: 'DEPT', emoji: '🏢' },
+      DEPT_UPDATE: { label: '부서 수정', category: 'DEPT', emoji: '✏️' },
+      DEPT_DELETE: { label: '부서 삭제', category: 'DEPT', emoji: '🗑️' },
+      DEPT_DEACTIVATE: { label: '부서 비활성화', category: 'DEPT', emoji: '🚫' },
+      DEPT_TRANSFER_IMMEDIATE: { label: '부서 즉시 이동', category: 'DEPT', emoji: '🔄' },
+      DEPT_TRANSFER_REQUEST: { label: '부서 이동 요청', category: 'DEPT', emoji: '📮' },
+      DEPT_TRANSFER_APPROVE: { label: '부서 이동 승인', category: 'DEPT', emoji: '✅' },
+      DEPT_TRANSFER_REJECT: { label: '부서 이동 거부', category: 'DEPT', emoji: '❌' },
+      MANAGER_UPDATE: { label: '관리자 수정', category: 'DEPT', emoji: '👤' },
+      MANAGER_PROMOTE: { label: '관리자 승격', category: 'DEPT', emoji: '⬆️' },
+      // === TALENT (달란트) ===
+      TALENT_GIVE: { label: '달란트 지급', category: 'TALENT', emoji: '💰' },
+      TALENT_GIVE_ITEM: { label: '달란트 항목 지급', category: 'TALENT', emoji: '💰' },
+      TALENT_GIVE_ITEMS: { label: '달란트 일괄 지급', category: 'TALENT', emoji: '💰' },
+      TALENT_MANUAL_GIVE: { label: '달란트 수동 지급', category: 'TALENT', emoji: '✍️' },
+      TALENT_USE: { label: '달란트 사용', category: 'TALENT', emoji: '💸' },
+      TALENT_RETURN: { label: '달란트 반환', category: 'TALENT', emoji: '↩️' },
+      ATTENDANCE_GIVE: { label: '출석 달란트 지급', category: 'TALENT', emoji: '⛪' },
+      ATTENDANCE_CANCEL: { label: '출석 달란트 취소', category: 'TALENT', emoji: '🔙' },
+      TALENT_ITEM_CANCEL: { label: '달란트 항목 취소', category: 'TALENT', emoji: '🔙' },
+      TALENT_ITEM_CREATE: { label: '달란트 항목 등록', category: 'TALENT', emoji: '📋' },
+      TALENT_ITEM_UPDATE: { label: '달란트 항목 수정', category: 'TALENT', emoji: '📋' },
+      TALENT_ITEM_TOGGLE: { label: '달란트 항목 활성 토글', category: 'TALENT', emoji: '🔘' },
+      TALENT_ITEM_QUICKBTN: { label: '달란트 퀵버튼 설정', category: 'TALENT', emoji: '⚡' },
+      qr_create: { label: 'QR 코드 생성', category: 'TALENT', emoji: '📷' },
+      qr_edit: { label: 'QR 코드 수정', category: 'TALENT', emoji: '✏️' },
+      qr_toggle: { label: 'QR 코드 토글', category: 'TALENT', emoji: '🔘' },
+      qr_scan: { label: 'QR 달란트 수령', category: 'TALENT', emoji: '📱' },
+      // === ORDER (상품/주문) ===
+      PRODUCT_CREATE: { label: '상품 등록', category: 'ORDER', emoji: '🛍️' },
+      PRODUCT_UPDATE: { label: '상품 수정', category: 'ORDER', emoji: '✏️' },
+      PRODUCT_DELETE: { label: '상품 삭제', category: 'ORDER', emoji: '🗑️' },
+      PRODUCT_DEACTIVATE: { label: '상품 비활성화', category: 'ORDER', emoji: '🚫' },
+      PRODUCT_SOFT_DELETE: { label: '상품 비활성화', category: 'ORDER', emoji: '🚫' },
+      ORDER_REQUEST_SUCCESS: { label: '상품 구매 신청', category: 'ORDER', emoji: '🛒' },
+      PROXY_ORDER_SUCCESS: { label: '대리 구매 신청', category: 'ORDER', emoji: '🛒' },
+      order_cancel: { label: '주문 취소', category: 'ORDER', emoji: '❌' },
+      ORDER_STATUS_CHANGE: { label: '주문 상태 변경', category: 'ORDER', emoji: '🔄' },
+      ORDER_REVERT: { label: '주문 상태 되돌리기', category: 'ORDER', emoji: '↩️' },
+      ORDER_PURCHASE_CONFIRM: { label: '구매 확정', category: 'ORDER', emoji: '✅' },
+      ORDER_BULK_PREPARE: { label: '일괄 상품 준비', category: 'ORDER', emoji: '📦' },
+      ORDER_BULK_PURCHASE: { label: '일괄 구매 확정', category: 'ORDER', emoji: '📦' },
+      ORDER_BULK_DELIVER: { label: '일괄 상품 지급', category: 'ORDER', emoji: '📦' },
+      // === QNA (Q&A) ===
+      QNA_CREATE: { label: '질문 등록', category: 'QNA', emoji: '❓' },
+      QNA_ANSWER: { label: '답변 등록', category: 'QNA', emoji: '💬' },
+      QNA_COMMENT: { label: '댓글 등록', category: 'QNA', emoji: '💬' },
+      QNA_DELETE: { label: 'Q&A 삭제', category: 'QNA', emoji: '🗑️' },
+      QNA_FAQ_SET: { label: 'FAQ 설정', category: 'QNA', emoji: '📌' },
+      // === AUTH (인증) ===
+      LOGIN_SUCCESS: { label: '로그인 성공', category: 'AUTH', emoji: '🔓' },
+      LOGOUT: { label: '로그아웃', category: 'AUTH', emoji: '🔒' },
+      PASSWORD_CHANGE: { label: '비밀번호 변경', category: 'AUTH', emoji: '🔑' },
+      // === LOG_MGMT (로그 관리) ===
+      LOG_ACKNOWLEDGED: { label: '로그 확인', category: 'LOG_MGMT', emoji: '✅' },
+      LOG_BULK_ACK: { label: '로그 일괄 확인', category: 'LOG_MGMT', emoji: '✅' },
+      LOG_RANGE_DELETE: { label: '로그 범위 삭제', category: 'LOG_MGMT', emoji: '🗑️' },
+      LOG_SELECT_DELETE: { label: '로그 선택 삭제', category: 'LOG_MGMT', emoji: '🗑️' },
+      LOG_RESTORE: { label: '로그 복원', category: 'LOG_MGMT', emoji: '♻️' },
+      // === PERM (권한/설정) ===
+      ROLE_ACCESS_UPDATE: { label: '페이지 접근 권한 변경', category: 'PERM', emoji: '🔐' },
+      ROLE_FEATURE_UPDATE: { label: '페이지 기능 권한 변경', category: 'PERM', emoji: '🔧' },
+      PAGE_PERM_UPDATE: { label: '페이지 권한 설정 변경', category: 'PERM', emoji: '🛡️' },
+      REPORT_SAVE: { label: '보고서 저장', category: 'PERM', emoji: '📄' },
+      REPORT_DELETE: { label: '보고서 삭제', category: 'PERM', emoji: '🗑️' },
+      REPORT_SEED: { label: '보고서 시드 등록', category: 'PERM', emoji: '🌱' },
+    };
+
+    let AUDIT_ACTION_KEYS = Object.keys(AUDIT_ACTIONS);
+    const PERM_KEY_LABELS = (typeof codeMap === 'function') ? codeMap('profiles.permission_level', 'value') : {
+      super_admin: '최고 관리자', admin: '관리자', evangelist: '전도사님',
+      chief: '부장 교사', purchase_teacher: '구매 담당 교사', dept_teacher: '부서 담당 교사', teacher: '일반 교사', student: '학생'
+    };
+    const DETAIL_KEY_LABELS = {
+      targetName: '대상', displayName: '표시 이름', name: '이름', username: '아이디',
+      userId: '사용자 ID', roleKey: '역할', permissionKey: '권한', permissionLevel: '권한 등급',
+      rank: '순위', department: '부서', departmentId: '부서 ID', departmentName: '부서명',
+      fromDept: '이전 부서', toDept: '이동 부서', amount: '수량', balance: '잔액',
+      reason: '사유', taskId: '작업 ID', taskTitle: '작업 제목', pageId: '페이지 ID',
+      action: '작업', error: '오류', _userName: '작업자 이름', _client: '클라이언트 정보',
+      user_type: '유형', class_number: '반', old: '이전 값', new: '변경 값',
+      approval_scope: '승인 범위', transfer_type: '이동 유형', status: '상태',
+      product_name: '상품명', product_id: '상품 ID', price: '가격',
+      talent_balance: '달란트 잔액', pending_talent: '보류 달란트',
+      features: '기능 설정', description: '설명', email: '이메일',
+      fromDeptName: '이전 부서명', toDeptName: '이동 부서명',
+      is_super_admin: '슈퍼 관리자', is_active: '활성 상태',
+      '대상': '대상', '변경내역': '변경내역', '사유': '사유', '금액': '금액',
+      '항목명': '항목명', '수량': '수량', '상품명': '상품명', '주문번호': '주문번호',
+      '이전값': '이전 값', '변경값': '변경 값', '부서명': '부서명', '작업자': '작업자'
+    };
+
+    (async () => {
+      await navInit();
+      session = await initPage(100, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      if (typeof loadCodeItems === 'function') {
+        await loadCodeItems(['activity_logs.action', 'profiles.permission_level']);
+        Object.assign(AUDIT_ACTIONS, getAuditActions());
+        AUDIT_ACTION_KEYS = Object.keys(AUDIT_ACTIONS);
+      }
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      auditPageSize = await loadPageSize('audit', 20);
+      setAuditPeriod('year');
+      await loadAuditLogs();
+    })();
+
+    function setFilter(f) {
+      auditPage = 1;
+      currentFilter = f;
+      document.querySelectorAll('#auditCategoryFilters .filter-btn').forEach(b => {
+        b.classList.remove('active');
+        const m = b.getAttribute('onclick')?.match(/setFilter\('([^']+)'\)/);
+        if (m && m[1] === f) b.classList.add('active');
+      });
+      renderAudit();
+    }
+
+    function setAuditPeriod(type) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      let fromStr = todayStr;
+      if (type === 'week') { const d = new Date(today); d.setDate(d.getDate() - 6); fromStr = d.toISOString().slice(0, 10); }
+      else if (type === 'month') { fromStr = todayStr.slice(0, 8) + '01'; }
+      else if (type === 'year') { fromStr = todayStr.slice(0, 4) + '-01-01'; }
+      document.getElementById('auditDateFrom').value = fromStr;
+      document.getElementById('auditDateTo').value = todayStr;
+      loadAuditLogs();
+    }
+
+    async function loadAuditLogs() {
+      auditPage = 1;
+      const fromDate = document.getElementById('auditDateFrom').value;
+      const toDate = document.getElementById('auditDateTo').value;
+
+      let query = _sb.from('activity_logs')
+        .select('*')
+        .in('action', AUDIT_ACTION_KEYS)
+        .order('created_at', { ascending: false })
+        .limit(500);
+
+      try {
+        const { error: deletedColError } = await _sb.from('activity_logs')
+          .select('id', { count: 'exact', head: true })
+          .or('is_deleted.is.null,is_deleted.eq.false')
+          .limit(1);
+        if (!deletedColError) {
+          query = query.or('is_deleted.is.null,is_deleted.eq.false');
+        }
+      } catch (e) {}
+
+      if (fromDate) query = query.gte('created_at', fromDate + 'T00:00:00+09:00');
+      if (toDate) query = query.lte('created_at', toDate + 'T23:59:59+09:00');
+
+      const { data, error } = await query;
+      if (error) {
+        console.error('[AUDIT] load error:', error);
+        document.getElementById('auditList').innerHTML = `<tr><td colspan="5" class="empty-state" style="color:#d63031;">조회 오류: ${tErr(error.message)}</td></tr>`;
+        return;
+      }
+      allAuditLogs = data || [];
+      renderAudit();
+    }
+
+    function renderAudit() {
+      const search = (document.getElementById('auditSearch').value || '').toLowerCase();
+      let list = allAuditLogs;
+
+      if (currentFilter !== 'all') {
+        list = list.filter(l => {
+          const info = AUDIT_ACTIONS[l.action];
+          return info && info.category === currentFilter;
+        });
+      }
+      if (search) {
+        list = list.filter(l => {
+          const userName = l.user_name || (l.details && l.details._userName) || l.username || '';
+          const targetRaw = l.details?.targetName || l.details?.displayName || l.details?.name
+            || l.details?.['대상'] || l.details?.['변경내역'] || '';
+          const target = typeof targetRaw === 'string' ? targetRaw : JSON.stringify(targetRaw);
+          return userName.toLowerCase().includes(search) || target.toLowerCase().includes(search) || (l.action || '').toLowerCase().includes(search);
+        });
+      }
+
+      document.getElementById('auditTitle').textContent = `작업 이력 (${list.length}건)`;
+      const tbody = document.getElementById('auditList');
+
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">조회된 작업 이력이 없습니다.</td></tr>';
+        renderAuditPaging(1);
+        return;
+      }
+
+      const pageSize = getAuditPageSize();
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      if (auditPage > totalPages) auditPage = totalPages;
+      const startIdx = (auditPage - 1) * pageSize;
+      const pageList = list.slice(startIdx, startIdx + pageSize);
+
+      const isAdmin = session.permissionRank >= 100;
+      tbody.innerHTML = pageList.map(l => {
+        const info = AUDIT_ACTIONS[l.action] || { label: l.action, emoji: '📋', category: '' };
+        const dt = l.created_at ? formatKSTShort(l.created_at) : '-';
+        const actorName = l.user_name || (l.details && l.details._userName) || null;
+        const actorId = l.username || null;
+        let actor;
+        if (actorName) {
+          actor = isAdmin && actorId ? `${actorName} <span style="font-size:0.72rem;color:#888;">(${actorId})</span>` : actorName;
+        } else if (actorId) {
+          actor = actorId;
+        } else {
+          actor = '시스템';
+        }
+        const target = extractTarget(l);
+        return `<tr>
+          <td style="white-space:nowrap;font-size:0.78rem;">${dt}</td>
+          <td>${actor}</td>
+          <td><span class="level-badge INFO">${info.emoji} ${info.label}</span></td>
+          <td>${target}</td>
+          <td><button class="filter-btn" onclick='showDetail(${JSON.stringify(l).replace(/'/g,"&#39;")})'>상세</button></td>
+        </tr>`;
+      }).join('');
+      renderAuditPaging(totalPages);
+    }
+
+    function renderAuditPaging(totalPages) {
+      const sizeWrap = document.getElementById('auditPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('audit', auditPageSize, 'onAuditPageSizeChange(this.value)');
+      document.getElementById('auditPaging').innerHTML = buildPagingButtons(auditPage, totalPages, 'goAuditPage(__PAGE__)');
+    }
+
+    async function onAuditPageSizeChange(val) {
+      auditPageSize = parseInt(val, 10);
+      auditPage = 1;
+      await savePageSize('audit', auditPageSize);
+      renderAudit();
+    }
+
+    function goAuditPage(p) {
+      auditPage = p;
+      renderAudit();
+    }
+
+    function extractTarget(log) {
+      const d = log.details || {};
+      if (d.targetName) return d.targetName;
+      if (d['대상']) return d['대상'];
+      if (d.displayName) return d.displayName;
+      if (d.name) return d.name;
+      if (d.username) return d.username;
+      if (d['항목명']) return d['항목명'];
+      if (d['상품명']) return d['상품명'];
+      if (d.product_name) return d.product_name;
+      if (d['변경내역']) {
+        const changes = d['변경내역'];
+        if (typeof changes === 'string') return changes;
+        if (typeof changes === 'object') return JSON.stringify(changes);
+      }
+      if (d.taskId) return d.taskId;
+      if (d.roleKey) return PERM_KEY_LABELS[d.roleKey] || d.roleKey;
+      if (d.permissionKey) return PERM_KEY_LABELS[d.permissionKey] || d.permissionKey;
+      if (d.userId) return d.userId.substring(0, 8) + '...';
+      return '-';
+    }
+
+    function showDetail(log) {
+      const info = AUDIT_ACTIONS[log.action] || { label: log.action, emoji: '📋' };
+      const dt = log.created_at ? new Date(log.created_at).toLocaleString('ko-KR', { timeZone: 'Asia/Seoul' }) : '-';
+      const details = log.details || {};
+
+      let html = `
+        <table style="width:100%;border-collapse:collapse;font-size:0.85rem;">
+          <tr><td style="padding:0.4rem;font-weight:700;width:100px;">시간</td><td style="padding:0.4rem;">${dt}</td></tr>
+          <tr><td style="padding:0.4rem;font-weight:700;">작업자</td><td style="padding:0.4rem;">${log.user_name || '-'}</td></tr>
+          <tr><td style="padding:0.4rem;font-weight:700;">작업</td><td style="padding:0.4rem;">${info.emoji} ${info.label}</td></tr>
+          <tr><td style="padding:0.4rem;font-weight:700;">페이지</td><td style="padding:0.4rem;">${log.page || '-'}</td></tr>
+        </table>
+        <div style="margin-top:0.8rem;border-top:1px solid var(--admin-border);padding-top:0.6rem;">
+          <div style="font-weight:700;margin-bottom:0.4rem;">상세 데이터</div>
+          <pre style="background:#f8f9fa;padding:0.6rem;border-radius:6px;font-size:0.78rem;overflow-x:auto;max-height:300px;">${localizeDetailJson(details)}</pre>
+        </div>`;
+
+      document.getElementById('auditDetailBody').innerHTML = html;
+      document.getElementById('auditDetailModal').classList.remove('hidden');
+    }
+
+    function localizeDetailJson(obj) {
+      function localizeValue(key, val) {
+        if ((key === 'roleKey' || key === 'permissionKey' || key === 'permissionLevel') && typeof val === 'string') {
+          return PERM_KEY_LABELS[val] || val;
+        }
+        if (key === 'user_type') {
+          return val === 'teacher' ? '교사' : val === 'student' ? '학생' : val;
+        }
+        return val;
+      }
+      function transform(o, depth) {
+        if (depth > 5) return JSON.stringify(o);
+        if (Array.isArray(o)) return o.map(item => transform(item, depth + 1));
+        if (o && typeof o === 'object') {
+          const result = {};
+          for (const [k, v] of Object.entries(o)) {
+            const label = DETAIL_KEY_LABELS[k] ? `${k} (${DETAIL_KEY_LABELS[k]})` : k;
+            result[label] = (typeof v === 'object' && v !== null) ? transform(v, depth + 1) : localizeValue(k, v);
+          }
+          return result;
+        }
+        return o;
+      }
+      return JSON.stringify(transform(obj, 0), null, 2);
+    }
+
+    function closeDetailModal() { document.getElementById('auditDetailModal').classList.add('hidden'); }
+
+    document.getElementById('auditDetailModal').addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay')) closeDetailModal();
+    });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

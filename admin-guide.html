@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 가이드 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.52.0" />
+</head>
+<body class="page-body">
+  <div id="nav-container"></div>
+
+
+  <main class="guide-container">
+    <section class="guide-hero">
+      <div class="guide-kicker">운영 권한 전체 요약 · 세부 역할 가이드는 소개 메뉴에서 확인</div>
+      <h1>관리자 가이드</h1>
+      <p>사용자, 부서, 달란트, 상품, 구매, QR, 통계, 로그 등 전체 운영 관리 방법을 안내합니다. 소개 &gt; 가이드 메뉴는 하나로 통합되어 로그인 권한에 맞는 가이드를 자동으로 엽니다.</p>
+    </section>
+
+    <div class="guide-switcher">
+      <a href="guide.html">학생 가이드</a>
+      <a href="teacher-guide.html">교사 가이드</a>
+      <a href="dept-teacher-guide.html">부서 담당 교사 가이드</a>
+      <a href="purchase-teacher-guide.html">구매 담당 교사 가이드</a>
+      <a href="chief-teacher-guide.html">부장 교사 가이드</a>
+      <a href="evangelist-guide.html">전도사님 가이드</a>
+      <a href="admin-guide.html" class="active">관리자 가이드</a>
+    </div>
+
+    <section class="guide-section">
+      <h2>🧭 권한별 큰 차이</h2>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead><tr><th>권한</th><th>주요 역할</th><th>대표 메뉴</th></tr></thead>
+          <tbody>
+            <tr><td><span class="guide-badge badge-oper">부서 담당 교사</span></td><td>담당 부서의 사용자, 달란트, 상품 신청을 관리합니다.</td><td>대시보드, 사용자 관리, 부서 관리, 달란트 관리, 달란트 통계, 상품 관리, 구매 관리, 구매 통계</td></tr>
+            <tr><td><span class="guide-badge badge-oper">구매 담당 교사</span></td><td>부서 담당 교사와 같은 메뉴를 사용하며, 구매 관리에서는 전체 부서 주문을 처리합니다.</td><td>구매 관리, 상품 배지 전체 집계</td></tr>
+            <tr><td><span class="guide-badge badge-teacher">부장 교사</span></td><td>전체 현황을 보고 담당 관리 부서 중심으로 승인과 운영을 처리합니다.</td><td>대시보드, 관리자 관리, 보고서, 버전, 달란트 반환</td></tr>
+            <tr><td><span class="guide-badge badge-admin">전도사님</span></td><td>QR 코드, 상품 삭제 대기, 더 넓은 범위의 운영 처리를 담당합니다.</td><td>달란트 QR 관리, 달란트 항목 관리, Q&amp;A 삭제, 부서 비활성화</td></tr>
+            <tr><td><span class="guide-badge badge-admin">관리자</span></td><td>시스템 설정과 로그, 작업 이력, 권한별 접근 설정을 관리합니다.</td><td>페이지 접근, 페이지 기능, 로그, 작업 이력, 코드 복사, 수동 달란트 지급</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="guide-note">권한명, 사용자 유형, 상품 대상/카테고리, 구매 상태, 로그/작업 유형은 공통 코드북과 DB 코드 마스터 기준으로 표시됩니다. 같은 값을 바꿀 때는 개별 페이지 문구를 수정하기보다 코드 마스터 기준을 먼저 확인합니다.</div>
+    </section>
+
+    <section class="guide-section">
+      <h2>👥 사용자 관리</h2>
+      <ol class="guide-steps">
+        <li><strong>관리 &gt; 사용자 관리</strong>로 이동합니다.</li>
+        <li>상단 통계 카드(전체·관리자·부서 담당·교사·학생)를 클릭하면 해당 유형으로 목록을 필터링할 수 있으며, 선택된 카드는 강조 표시됩니다. <strong>관리자</strong>는 admin·전도사·부장 교사, <strong>부서 담당</strong>은 구매 담당·부서 담당 교사를 포함합니다.</li>
+        <li>사용자 목록은 교사/학생 그룹별로 분리되어 표시됩니다. 기본 정렬은 부서, 반, 이름 오름차순이며 각 그룹 PC 20명, 모바일 10명씩 페이징합니다.</li>
+        <li>가입 신청이 있으면 신청자의 이름, 부서, 신청 사유를 확인합니다.</li>
+        <li>사용자 유형과 권한을 선택한 뒤 승인하거나, 사유를 입력해 거부합니다.</li>
+        <li>각 사용자의 <strong>관리 ▾</strong> 드롭다운에서 상세 정보, 수정, 부서 이동, 비밀번호 초기화, 삭제를 선택합니다.</li>
+        <li><strong>상세 정보</strong>에서 아이디, 역할, 권한, 부서, 마지막 로그인, 신청 이력, 달란트 내역, 구매 내역을 확인할 수 있습니다.</li>
+      </ol>
+      <div class="guide-note">부서 이동은 권한에 따라 즉시 처리되거나 승인 요청으로 생성됩니다. 담당 범위 밖의 사용자는 처리 권한이 없을 수 있습니다. 부서 담당 교사(60+)는 담당 부서 학생의 반 변경과 비밀번호 초기화가 가능하며, 삭제·부서 이동은 부장 교사(80+) 이상만 가능합니다.</div>
+      <div class="guide-note"><strong>최고관리자(Super Admin)</strong>: is_super_admin이 TRUE인 계정은 수정 모달에서 역할, 권한, 소속 부서, 담당 부서 등 모든 필드를 제약 없이 변경할 수 있습니다.</div>
+    </section>
+
+    <section class="guide-section">
+      <h2>📋 학생 일괄 등록</h2>
+      <ol class="guide-steps">
+        <li><strong>관리 &gt; 학생 일괄 등록</strong>으로 이동합니다 (부장 교사 80+ 이상).</li>
+        <li><strong>양식 다운로드</strong> 버튼으로 엑셀 파일(.xlsx)을 받습니다.</li>
+        <li>양식에 아이디, 이름, 부서, 반을 입력합니다.</li>
+        <li>작성한 엑셀 파일을 드래그하거나 클릭하여 업로드합니다.</li>
+        <li>미리보기에서 오류 항목(아이디 누락, 부서 없음 등)을 확인합니다.</li>
+        <li><strong>일괄 등록 시작</strong>을 클릭하면 정상 데이터만 등록됩니다.</li>
+        <li>등록 결과에서 성공/실패 건수와 사유를 확인합니다.</li>
+      </ol>
+      <div class="guide-note">초기 비밀번호는 "1234"입니다. 등록 후 학생에게 비밀번호 변경을 안내해주세요.</div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🏢 부서와 관리자 관리</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>부서 관리</h3>
+          <ul class="guide-list">
+            <li>부서명을 등록하거나 설명, 반 개수를 수정합니다.</li>
+            <li>반 개수가 0이면 반 구분 없이 운영합니다.</li>
+            <li>부서 목록은 부서명 오름차순으로 표시되며, 우측 상단에서 페이지당 항목 수를 선택합니다.</li>
+            <li>관리 드롭다운에서 소속보기, 수정, 삭제를 선택합니다.</li>
+            <li>소속보기에서 관리자(100등급 이상)에게는 마지막 로그인 일시가 표시됩니다.</li>
+          </ul>
+        </div>
+        <div class="guide-card">
+          <h3>관리자 관리</h3>
+          <ul class="guide-list">
+            <li>기존 교사 사용자를 검색해 운영 권한을 부여합니다.</li>
+            <li>권한과 소속 부서, 담당 관리 부서를 지정합니다.</li>
+            <li>구매 담당 교사는 역할명이 '구매 담당 교사'로 정확히 표시됩니다.</li>
+            <li>관리자 목록은 권한 등급 내림차순, 부서, 이름 오름차순으로 표시됩니다.</li>
+            <li>본인보다 높은 권한은 수정할 수 없습니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>💰 달란트 관리</h2>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead><tr><th>기능</th><th>설명</th><th>권한 기준</th></tr></thead>
+          <tbody>
+            <tr><td>달란트 지급</td><td>관리 드롭다운에서 달란트 지급을 선택해 항목 체크 후 지급 확정합니다.</td><td>일반 교사 이상, 담당 범위 기준</td></tr>
+            <tr><td>출석 빠른 지급</td><td>학생 행의 출석 버튼으로 출석 항목을 즉시 지급합니다.</td><td>담당 범위 기준</td></tr>
+            <tr><td>상세 내역</td><td>관리 드롭다운에서 상세를 선택해 팝업 상단의 <strong>누적적립/총사용/총반환/잔여</strong> 4칸 요약과 내역을 확인합니다. 내역 <strong>유형</strong>은 <strong>적립</strong>, <strong>사용</strong>, <strong>반환</strong> 3종으로 구분됩니다.</td><td>달란트 관리 접근 권한</td></tr>
+            <tr><td>달란트 반환</td><td>상세 팝업에서 잘못 지급된 달란트를 사유 입력 후 반환합니다. 반환 건은 <strong>총반환</strong>에 집계되고 <strong>총사용</strong>에서 제외됩니다.</td><td>부장 교사 이상</td></tr>
+            <tr><td>수동 입력</td><td>항목에 없는 사유와 금액을 직접 입력해 지급합니다.</td><td>관리자</td></tr>
+            <tr><td>지급 취소 ID</td><td>지급 취소된 항목의 달란트 트랜잭션 ID는 관리자(100+)만 표시됩니다.</td><td>관리자</td></tr>
+            <tr><td>달란트 항목 관리</td><td>학생용/교사용 지급 항목, 금액, 지급 규칙/설명, 정렬 순서, 활성 상태를 관리합니다. 퀵 버튼 설정은 별도 권한 기준을 따릅니다.</td><td>60등급 이상 접근, 퀵 버튼 80등급 이상</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🎫 달란트 QR 관리</h2>
+      <ol class="guide-steps">
+        <li><strong>달란트 &gt; 달란트 QR 관리</strong>로 이동합니다.</li>
+        <li>지급 대상이 학생인지 교사인지 선택합니다.</li>
+        <li>달란트 항목을 선택하거나 직접 설명과 금액을 입력합니다.</li>
+        <li>지급 제한 없음 또는 선착순 지급 인원을 선택합니다.</li>
+        <li>유효 기간을 지정일, 기간, 무기한 중에서 선택합니다. 지정일은 시작 시간과 종료 시간을 함께 설정할 수 있으며 해당 시간 안에서만 지급됩니다.</li>
+        <li>필요하면 위치 제한을 켜고 카카오맵 주소 검색으로 장소와 반경을 지정합니다. 반경은 100m, 200m, 300m, 400m, 500m, 1km~5km 중 선택하며 기본값은 500m입니다.</li>
+        <li>QR 코드를 생성한 뒤 인쇄하거나, QR 목록과 수령자 목록을 확인합니다. 두 목록은 페이징과 <strong>페이지당 항목 수</strong> 콤보 박스(3~30개, 계정별 DB 저장)를 지원합니다. 반환된 달란트는 수령자 이름 옆에 <strong>반환</strong> 배지가 표시되며, 목록 상단에는 <strong>총 N명 수령 (반환 M명)</strong> 형식으로 집계됩니다.</li>
+      </ol>
+      <div class="guide-note">QR을 수정하면 기존 코드 값을 그대로 고치는 것이 아니라 새 QR 코드가 만들어집니다. 이미 배포한 QR을 바꿀 때는 새 코드로 다시 안내하세요.</div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🛒 상품과 구매 관리</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>상품 관리</h3>
+          <ul class="guide-list">
+            <li>교사용/학생용 그룹별로 상품이 분리 표시됩니다(모바일 10개/PC 20개 페이징). 테이블 헤더를 클릭하면 카테고리, 상품명, 가격 기준으로 정렬할 수 있습니다.</li>
+            <li>상품명, 코드 마스터 기준 카테고리, 가격, 설명, 이미지 또는 이모지를 입력합니다.</li>
+            <li>관리 드롭다운에서 수정 또는 삭제를 선택합니다.</li>
+          </ul>
+        </div>
+        <div class="guide-card">
+          <h3>구매 관리</h3>
+          <ul class="guide-list">
+            <li>칸반보드 형태의 상태별 카드에 개수가 실시간 표시되며, 클릭 시 해당 상태로 필터됩니다.</li>
+            <li>상태명, 색상, 정렬 순서는 <code>product_orders.status</code> 코드 기준으로 상점/내 구매 상품/구매 통계와 동일하게 표시됩니다.</li>
+            <li>부서와 기간 필터로 필요한 주문만 조회합니다.</li>
+            <li>구매 담당 교사는 전체 부서 주문을 조회하고 처리하며, 상품 메뉴 배지도 전체 범위로 집계됩니다.</li>
+            <li>관리 드롭다운에서 상태 변경이나 되돌리기를 선택합니다.</li>
+            <li>구매 확정 단계에서 달란트가 실제 차감됩니다.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>📊 통계와 운영 확인</h2>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead><tr><th>메뉴</th><th>용도</th></tr></thead>
+          <tbody>
+            <tr><td>달란트 통계</td><td>전체, 부서별, 사용자별, 유형별 적립 현황을 기간과 부서, 사용자 유형으로 필터링해 확인합니다. 반환된 지급 건은 실제 지급 달란트 집계에서 제외되며, 부서별/사용자별 화면은 지정된 기본 정렬로 표시됩니다.</td></tr>
+            <tr><td>구매 통계</td><td>전체, 부서별, 사용자별, 유형별 구매 현황을 교사/학생별로 분리 표시합니다. 상태별 칸반 카드, 상세 드릴다운, 부서·유형·기간 필터, 페이지당 항목 수 선택을 제공합니다. 부서별은 부서순, 사용자별은 부서·개수·이름순, 유형별은 상품·상태순으로 정렬됩니다.</td></tr>
+            <tr><td>대시보드</td><td>사용자·부서·보고서·가입 대기 통계 카드와 최근 이슈 로그 테이블을 확인합니다. v3.50.0부터 바로가기(단축 링크) 박스는 제거되었습니다.</td></tr>
+            <tr><td>보고서</td><td>작업 계획, 테스트 결과, 보안 보고서, 수정 보고서를 확인하거나 등록합니다.</td></tr>
+            <tr><td>버전</td><td>배포된 기능 변경 이력을 확인합니다.</td></tr>
+            <tr><td>Q &amp; A</td><td>질문에 답변을 남기고, 필요한 항목을 FAQ로 등록합니다.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🔔 상단 처리 배지</h2>
+      <div class="guide-table-wrap">
+        <table class="guide-table">
+          <thead><tr><th>배지</th><th>의미</th><th>표시 기준</th></tr></thead>
+          <tbody>
+            <tr><td>관리</td><td>가입 신청과 부서 이동 요청 중 내가 처리할 수 있는 건수</td><td>부서 담당 교사(60+) 이상</td></tr>
+            <tr><td>상품</td><td>구매 관리에서 처리 가능한 주문 건수</td><td>부서 담당 교사(60+) 이상, 구매 담당 교사는 전체 부서</td></tr>
+            <tr><td>운영</td><td>미확인 ERROR/FATAL/CRITICAL 로그 건수</td><td>부장 교사(80+) 이상에서 호출, 로그 화면은 관리자(100+) 접근</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>🔐 관리자 전용 설정</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>📊 활동 로그 (한글화)</h3>
+          <p>모든 활동 로그의 액션 이름이 한글로 표시됩니다.</p>
+          <div class="guide-steps">
+            <div class="step"><span class="step-num">1</span> <strong>운영 → 로그</strong>에서 활동 로그를 확인합니다.</div>
+            <div class="step"><span class="step-num">2</span> 액션 열에 한글 라벨이 표시되며, 영문 키는 작은 글씨로 병기됩니다.</div>
+            <div class="step"><span class="step-num">3</span> 상세 내역의 키도 한글로 표시됩니다 (대상, 변경내역, 오류 등). 적재 실패는 브라우저 콘솔 오류로 확인할 수 있습니다.</div>
+          </div>
+          <p style="margin-top:0.75rem;font-size:0.85rem;">미확인 ERROR 이상 로그는 확인 완료 처리를 남겨야 합니다. 삭제는 삭제 대기 방식으로 처리됩니다. v3.40.0부터 페이지 조회(PAGE_VIEW) 로그는 기록되지 않습니다. 액션 라벨은 코드 마스터와 <code>details._actionLabel</code>을 기준으로 표시됩니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>📋 작업 이력 (개편)</h3>
+          <p>모든 관리 작업이 한글 상세 내역으로 기록됩니다.</p>
+          <div class="guide-steps">
+            <div class="step"><span class="step-num">1</span> <strong>운영 → 작업 이력</strong>에서 10개 카테고리 필터로 조회합니다.</div>
+            <div class="step"><span class="step-num">2</span> 필터: 사용자/등록/부서/달란트/상품·주문/Q&amp;A/인증/로그관리/권한·설정</div>
+            <div class="step"><span class="step-num">3</span> 작업 이력은 활동 로그 중 코드북/AUDIT_ACTIONS에 등록된 관리 작업만 필터링하며, 각 작업의 <strong>변경내역</strong>이 한글로 상세히 기록됩니다.</div>
+          </div>
+        </div>
+        <div class="guide-card">
+          <h3>페이지 접근</h3>
+          <p>권한별로 어떤 페이지와 화면 요소를 사용할 수 있는지 설정합니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>페이지 기능</h3>
+          <p>권한별 기능 사용 설정값을 관리합니다. 실제 적용 범위는 각 화면의 권한 로직과 함께 동작합니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>⭐ 메인 페이지 바로가기</h2>
+      <div class="guide-card">
+        <h3>⭐ 즐겨찾기 설정</h3>
+        <p>메인 페이지의 바로가기 카드를 내가 원하는 메뉴로 설정할 수 있습니다.</p>
+        <div class="guide-steps">
+          <div class="step"><span class="step-num">1</span> 메인 페이지에서 <strong>⭐ 즐겨찾기 설정</strong> 버튼을 누릅니다.</div>
+          <div class="step"><span class="step-num">2</span> 현재 권한에서 실제로 보이는 메뉴 중 1개 이상, 최대 10개까지 선택하고 <strong>저장</strong>을 누릅니다.</div>
+          <div class="step"><span class="step-num">3</span> 설정은 계정에 저장되어 다른 기기에서도 동일하게 표시됩니다.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>⏱️ 세션 관리 · 📱 모바일 네비게이션 (v3.48.0~v3.51.0)</h2>
+      <div class="guide-grid">
+        <div class="guide-card">
+          <h3>24시간 유휴 자동 로그아웃</h3>
+          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다. 여러 탭을 열어 두어도 활동 시간은 공유됩니다.</p>
+        </div>
+        <div class="guide-card">
+          <h3>모바일 상단 우측 (768px 이하)</h3>
+          <p>좁은 화면에서는 상단 우측에 아래 순서로 표시됩니다.</p>
+          <ul class="guide-list" style="margin-top:0.5rem;font-size:0.9rem;">
+            <li>테마 스위치 → 햄버거 메뉴(☰) → 로그아웃 → (권한 이모지) 이름</li>
+          </ul>
+          <p style="margin-top:0.75rem;">햄버거 메뉴를 누르면 소개·달란트·상품·관리·운영 그룹이 아래로 펼쳐집니다.</p>
+          <p style="margin-top:0.75rem;">v3.51.0부터 소개 드롭다운의 역할별 가이드는 <strong>가이드</strong> 하나로 통합됩니다. 로그인 권한에 따라 학생/교사/담당 교사/구매 담당/부장/전도사/관리자 가이드 중 알맞은 페이지가 열립니다.</p>
+        </div>
+      </div>
+    </section>
+
+    <section class="guide-section">
+      <h2>✅ 운영할 때 기억할 점</h2>
+      <div class="guide-card">
+        <ul class="guide-list">
+          <li>비밀번호는 확인할 수 없고, 필요한 경우 1234로 초기화만 할 수 있습니다.</li>
+          <li>구매 신청은 바로 차감이 아니며, 구매 확정 시점에 달란트가 차감됩니다.</li>
+          <li>달란트 반환은 거래 ID 기준으로 1회만 가능하며, 반환된 항목은 지급 모달의 취소 상태와 동기화됩니다. 반환 건은 <strong>총반환</strong>에 집계되고 <strong>총사용</strong>에는 포함되지 않습니다. <strong>총사용</strong>에는 실제 상품 구매 확정 건만 집계됩니다.</li>
+          <li>권한이 낮은 계정은 일부 버튼이 보이지 않거나, 보이더라도 처리 권한이 제한될 수 있습니다.</li>
+          <li>삭제 대기 처리된 로그나 상품은 일반 목록에서 숨겨지지만 기록은 남습니다.</li>
+          <li>작업 이력은 별도 저장소가 아니라 활동 로그 중 관리 작업만 필터링해서 보여줍니다.</li>
+          <li>새 권한/상태/카테고리/로그 유형을 추가할 때는 <code>js/codes.js</code> 기본값과 DB <code>code_items</code> 마스터를 함께 확인합니다.</li>
+          <li>QR 위치 제한을 쓰려면 사용자가 수령할 때 브라우저 위치 권한을 허용해야 합니다. 위치 제한 반경의 기본값은 500m입니다.</li>
+          <li>목록형 화면은 공통 페이징 규칙을 사용합니다. 현재 페이지 주변과 첫/마지막 페이지를 표시하고, 페이지가 7개를 초과하면 말줄임표(...)로 축약됩니다. 각 그리드의 <strong>페이지당 항목 수</strong> 콤보 박스(3~30개)로 개인 설정이 가능하며 DB에 저장됩니다.</li>
+          <li>주요 관리 그리드는 기본 정렬을 갖습니다. 사용자/달란트 관리는 부서·반·이름, 관리자 관리는 권한 등급·부서·이름, 부서 관리는 부서명, 통계 화면은 각 통계 목적에 맞는 합계·개수·부서·이름 순서로 정렬됩니다.</li>
+        </ul>
+      </div>
+    </section>
+  </main>
+
+  <footer class="page-footer">
+    <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script src="js/nav.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    (async () => {
+      await navInit();
+      const session = await loadAuthSession();
+      if (!session || (session.permissionRank || 0) < 60) {
+        location.href = session && (session.permissionRank || 0) >= 40 ? 'teacher-guide.html' : 'guide.html';
+        return;
+      }
+      navUpdateAuth(session);
+      await initTheme();
+      const rank = session.permissionRank || 0;
+      const tabs = document.querySelectorAll('.guide-switcher a');
+      tabs.forEach(a => {
+        if (a.href.includes('purchase-teacher-guide') && rank < 70) a.style.display = 'none';
+        if (a.href.includes('chief-teacher-guide') && rank < 80) a.style.display = 'none';
+        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
+      });
+      autoLogPageView();
+    })();
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

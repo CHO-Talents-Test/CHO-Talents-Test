@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>작업 이력 작성 룰 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <style>
+    .rule-section { background: var(--admin-card); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow); padding: 1.5rem; margin-bottom: 1.5rem; overflow-x: auto; }
+    .rule-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--admin-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .rule-section h3 { font-size: 0.95rem; font-weight: 700; margin: 1rem 0 0.5rem; color: var(--admin-text); }
+    .rule-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; margin: 0.5rem 0; table-layout: fixed; word-break: break-word; }
+    .rule-table th { text-align: left; padding: 0.5rem 0.7rem; background: #fafbfc; border: 1px solid var(--admin-border); font-weight: 600; font-size: 0.78rem; }
+    .rule-table td { padding: 0.5rem 0.7rem; border: 1px solid var(--admin-border); vertical-align: top; }
+    .rule-table tr:hover { background: #f8f9fa; }
+    .cat-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.72rem; font-weight: 700; color: #fff; }
+    .cat-badge.user { background: #4dabf7; }
+    .cat-badge.register { background: #69db7c; }
+    .cat-badge.dept { background: #ffa94d; }
+    .cat-badge.talent { background: #ffd43b; color: #333; }
+    .cat-badge.order { background: #ff8787; }
+    .cat-badge.qna { background: #b197fc; }
+    .cat-badge.auth { background: #868e96; }
+    .cat-badge.log_mgmt { background: #20c997; }
+    .cat-badge.perm { background: #f06595; }
+    .note-box { background: #fff9db; border-left: 3px solid #fcc419; padding: 0.6rem 0.8rem; border-radius: 0 6px 6px 0; font-size: 0.82rem; margin: 0.5rem 0; }
+    .diff-box { background: #e3fafc; border-left: 3px solid #22b8cf; padding: 0.6rem 0.8rem; border-radius: 0 6px 6px 0; font-size: 0.82rem; margin: 0.5rem 0; }
+    .page-header { margin-bottom: 1.5rem; }
+    .page-header h1 { font-size: 1.5rem; font-weight: 800; color: var(--admin-primary); margin-bottom: 0.3rem; }
+    .page-header p { font-size: 0.9rem; color: var(--admin-text-muted); }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+  <div class="admin-container">
+    <div class="page-header">
+      <h1>📝 작업 이력 작성 룰</h1>
+      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v3.51.0 기준 QR 유효 시간·위치 반경 변경도 QR 관리 작업 상세에 포함합니다.</p>
+    </div>
+
+    <!-- 개요 -->
+    <div class="rule-section">
+      <h2>📌 작업 이력 vs 로그의 차이</h2>
+      <div class="diff-box">
+        <strong>로그 (admin/logs.html):</strong> 모든 시스템 이벤트 기록 (페이지 방문, JS 에러 포함) — 레벨별 필터링
+      </div>
+      <div class="diff-box">
+        <strong>작업 이력 (admin/audit.html):</strong> 관리 작업만 필터링한 감사 기록 — 카테고리별 필터링
+      </div>
+      <div class="note-box">
+        두 기능은 동일한 <code>activity_logs</code> 테이블을 사용합니다. 작업 이력은 기본 <code>AUDIT_ACTIONS</code>와 <code>activity_logs.action</code> 코드 마스터에 등록된 관리 액션을 표시합니다.
+      </div>
+      <div class="note-box">
+        <strong>DB 권한 확인:</strong> 작업 이력이 비어 있고 로그도 쌓이지 않으면 <code>docs/TASK-047_activity_logs_grants.sql</code>을 적용해 <code>activity_logs</code> INSERT 권한과 RLS 정책을 복구합니다.
+      </div>
+    </div>
+
+    <!-- 기록 기준 -->
+    <div class="rule-section">
+      <h2>✅ 작업 이력에 포함되는 기준</h2>
+      <table class="rule-table">
+        <thead><tr><th>기준</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>AUDIT_ACTIONS/코드 마스터 등록</td><td><code>admin/audit.html</code>의 기본 <code>AUDIT_ACTIONS</code> 또는 DB <code>activity_logs.action</code> 코드 그룹에 키가 등록된 액션이 작업 이력에 표시됩니다</td></tr>
+          <tr><td>관리 작업 중심</td><td>사용자/부서/달란트/상품/주문 등의 CRUD 작업이 주 대상</td></tr>
+          <tr><td>시스템 자동 이벤트 제외</td><td>PAGE_VIEW, JS_ERROR, PROMISE_REJECTION 등은 포함되지 않음</td></tr>
+          <tr><td>실패/거부도 일부 포함</td><td>로그인 실패 등 보안 관련은 작업 이력에도 포함될 수 있음</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 10개 카테고리 -->
+    <div class="rule-section">
+      <h2>📂 10개 카테고리 분류</h2>
+
+      <h3><span class="cat-badge user">USER</span> 사용자 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>USER_CREATE</td><td>👤 사용자 생성</td><td>관리자가 사용자 직접 생성</td></tr>
+          <tr><td>USER_UPDATE</td><td>✏️ 사용자 수정</td><td>사용자 정보(이름, 권한, 부서) 변경</td></tr>
+          <tr><td>USER_DELETE</td><td>🗑️ 사용자 삭제</td><td>사용자 계정 삭제</td></tr>
+          <tr><td>PASSWORD_RESET</td><td>🔑 비밀번호 초기화</td><td>관리자가 비밀번호 리셋</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge register">REGISTER</span> 등록 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>REGISTER_REQUEST</td><td>📋 등록 신청</td><td>사용자가 계정 등록 신청</td></tr>
+          <tr><td>REGISTER_APPROVE</td><td>✅ 등록 승인</td><td>관리자가 등록 승인</td></tr>
+          <tr><td>REGISTER_REJECT</td><td>❌ 등록 거절</td><td>관리자가 등록 거절</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge dept">DEPT</span> 부서 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>DEPT_CREATE / UPDATE / DELETE</td><td>부서 생성/수정/삭제</td><td>부서 CRUD</td></tr>
+          <tr><td>DEPT_DEACTIVATE</td><td>부서 비활성화</td><td>부서 사용 중지</td></tr>
+          <tr><td>DEPT_TRANSFER_REQUEST / APPROVE / REJECT</td><td>부서 이동 요청/승인/거절</td><td>부서 이동 워크플로우</td></tr>
+          <tr><td>MANAGER_UPDATE / MANAGER_PROMOTE</td><td>관리자 변경/승격</td><td>관리자 역할 변경</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge talent">TALENT</span> 달란트 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>TALENT_GIVE / GIVE_ITEM / GIVE_ITEMS</td><td>달란트 지급</td><td>교사/관리자가 학생에게 달란트 지급</td></tr>
+          <tr><td>TALENT_MANUAL_GIVE</td><td>수동 달란트 지급</td><td>특별 지급</td></tr>
+          <tr><td>TALENT_USE</td><td>달란트 사용</td><td>실제 상품 구매(차감)로 달란트가 사용된 경우</td></tr>
+          <tr><td>TALENT_RETURN</td><td>달란트 반환</td><td>잘못 지급된 달란트를 사유 입력 후 되돌린 경우 (부장 교사 80+ 권한, TALENT_USE와 별도 집계)</td></tr>
+          <tr><td>ATTENDANCE_GIVE / ATTENDANCE_CANCEL</td><td>출석 달란트 지급/취소</td><td>출석 체크 관련</td></tr>
+          <tr><td>TALENT_ITEM_CREATE / UPDATE / DELETE</td><td>달란트 항목 관리</td><td>적립 항목 CRUD</td></tr>
+          <tr><td>qr_create / qr_edit / qr_toggle / qr_scan</td><td>QR 관리</td><td>QR 달란트 코드 관련. 생성/수정 상세에는 지급 대상, 항목/금액, 유효 기간·지정 시간, 위치 제한 반경을 함께 남깁니다.</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge order">ORDER</span> 상품/주문 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td>상품 CRUD</td><td>상품 등록/수정/삭제</td></tr>
+          <tr><td>PRODUCT_DEACTIVATE / PRODUCT_SOFT_DELETE</td><td>상품 비활성화/소프트삭제</td><td>상품 숨김 처리</td></tr>
+          <tr><td>ORDER_REQUEST_SUCCESS</td><td>구매 요청 성공</td><td>학생이 상품 구매 요청</td></tr>
+          <tr><td>ORDER_STATUS_CHANGE / ORDER_CANCEL / ORDER_REVERT</td><td>주문 상태 변경</td><td>관리자 주문 처리</td></tr>
+          <tr><td>ORDER_BULK_*</td><td>일괄 주문 처리</td><td>다건 주문 처리</td></tr>
+          <tr><td>PROXY_ORDER_SUCCESS</td><td>대리 구매</td><td>관리자가 대리 구매</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge qna">QNA</span> Q&A 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>QNA_CREATE</td><td>질문 등록</td><td>사용자가 질문 작성</td></tr>
+          <tr><td>QNA_ANSWER</td><td>답변 등록</td><td>관리자/교사 답변</td></tr>
+          <tr><td>QNA_COMMENT</td><td>댓글 등록</td><td>댓글 작성</td></tr>
+          <tr><td>QNA_DELETE</td><td>질문 삭제</td><td>질문 삭제</td></tr>
+          <tr><td>QNA_FAQ_SET</td><td>FAQ 지정</td><td>FAQ로 설정</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge auth">AUTH</span> 인증 활동</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>LOGIN_SUCCESS</td><td>로그인 성공</td><td>정상 로그인</td></tr>
+          <tr><td>LOGOUT</td><td>로그아웃</td><td>로그아웃 실행</td></tr>
+          <tr><td>PASSWORD_CHANGE</td><td>비밀번호 변경</td><td>비밀번호 변경 성공</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge log_mgmt">LOG_MGMT</span> 로그 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>LOG_ACKNOWLEDGED</td><td>로그 확인</td><td>에러 로그 확인 처리</td></tr>
+          <tr><td>LOG_BULK_ACK</td><td>일괄 확인</td><td>여러 로그 일괄 확인</td></tr>
+          <tr><td>LOG_RANGE_DELETE</td><td>기간 삭제</td><td>특정 기간 로그 삭제</td></tr>
+          <tr><td>LOG_SELECT_DELETE</td><td>선택 삭제</td><td>선택한 로그 삭제</td></tr>
+          <tr><td>LOG_RESTORE</td><td>로그 복원</td><td>삭제된 로그 복원</td></tr>
+        </tbody>
+      </table>
+
+      <h3><span class="cat-badge perm">PERM</span> 권한/설정 관리</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
+        <tbody>
+          <tr><td>ROLE_ACCESS_UPDATE</td><td>페이지 접근 권한 변경</td><td>역할별 페이지 접근 수정</td></tr>
+          <tr><td>ROLE_FEATURE_UPDATE</td><td>페이지 기능 권한 변경</td><td>역할별 기능 제한 수정</td></tr>
+          <tr><td>PAGE_PERM_UPDATE</td><td>페이지 권한 업데이트</td><td>레거시 권한 매트릭스 수정</td></tr>
+          <tr><td>REPORT_SAVE / REPORT_DELETE / REPORT_SEED</td><td>보고서 관리</td><td>보고서 저장/삭제/시드</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 기록되는 데이터 -->
+    <div class="rule-section">
+      <h2>💾 작업 이력에 표시되는 데이터</h2>
+      <table class="rule-table">
+        <thead><tr><th>필드</th><th>출처</th><th>설명</th></tr></thead>
+        <tbody>
+          <tr><td>시간</td><td><code>created_at</code></td><td>KST 변환 표시</td></tr>
+          <tr><td>작업자</td><td><code>user_name</code> / <code>details._userName</code></td><td>작업 실행자 이름</td></tr>
+          <tr><td>작업 유형</td><td><code>AUDIT_ACTIONS[action].label</code> 또는 <code>code_items</code> 라벨</td><td>한글 라벨 + 이모지</td></tr>
+          <tr><td>대상</td><td><code>details</code>에서 추출</td><td>대상 사용자명, 상품명, 변경 내역 등</td></tr>
+          <tr><td>상세</td><td><code>details</code> 전체</td><td>모달에서 JSON 전체 표시 (한글 키 매핑)</td></tr>
+        </tbody>
+      </table>
+
+      <h3>대상 추출 우선순위 (extractTarget 함수)</h3>
+      <table class="rule-table">
+        <thead><tr><th>순서</th><th>필드명</th><th>예시</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td>대상</td><td>"홍길동"</td></tr>
+          <tr><td>2</td><td>displayName</td><td>"김교사"</td></tr>
+          <tr><td>3</td><td>상품명</td><td>"연필세트"</td></tr>
+          <tr><td>4</td><td>변경내역</td><td>"이름: 홍길동 → 김길동"</td></tr>
+          <tr><td>5</td><td>userId (앞 8자)</td><td>"a1b2c3d4..."</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- 참고 사항 -->
+    <div class="rule-section">
+      <h2>📝 참고 사항</h2>
+      <div class="note-box">
+        <strong>새 작업 이력 추가 방법:</strong> 기존 <code>logInfo()</code>로 기록하되, <code>admin/audit.html</code>의 기본 <code>AUDIT_ACTIONS</code> 또는 DB <code>activity_logs.action</code> 코드 마스터에 해당 액션 키와 라벨/카테고리를 등록하면 작업 이력에 표시됩니다.
+      </div>
+      <div class="note-box">
+        <strong>작업 이력 조회:</strong> <a href="audit.html" style="color:var(--admin-primary);">운영 &gt; 작업 이력</a>에서 카테고리별, 날짜별, 텍스트 검색으로 조회 가능
+      </div>
+      <div class="note-box">
+        <strong>보고서/로그 그리드:</strong> 보고서 관리와 로그 화면의 페이지당 항목 수 콤보 박스는 각 필터 영역의 우측 하단 위치로 정리되어 동일한 공통 페이징 규칙을 따릅니다.
+      </div>
+      <div class="note-box">
+        <strong>로그 조회:</strong> <a href="logs.html" style="color:var(--admin-primary);">운영 &gt; 로그</a>에서 전체 시스템 로그 레벨별 조회 가능
+      </div>
+      <div class="note-box">
+        <strong>Slack 알림 룰:</strong> <a href="slack-rules.html" style="color:var(--admin-primary);">운영 &gt; Slack 알림 룰</a>에서 WARN+ 로그와 구매/가입/Q&amp;A 알림 라우팅을 확인 가능
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    (async () => {
+      await navInit();
+      const session = await initPage(80, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      await initTheme();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      autoLogPageView();
+    })();
+  </script>
+</body>
+</html>

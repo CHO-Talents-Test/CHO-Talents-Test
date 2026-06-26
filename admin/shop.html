@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상품 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">📦 상품 관리</h2>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">상품 목록</div>
+        <div class="filters">
+          <button class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="openAddModal()">+ 상품 등록</button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1rem 0 0.5rem;border-bottom:2px solid #fab005;padding-bottom:0.3rem;">
+        <h3 style="font-size:0.95rem;margin:0;" id="teacherTitle">👩‍🏫 교사용 상품 (0건)</h3>
+        <span id="teacherPageSizeWrap"></span>
+      </div>
+      <table class="admin-table" id="teacherProductTable">
+        <thead><tr><th data-sort-key="category">카테고리</th><th></th><th data-sort-key="name">상품명</th><th data-sort-key="price" data-sort-type="number">가격</th><th>관리</th></tr></thead>
+        <tbody id="teacherProducts"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="teacherPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;margin:1.5rem 0 0.5rem;border-bottom:2px solid #51cf66;padding-bottom:0.3rem;">
+        <h3 style="font-size:0.95rem;margin:0;" id="studentTitle">🎒 학생용 상품 (0건)</h3>
+        <span id="studentPageSizeWrap"></span>
+      </div>
+      <table class="admin-table" id="studentProductTable">
+        <thead><tr><th data-sort-key="category">카테고리</th><th></th><th data-sort-key="name">상품명</th><th data-sort-key="price" data-sort-type="number">가격</th><th>관리</th></tr></thead>
+        <tbody id="studentProducts"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="studentPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="productModal">
+    <div class="modal-box" style="max-width:480px;">
+      <h3 class="modal-title" id="modalTitle">상품 등록</h3>
+      <div class="form-error" id="modalError"></div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품명</label>
+        <input type="text" id="mName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      </div>
+      <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
+        <div style="flex:1;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">대상</label>
+          <select id="mTarget" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+            <option value="student">학생</option>
+            <option value="teacher">교사</option>
+          </select>
+        </div>
+        <div style="flex:1;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">카테고리</label>
+          <select id="mCategory" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;"></select>
+        </div>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">가격 (달란트)</label>
+        <input type="number" id="mPrice" min="1" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이모지</label>
+        <input type="text" id="mEmoji" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="🎁" />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품 이미지</label>
+        <div id="dropZone" style="border:2px dashed var(--admin-border);border-radius:12px;padding:1.2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:#fafafa;">
+          <div id="dropContent">
+            <div style="font-size:2rem;margin-bottom:0.3rem;">📷</div>
+            <div style="font-size:0.85rem;color:#636e72;">클릭하거나 이미지를 드래그해서 놓으세요</div>
+            <div style="font-size:0.75rem;color:#b2bec3;margin-top:0.2rem;">JPG, PNG, GIF, WebP (최대 5MB)</div>
+          </div>
+          <div id="imgPreview" style="display:none;"></div>
+        </div>
+        <input type="file" id="mImageFile" accept="image/*" style="display:none;" />
+        <input type="hidden" id="mImageUrl" />
+        <div style="margin-top:0.4rem;">
+          <button type="button" id="btnUrlToggle" onclick="toggleUrlInput()" style="background:none;border:none;color:var(--admin-primary);cursor:pointer;font-size:0.8rem;text-decoration:underline;">URL 직접 입력</button>
+          <div id="urlInputWrap" style="display:none;margin-top:0.4rem;">
+            <input type="text" id="mImageUrlText" style="width:100%;padding:0.5rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;" placeholder="https://example.com/image.jpg" />
+          </div>
+        </div>
+        <div id="uploadStatus" style="margin-top:0.3rem;font-size:0.8rem;text-align:center;"></div>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">설명</label>
+        <textarea id="mDesc" style="width:100%;min-height:60px;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-bottom:0.8rem;" id="activeWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품 상태</label>
+        <div style="display:flex;align-items:center;gap:1rem;">
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+            <input type="radio" name="mIsActive" value="true" checked />
+            <span class="level-badge INFO">활성</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+            <input type="radio" name="mIsActive" value="false" />
+            <span class="level-badge FATAL">비활성</span>
+          </label>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" onclick="saveProduct()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script src="../js/product.js?v=3.52.0"></script>
+  <style>
+    .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:120px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
+  </style>
+  <script>
+    initSupabase();
+    let session;
+    let allProducts = [];
+    let editingId = null;
+    let shopPages = { teacher: 1, student: 1 };
+    let shopTeacherPageSize = null;
+    let shopStudentPageSize = null;
+
+    function getShopPageSize(groupKey) {
+      if (groupKey === 'teacher' && shopTeacherPageSize !== null) return shopTeacherPageSize;
+      if (groupKey === 'student' && shopStudentPageSize !== null) return shopStudentPageSize;
+      return window.innerWidth <= 768 ? 10 : 20;
+    }
+
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      shopTeacherPageSize = await loadPageSize('shop_teacher', 10);
+      shopStudentPageSize = await loadPageSize('shop_student', 10);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      if ((session.permissionRank || 0) >= 80) updateBadge();
+      loadProducts();
+    })();
+
+    async function updateBadge() { await updateLogBadge(); }
+
+    async function loadProducts() {
+      const { data } = await fetchProducts(null, { activeOnly: true });
+      allProducts = data || [];
+      renderProducts();
+    }
+
+    function sortShopProducts(list) {
+      return list.sort((a, b) => {
+        const cCmp = getProductCategoryLabel(a.category || 'etc').localeCompare(getProductCategoryLabel(b.category || 'etc'), 'ko');
+        if (cCmp !== 0) return cCmp;
+        const nCmp = (a.name || '').localeCompare(b.name || '', 'ko');
+        if (nCmp !== 0) return nCmp;
+        return (b.price || 0) - (a.price || 0);
+      });
+    }
+
+    let _shopTeachers = [], _shopStudents = [];
+    function renderProducts() {
+      _shopTeachers = sortShopProducts(allProducts.filter(p => p.target_role === 'teacher'));
+      _shopStudents = sortShopProducts(allProducts.filter(p => p.target_role === 'student'));
+      document.getElementById('tableTitle').textContent = `상품 목록 (${allProducts.length}건)`;
+      renderShopGroup(_shopTeachers, 'teacher', 'teacherProducts', 'teacherPaging', 'teacherTitle', '👩‍🏫 교사용 상품');
+      renderShopGroup(_shopStudents, 'student', 'studentProducts', 'studentPaging', 'studentTitle', '🎒 학생용 상품');
+      initSortableHeaders('teacherProductTable', function(){ return _shopTeachers; }, function(d){ _shopTeachers = d; shopPages.teacher = 1; renderShopGroup(d,'teacher','teacherProducts','teacherPaging','teacherTitle','👩‍🏫 교사용 상품'); });
+      initSortableHeaders('studentProductTable', function(){ return _shopStudents; }, function(d){ _shopStudents = d; shopPages.student = 1; renderShopGroup(d,'student','studentProducts','studentPaging','studentTitle','🎒 학생용 상품'); });
+    }
+
+    function renderShopGroup(list, groupKey, tbodyId, pagingId, titleId, titleLabel) {
+      const pageSize = getShopPageSize(groupKey);
+      const page = shopPages[groupKey] || 1;
+      const totalPages = Math.max(1, Math.ceil(list.length / pageSize));
+      if (page > totalPages) shopPages[groupKey] = totalPages;
+      const currentPage = shopPages[groupKey] || 1;
+      document.getElementById(titleId).textContent = `${titleLabel} (${list.length}건)`;
+      const tbody = document.getElementById(tbodyId);
+      if (list.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">등록된 상품이 없습니다.</td></tr>';
+        document.getElementById(pagingId).innerHTML = '';
+        return;
+      }
+      const startIdx = (currentPage - 1) * pageSize;
+      const pageList = list.slice(startIdx, startIdx + pageSize);
+      const myRank = session.permissionRank || 0;
+      tbody.innerHTML = pageList.map(p => {
+        const items = [`<a onclick='openEditModal(${JSON.stringify(p).replace(/'/g,"&#39;")})'>✏️ 수정</a>`];
+        if (myRank >= 90) items.push(`<a onclick="confirmDelete('${p.id}','${p.name.replace(/'/g,"\\'")}')">🗑️ 삭제</a>`);
+        return `<tr>
+        <td>${getProductCategoryLabel(p.category)}</td>
+        <td>${p.image_url ? `<img src="${p.image_url}" style="width:48px;height:48px;object-fit:cover;border-radius:8px;" />` : `<span style="font-size:1.5rem;">${p.image_emoji || '🎁'}</span>`}</td>
+        <td><strong>${p.name}</strong><br><small style="color:var(--admin-text-muted);">${p.description || ''}</small></td>
+        <td style="font-weight:700;">${fmtNum(p.price)}</td>
+        <td>
+          <div class="mgmt-dropdown">
+            <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
+            <div class="mgmt-menu">${items.join('')}</div>
+          </div>
+        </td>
+      </tr>`;
+      }).join('');
+      renderShopPaging(groupKey, totalPages, pagingId);
+    }
+
+    function renderShopPaging(groupKey, totalPages, pagingId) {
+      const page = shopPages[groupKey] || 1;
+      const pageSize = getShopPageSize(groupKey);
+      const prefKey = groupKey === 'teacher' ? 'shop_teacher' : 'shop_student';
+      document.getElementById(pagingId).innerHTML = buildPagingButtons(page, totalPages, "goShopPage('" + groupKey + "',__PAGE__)");
+      const headerWrap = document.getElementById(groupKey + 'PageSizeWrap');
+      if (headerWrap) headerWrap.innerHTML = renderPageSizeSelector(prefKey, pageSize, "onShopPageSizeChange('" + groupKey + "', this.value)");
+    }
+
+    async function onShopPageSizeChange(groupKey, val) {
+      const size = parseInt(val) || 10;
+      const key = groupKey === 'teacher' ? 'shop_teacher' : 'shop_student';
+      if (groupKey === 'teacher') shopTeacherPageSize = size;
+      else shopStudentPageSize = size;
+      await savePageSize(key, size);
+      shopPages[groupKey] = 1;
+      renderProducts();
+    }
+
+    function goShopPage(groupKey, p) {
+      shopPages[groupKey] = p;
+      renderProducts();
+    }
+
+    function toggleMgmt(e, btn) {
+      e.stopPropagation();
+      document.querySelectorAll('.mgmt-menu.show').forEach(m => { if (m !== btn.nextElementSibling) m.classList.remove('show'); });
+      btn.nextElementSibling.classList.toggle('show');
+    }
+    document.addEventListener('click', () => document.querySelectorAll('.mgmt-menu.show').forEach(m => m.classList.remove('show')));
+
+    function openAddModal() {
+      editingId = null;
+      document.getElementById('modalTitle').textContent = '상품 등록';
+      ['mName','mCategory','mEmoji','mImageUrlText','mDesc'].forEach(id => document.getElementById(id).value = '');
+      document.getElementById('mCategory').innerHTML = renderProductCategoryOptions('etc');
+      document.getElementById('mTarget').value = 'student';
+      document.getElementById('mPrice').value = '';
+      document.getElementById('mImageUrl').value = '';
+      document.getElementById('mImageFile').value = '';
+      resetImgPreview();
+      document.querySelector('input[name="mIsActive"][value="true"]').checked = true;
+      document.getElementById('activeWrap').style.display = 'none';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function openEditModal(p) {
+      editingId = p.id;
+      document.getElementById('modalTitle').textContent = '상품 수정';
+      document.getElementById('mName').value = p.name;
+      document.getElementById('mTarget').value = p.target_role;
+      document.getElementById('mCategory').innerHTML = renderProductCategoryOptions(p.category || 'etc');
+      document.getElementById('mCategory').value = p.category || 'etc';
+      document.getElementById('mPrice').value = p.price;
+      document.getElementById('mEmoji').value = p.image_emoji || '';
+      document.getElementById('mImageUrl').value = p.image_url || '';
+      document.getElementById('mImageFile').value = '';
+      document.getElementById('mImageUrlText').value = p.image_url || '';
+      if (p.image_url) showImgPreview(p.image_url); else resetImgPreview();
+      document.getElementById('mDesc').value = p.description || '';
+      document.querySelector('input[name="mIsActive"][value="' + String(p.is_active !== false) + '"]').checked = true;
+      document.getElementById('activeWrap').style.display = 'block';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('productModal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('productModal').classList.add('hidden'); }
+
+    async function saveProduct() {
+      const errEl = document.getElementById('modalError');
+      const name = document.getElementById('mName').value.trim();
+      const price = parseInt(document.getElementById('mPrice').value);
+      if (!name) { errEl.textContent = '상품명을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!price || price <= 0) { errEl.textContent = '유효한 가격을 입력해주세요.'; errEl.classList.add('show'); return; }
+
+      const fileInput = document.getElementById('mImageFile');
+      let imageUrl = document.getElementById('mImageUrl').value.trim() || null;
+      if (fileInput.files.length > 0) {
+        const statusEl = document.getElementById('uploadStatus');
+        statusEl.innerHTML = '<span style="color:var(--admin-primary);">⏳ 이미지 업로드 중...</span>';
+        const { url, error: uploadErr } = await uploadProductImage(fileInput.files[0]);
+        if (uploadErr) { statusEl.innerHTML = `<span style="color:#ff6b6b;">업로드 실패: ${uploadErr}</span>`; return; }
+        imageUrl = url; statusEl.innerHTML = '';
+      }
+      const urlText = document.getElementById('mImageUrlText').value.trim();
+      if (!imageUrl && urlText) imageUrl = urlText;
+
+      const row = {
+        name, target_role: document.getElementById('mTarget').value,
+        category: document.getElementById('mCategory').value || 'etc',
+        price,
+        image_emoji: document.getElementById('mEmoji').value.trim() || '🎁',
+        image_url: imageUrl, description: document.getElementById('mDesc').value.trim() || null
+      };
+
+      if (editingId) row.is_active = document.querySelector('input[name="mIsActive"]:checked').value === 'true';
+
+      if (editingId) {
+        const { error } = await updateProduct(editingId, row);
+        if (error) { await logError('PRODUCT_UPDATE_FAIL', { id: editingId, 상품명: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        await logInfo('PRODUCT_UPDATE', { id: editingId, 상품명: name });
+      } else {
+        row.created_by = session.id;
+        const { error } = await createProduct(row);
+        if (error) { await logError('PRODUCT_CREATE_FAIL', { 상품명: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        await logInfo('PRODUCT_CREATE', { 상품명: name, 금액: price });
+      }
+      closeModal();
+      await loadProducts();
+    }
+
+    async function confirmDelete(id, name) {
+      if (!confirm(`"${name}" 상품을 삭제 대기 상태로 변경하시겠습니까?\n(목록에서 숨겨지며 DB에는 유지됩니다)`)) return;
+      const result = await deactivateProduct(id);
+      if (result.error) {
+        alert('삭제 대기 처리 실패: ' + result.error);
+        return;
+      }
+      await logInfo('PRODUCT_SOFT_DELETE', { id, 상품명: name });
+      alert(`"${name}" 상품이 삭제 대기 상태로 변경되었습니다.`);
+      await loadProducts();
+    }
+
+    function showImgPreview(src) {
+      document.getElementById('dropContent').style.display = 'none';
+      const preview = document.getElementById('imgPreview');
+      preview.style.display = 'block';
+      preview.innerHTML = `<img src="${src}" style="max-width:160px;max-height:120px;border-radius:8px;" onerror="resetImgPreview()" />
+        <div style="margin-top:0.3rem;"><button type="button" onclick="removeImage(event)" style="background:#ff6b6b;color:#fff;border:none;padding:0.2rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">이미지 삭제</button></div>`;
+    }
+    function resetImgPreview() { document.getElementById('dropContent').style.display = 'block'; const p = document.getElementById('imgPreview'); p.style.display = 'none'; p.innerHTML = ''; }
+    function removeImage(e) { e.stopPropagation(); document.getElementById('mImageUrl').value = ''; document.getElementById('mImageFile').value = ''; document.getElementById('mImageUrlText').value = ''; resetImgPreview(); }
+    function toggleUrlInput() { const w = document.getElementById('urlInputWrap'); w.style.display = w.style.display === 'none' ? 'block' : 'none'; }
+
+    const dropZone = document.getElementById('dropZone');
+    const fileInput = document.getElementById('mImageFile');
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--admin-primary)'; dropZone.style.background = 'rgba(108,92,231,0.05)'; });
+    dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--admin-border)'; dropZone.style.background = '#fafafa'; });
+    dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--admin-border)'; dropZone.style.background = '#fafafa'; const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleFileSelect(f); });
+    fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFileSelect(fileInput.files[0]); });
+    function handleFileSelect(file) {
+      if (file.size > 5*1024*1024) { document.getElementById('uploadStatus').innerHTML = '<span style="color:#ff6b6b;">5MB 이하 파일만 업로드 가능합니다</span>'; return; }
+      const dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files;
+      const reader = new FileReader(); reader.onload = e => showImgPreview(e.target.result); reader.readAsDataURL(file);
+      document.getElementById('uploadStatus').innerHTML = `<span style="color:#636e72;">📎 ${file.name} (${(file.size/1024).toFixed(1)}KB)</span>`;
+    }
+    document.getElementById('mImageUrlText').addEventListener('input', function() { const u = this.value.trim(); if (u) { document.getElementById('mImageFile').value = ''; showImgPreview(u); } else resetImgPreview(); });
+    document.getElementById('productModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

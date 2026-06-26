@@ -1,0 +1,708 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>구매 통계 - 관리자</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <style>
+    .stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem; margin-bottom: 1.2rem; }
+    .kanban-board { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+    .kanban-card { flex: 1 1 120px; min-width: 110px; max-width: 180px; background: var(--t-card, #fff); border: 1px solid var(--admin-border, var(--t-border, #e9ecef)); border-radius: 10px; overflow: hidden; transition: transform 0.15s, box-shadow 0.15s; }
+    .kanban-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .kanban-card-top { height: 4px; width: 100%; }
+    .kanban-card-body { padding: 0.65rem 0.75rem; display: flex; flex-direction: column; gap: 0.25rem; }
+    .kanban-label { font-size: 0.78rem; color: var(--admin-text-muted, var(--t-text-muted, #868e96)); line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .kanban-count { font-size: 1.35rem; font-weight: 700; color: var(--t-text, #212529); line-height: 1.2; font-variant-numeric: tabular-nums; }
+    .stats-table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+    .stats-table thead th { background: var(--t-subtle-surface, #f1f3f5); padding: 0.6rem 0.8rem; text-align: left; font-weight: 700; font-size: 0.82rem; border-bottom: 2px solid var(--t-border, #dee2e6); color: var(--t-text, #212529); }
+    .stats-table tbody tr { border-bottom: 1px solid var(--t-border, #e9ecef); transition: background 0.1s; }
+    .stats-table tbody tr:hover { background: var(--t-hover-bg, #f8f9fa); }
+    .stats-table tbody tr:nth-child(even) { background: var(--t-subtle-surface, #fafbfc); }
+    .stats-table tbody tr:nth-child(even):hover { background: var(--t-hover-bg, #f1f3f5); }
+    .stats-table td { padding: 0.55rem 0.8rem; color: var(--t-text, #212529); }
+    .stats-table td.num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .pct-bar { background: var(--t-border, #e9ecef); border-radius: 4px; height: 20px; width: 100%; max-width: 160px; position: relative; overflow: hidden; }
+    .pct-bar-fill { height: 100%; border-radius: 4px; transition: width 0.3s; }
+    .pct-bar-text { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); font-size: 0.7rem; font-weight: 700; color: var(--t-text, #495057); }
+    .type-section { background: var(--t-card, #fff); border: 1px solid var(--t-border, #e9ecef); border-radius: 14px; overflow: hidden; margin-bottom: 1rem; }
+    .type-section-header { padding: 0.8rem 1rem; border-bottom: 1px solid var(--t-border, #e9ecef); font-weight: 700; display: flex; align-items: center; gap: 0.5rem; color: var(--t-text, #212529); }
+    .period-presets { display: inline-flex; gap: 0.25rem; }
+    .period-presets button { padding: 0.2rem 0.5rem; font-size: 0.75rem; border: 1px solid var(--admin-border, var(--t-border)); border-radius: 4px; background: var(--t-card, #fff); cursor: pointer; font-weight: 600; color: var(--admin-text-muted); }
+    .period-presets button:hover { background: var(--t-hover-bg, #f1f3f5); color: var(--t-text, #212529); }
+    .radio-inline { display: inline-flex; gap: 0.6rem; align-items: center; }
+    .radio-inline label { display: flex; align-items: center; gap: 0.2rem; font-size: 0.82rem; cursor: pointer; white-space: nowrap; }
+    .radio-inline label input { margin: 0; }
+    @media (max-width: 768px) {
+      .hide-mobile { display: none !important; }
+      .kanban-card { flex: 1 1 calc(33% - 0.5rem); min-width: 95px; max-width: none; }
+      .kanban-label { font-size: 0.72rem; }
+      .kanban-count { font-size: 1.15rem; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container" style="max-width:100%;padding:0 1rem;">
+    <h2>📊 구매 통계</h2>
+
+    <div class="filters" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <button class="filter-btn active" id="viewAll" onclick="switchView('all')">전체</button>
+      <button class="filter-btn" id="viewDept" onclick="switchView('dept')">부서별</button>
+      <button class="filter-btn" id="viewUser" onclick="switchView('user')">사용자별</button>
+      <button class="filter-btn" id="viewType" onclick="switchView('type')">유형별</button>
+      <select id="deptFilter" onchange="loadStats()" style="padding:0.4rem 0.8rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;">
+        <option value="">전체 부서</option>
+      </select>
+      <span class="radio-inline" id="userTypeRadio" style="gap:0.3rem;">
+        <label style="padding:0.3rem 0.7rem;border:2px solid var(--t-border,#dee2e6);border-radius:20px;transition:all 0.15s;background:var(--t-card,#fff);"><input type="radio" name="userType" value="" checked onchange="loadStats();styleTypeRadio()" style="display:none;" /> 👥 전체</label>
+        <label style="padding:0.3rem 0.7rem;border:2px solid var(--t-border,#dee2e6);border-radius:20px;transition:all 0.15s;background:var(--t-card,#fff);"><input type="radio" name="userType" value="student" onchange="loadStats();styleTypeRadio()" style="display:none;" /> 🎒 학생</label>
+        <label style="padding:0.3rem 0.7rem;border:2px solid var(--t-border,#dee2e6);border-radius:20px;transition:all 0.15s;background:var(--t-card,#fff);"><input type="radio" name="userType" value="teacher" onchange="loadStats();styleTypeRadio()" style="display:none;" /> 👨‍🏫 교사</label>
+      </span>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:0.4rem;flex-wrap:wrap;">
+        <label style="font-size:0.82rem;color:var(--admin-text-muted);">기간:</label>
+        <input type="date" id="dateFrom" onchange="loadStats()" style="padding:0.3rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.82rem;" />
+        <span style="font-size:0.82rem;">~</span>
+        <input type="date" id="dateTo" onchange="loadStats()" style="padding:0.3rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.82rem;" />
+        <span class="period-presets">
+          <button onclick="setPeriod('today')">오늘</button>
+          <button onclick="setPeriod('week')">1주</button>
+          <button onclick="setPeriod('month')">1달</button>
+          <button onclick="setPeriod('year')">1년</button>
+        </span>
+      </span>
+    </div>
+
+    <div class="kanban-board" id="statusCards">
+      <div class="kanban-card"><div class="kanban-card-top" style="background:#868e96;"></div><div class="kanban-card-body"><span class="kanban-label">📋 구매 신청</span><span class="kanban-count" id="countRequested">0</span></div></div>
+      <div class="kanban-card"><div class="kanban-card-top" style="background:#e67700;"></div><div class="kanban-card-body"><span class="kanban-label">📦 상품 준비</span><span class="kanban-count" id="countPreparing">0</span></div></div>
+      <div class="kanban-card"><div class="kanban-card-top" style="background:#1971c2;"></div><div class="kanban-card-body"><span class="kanban-label">💳 상품 구매</span><span class="kanban-count" id="countPurchased">0</span></div></div>
+      <div class="kanban-card"><div class="kanban-card-top" style="background:#2b8a3e;"></div><div class="kanban-card-body"><span class="kanban-label">✅ 상품 지급</span><span class="kanban-count" id="countDelivered">0</span></div></div>
+      <div class="kanban-card"><div class="kanban-card-top" style="background:#e03131;"></div><div class="kanban-card-body"><span class="kanban-label">❌ 구매 취소</span><span class="kanban-count" id="countCancelled">0</span></div></div>
+    </div>
+
+    <div id="statsContent" style="margin-top:1rem;">
+      <div style="text-align:center;color:var(--admin-text-muted);">불러오는 중...</div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="productDetailModal">
+    <div class="modal-box" style="max-width:560px;">
+      <h3 class="modal-title" id="productDetailTitle">상품 상세</h3>
+      <div class="admin-table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table class="stats-table">
+          <thead><tr><th>상태</th><th style="text-align:right;">개수</th><th style="text-align:right;">비율</th><th>그래프</th></tr></thead>
+          <tbody id="productDetailItems"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeProductDetailModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="deptDetailModal">
+    <div class="modal-box" style="max-width:640px;">
+      <h3 class="modal-title" id="deptDetailTitle">부서 상세</h3>
+      <div class="admin-table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table class="stats-table">
+          <thead><tr><th>상품</th><th>상태</th><th style="text-align:right;">개수</th><th style="text-align:right;">비율</th></tr></thead>
+          <tbody id="deptDetailItems"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeDeptDetailModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="userDetailModal">
+    <div class="modal-box" style="max-width:560px;">
+      <h3 class="modal-title" id="userDetailTitle">사용자 상세</h3>
+      <div class="admin-table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table class="stats-table">
+          <thead><tr><th>상품</th><th>상태</th><th style="text-align:right;">개수</th><th style="text-align:right;">비율</th></tr></thead>
+          <tbody id="userDetailItems"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeUserDetailModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script src="../js/slack-notify.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session, allOrders = [], allProfiles = [], allDepts = [];
+    let currentView = 'all';
+    let scopedDeptId = null;
+    let purchaseStatPages = {};
+    let purchaseStatPageSizes = {};
+
+    const ORDER_STATUS_GROUP = 'product_orders.status';
+    const STATUS_LABEL = (typeof codeMap === 'function') ? codeMap(ORDER_STATUS_GROUP, 'value') : { requested:'구매 신청', preparing:'상품 준비', purchased:'상품 구매', delivered:'상품 지급', cancelled:'구매 취소' };
+    const STATUS_COLOR = (typeof codeMap === 'function') ? codeMap(ORDER_STATUS_GROUP, 'color') : { requested:'#868e96', preparing:'#e67700', purchased:'#1971c2', delivered:'#2b8a3e', cancelled:'#e03131' };
+    const STATUS_EMOJI = (typeof codeMap === 'function') ? codeMap(ORDER_STATUS_GROUP, 'emoji') : { requested:'📋', preparing:'📦', purchased:'💳', delivered:'✅', cancelled:'❌' };
+    const STATUS_ORDER = ['requested', 'preparing', 'purchased', 'delivered', 'cancelled'];
+    const TYPE_INFO = {
+      teacher: { label: '교사', icon: '👨‍🏫', barGrad: 'linear-gradient(90deg,#74c0fc,#339af0)' },
+      student: { label: '학생', icon: '🎒', barGrad: 'linear-gradient(90deg,#ffd43b,#fab005)' }
+    };
+
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      await loadPurchaseStatPageSizes();
+      setPeriod('week');
+      await loadData();
+      loadStats();
+    })();
+
+    async function loadPurchaseStatPageSizes() {
+      const views = ['all', 'dept', 'user', 'type'];
+      const types = ['teacher', 'student'];
+      await Promise.all(views.flatMap(view => types.map(async type => {
+        const key = getPurchaseStatKey(view, type);
+        purchaseStatPageSizes[key] = await loadPageSize(key, window.innerWidth <= 768 ? 10 : 20);
+      })));
+    }
+
+    function setPeriod(type) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      let fromStr = todayStr;
+      if (type === 'week') {
+        const d = new Date(today); d.setDate(d.getDate() - 6);
+        fromStr = d.toISOString().slice(0, 10);
+      } else if (type === 'month') {
+        fromStr = todayStr.slice(0, 8) + '01';
+      } else if (type === 'year') {
+        fromStr = todayStr.slice(0, 4) + '-01-01';
+      }
+      document.getElementById('dateFrom').value = fromStr;
+      document.getElementById('dateTo').value = todayStr;
+      if (allOrders.length > 0) loadStats();
+    }
+
+    function styleTypeRadio() {
+      document.querySelectorAll('#userTypeRadio label').forEach(l => {
+        const checked = l.querySelector('input').checked;
+        l.style.background = checked ? 'var(--admin-primary)' : 'var(--t-card, #fff)';
+        l.style.color = checked ? '#fff' : 'var(--t-text, #333)';
+        l.style.borderColor = checked ? 'var(--admin-primary)' : 'var(--t-border, #dee2e6)';
+        l.style.fontWeight = checked ? '700' : '500';
+      });
+    }
+    setTimeout(styleTypeRadio, 0);
+
+    async function loadData() {
+      const [orderRes, deptRes] = await Promise.all([
+        _sb.from('product_orders').select('*').order('created_at', { ascending: false }),
+        _sb.from('departments').select('*')
+      ]);
+      allOrders = orderRes.data || [];
+      allDepts = deptRes.data || [];
+
+      const myRank = session.permissionRank || 0;
+      const isPurchaseTeacher = session.permissionLevel === 'purchase_teacher';
+      scopedDeptId = (myRank >= 60 && myRank < 80 && !isPurchaseTeacher)
+        ? (session.managedDeptId || session.departmentId)
+        : null;
+
+      let profiles = [];
+      if (scopedDeptId) {
+        const { data: users, error: userErr } = await fetchUsers({ departmentId: scopedDeptId });
+        if (userErr) {
+          allOrders = [];
+          profiles = [];
+        } else {
+          profiles = users || [];
+          const scopedIds = new Set(profiles.map(u => u.id));
+          allOrders = allOrders.filter(o => scopedIds.has(o.user_id));
+        }
+      } else {
+        const userIds = [...new Set(allOrders.map(o => o.user_id))];
+        if (userIds.length > 0) {
+          const { data: profRows } = await _sb.from('profiles').select('id, display_name, username, user_type, department_id, class_number, permission_level, is_super_admin');
+          profiles = profRows || [];
+        }
+      }
+
+      if (!session.isSuperAdmin) {
+        const saIds = new Set(profiles.filter(p => p.is_super_admin).map(p => p.id));
+        profiles = profiles.filter(p => !p.is_super_admin);
+        if (saIds.size) allOrders = allOrders.filter(o => !saIds.has(o.user_id));
+      }
+
+      allProfiles = profiles;
+      allDepts.sort((a, b) => {
+        const order = ['1부', '2부', '3부', '4부', '5부', '예배부'];
+        const ai = order.indexOf(a.name);
+        const bi = order.indexOf(b.name);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.name.localeCompare(b.name, 'ko');
+      });
+
+      const sel = document.getElementById('deptFilter');
+      if (myRank >= 80) {
+        sel.style.display = '';
+        sel.innerHTML = '<option value="">전체 부서</option>' + allDepts.map(d => `<option value="${d.id}">${esc(d.name)}</option>`).join('');
+      } else {
+        sel.style.display = 'none';
+      }
+    }
+
+    function switchView(view) {
+      currentView = view;
+      ['All', 'Dept', 'User', 'Type'].forEach(v => {
+        const el = document.getElementById('view' + v);
+        if (el) el.classList.toggle('active', v.toLowerCase() === view);
+      });
+      loadStats();
+    }
+
+    function getFilteredData() {
+      const deptId = document.getElementById('deptFilter').value;
+      const userType = document.querySelector('input[name="userType"]:checked')?.value || '';
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+
+      const profMap = {};
+      allProfiles.forEach(p => { profMap[p.id] = p; });
+
+      let orders = allOrders.filter(o => profMap[o.user_id]);
+      if (deptId) orders = orders.filter(o => profMap[o.user_id]?.department_id === deptId);
+      if (userType) orders = orders.filter(o => {
+        const ut = profMap[o.user_id]?.user_type;
+        return userType === 'teacher' ? ut === 'teacher' : ut !== 'teacher';
+      });
+      if (dateFrom) orders = orders.filter(o => (o.created_at || '').slice(0, 10) >= dateFrom);
+      if (dateTo) orders = orders.filter(o => (o.created_at || '').slice(0, 10) <= dateTo);
+
+      return { orders, profMap };
+    }
+
+    function getUserTypeKey(userId, profMap) {
+      const prof = profMap[userId];
+      return prof && prof.user_type === 'teacher' ? 'teacher' : 'student';
+    }
+
+    function splitByUserType(orders, profMap) {
+      const groups = { teacher: [], student: [] };
+      orders.forEach(o => groups[getUserTypeKey(o.user_id, profMap)].push(o));
+      return groups;
+    }
+
+    function getVisibleTypeKeys() {
+      const userType = document.querySelector('input[name="userType"]:checked')?.value || '';
+      if (userType === 'teacher') return ['teacher'];
+      if (userType === 'student') return ['student'];
+      return ['teacher', 'student'];
+    }
+
+    function loadStats() {
+      const { orders, profMap } = getFilteredData();
+      renderStatusCards(orders);
+      if (currentView === 'all') renderOverallStats(orders, profMap);
+      else if (currentView === 'dept') renderDeptStats(orders, profMap);
+      else if (currentView === 'user') renderUserStats(orders, profMap);
+      else if (currentView === 'type') renderTypeStats(orders, profMap);
+    }
+
+    function renderStatusCards(orders) {
+      const counts = { requested: 0, preparing: 0, purchased: 0, delivered: 0, cancelled: 0 };
+      orders.forEach(o => { if (counts[o.status] !== undefined) counts[o.status]++; });
+      document.getElementById('countRequested').textContent = fmtNum(counts.requested);
+      document.getElementById('countPreparing').textContent = fmtNum(counts.preparing);
+      document.getElementById('countPurchased').textContent = fmtNum(counts.purchased);
+      document.getElementById('countDelivered').textContent = fmtNum(counts.delivered);
+      document.getElementById('countCancelled').textContent = fmtNum(counts.cancelled);
+    }
+
+    function renderPctBar(pct, grad) {
+      return `<div class="pct-bar"><div class="pct-bar-fill" style="width:${pct}%;background:${grad};"></div><div class="pct-bar-text">${pct}%</div></div>`;
+    }
+
+    function renderTypeSection(typeKey, title, innerHtml, controlsHtml, pagingHtml) {
+      const info = TYPE_INFO[typeKey];
+      return `<div class="type-section">
+        <div class="type-section-header"><span>${info.icon} ${info.label} ${title}</span><span style="margin-left:auto;">${controlsHtml || ''}</span></div>
+        ${innerHtml}
+        ${pagingHtml || ''}
+      </div>`;
+    }
+
+    function getPurchaseStatKey(viewKey, typeKey) {
+      return 'purchase_stats_' + viewKey + '_' + typeKey;
+    }
+
+    function getPurchaseStatPageSize(viewKey, typeKey) {
+      const key = getPurchaseStatKey(viewKey, typeKey);
+      return purchaseStatPageSizes[key] || (window.innerWidth <= 768 ? 10 : 20);
+    }
+
+    function paginatePurchaseRows(viewKey, typeKey, rows) {
+      const key = getPurchaseStatKey(viewKey, typeKey);
+      const pageSize = getPurchaseStatPageSize(viewKey, typeKey);
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      const page = Math.min(purchaseStatPages[key] || 1, totalPages);
+      purchaseStatPages[key] = page;
+      const startIdx = (page - 1) * pageSize;
+      const pageRows = rows.slice(startIdx, startIdx + pageSize);
+      const pageSizeHtml = rows.length > 0 ? renderPageSizeSelector(key, pageSize, "onPurchaseStatPageSizeChange('" + viewKey + "','" + typeKey + "', this.value)") : '';
+      const pagingButtons = rows.length > pageSize ? buildPagingButtons(page, totalPages, "goPurchaseStatPage('" + viewKey + "','" + typeKey + "',__PAGE__)") : '';
+      const pagingHtml = pagingButtons ? '<div style="padding:0.6rem 1rem;display:flex;justify-content:center;align-items:center;gap:0.3rem;flex-wrap:wrap;border-top:1px solid var(--t-border, #e9ecef);">' + pagingButtons + '</div>' : '';
+      return { pageRows, pageSizeHtml, pagingHtml };
+    }
+
+    async function onPurchaseStatPageSizeChange(viewKey, typeKey, val) {
+      const key = getPurchaseStatKey(viewKey, typeKey);
+      purchaseStatPageSizes[key] = parseInt(val, 10) || 20;
+      purchaseStatPages[key] = 1;
+      await savePageSize(key, purchaseStatPageSizes[key]);
+      loadStats();
+    }
+
+    function goPurchaseStatPage(viewKey, typeKey, page) {
+      purchaseStatPages[getPurchaseStatKey(viewKey, typeKey)] = page;
+      loadStats();
+    }
+
+    function compareStatusAsc(a, b) {
+      const ai = STATUS_ORDER.indexOf(a || 'requested');
+      const bi = STATUS_ORDER.indexOf(b || 'requested');
+      if (ai !== -1 && bi !== -1 && ai !== bi) return ai - bi;
+      return (STATUS_LABEL[a] || a || '').localeCompare(STATUS_LABEL[b] || b || '', 'ko');
+    }
+
+    function renderOverallStats(orders, profMap) {
+      const typeKeys = getVisibleTypeKeys();
+      if (orders.length === 0) {
+        document.getElementById('statsContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📊</div><p>구매 데이터가 없습니다.</p></div>';
+        return;
+      }
+      const groups = splitByUserType(orders, profMap);
+      let html = '';
+      typeKeys.forEach(typeKey => {
+        const typeOrders = groups[typeKey];
+        const total = typeOrders.length;
+        const byProduct = {};
+        typeOrders.forEach(o => {
+          const name = o.product_name || '미지정';
+          if (!byProduct[name]) byProduct[name] = 0;
+          byProduct[name]++;
+        });
+        const sorted = Object.entries(byProduct).sort((a, b) => b[1] - a[1]);
+        const pager = paginatePurchaseRows('all', typeKey, sorted);
+        const info = TYPE_INFO[typeKey];
+        let tableHtml = `<table class="stats-table"><thead><tr><th>상품명</th><th style="text-align:right;">개수</th><th style="text-align:right;">비율</th><th>그래프</th><th>상세</th></tr></thead><tbody>`;
+        if (sorted.length === 0) {
+          tableHtml += '<tr><td colspan="5" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+        } else {
+          pager.pageRows.forEach(([name, count]) => {
+            const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+            tableHtml += `<tr>
+              <td style="font-weight:600;">${esc(name)}</td>
+              <td class="num">${fmtNum(count)}</td>
+              <td class="num">${pct}%</td>
+              <td>${renderPctBar(pct, info.barGrad)}</td>
+              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openProductDetail('${escAttr(name)}','${typeKey}')">상세</button></td>
+            </tr>`;
+          });
+        }
+        tableHtml += '</tbody></table>';
+        html += renderTypeSection(typeKey, '상품별 구매 통계', tableHtml, pager.pageSizeHtml, pager.pagingHtml);
+      });
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function renderDeptStats(orders, profMap) {
+      const deptMap = {};
+      allDepts.forEach(d => { deptMap[d.id] = d.name; });
+      const typeKeys = getVisibleTypeKeys();
+      if (orders.length === 0) {
+        document.getElementById('statsContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">🏢</div><p>구매 데이터가 없습니다.</p></div>';
+        return;
+      }
+      const groups = splitByUserType(orders, profMap);
+      let html = '';
+      typeKeys.forEach(typeKey => {
+        const typeOrders = groups[typeKey];
+        const total = typeOrders.length;
+        const byDept = {};
+        typeOrders.forEach(o => {
+          const prof = profMap[o.user_id];
+          const dName = prof && prof.department_id ? (deptMap[prof.department_id] || '미배정') : '미배정';
+          if (!byDept[dName]) byDept[dName] = { count: 0, users: new Set() };
+          byDept[dName].count++;
+          byDept[dName].users.add(o.user_id);
+        });
+        const sorted = Object.entries(byDept).sort((a, b) => a[0].localeCompare(b[0], 'ko'));
+        const pager = paginatePurchaseRows('dept', typeKey, sorted);
+        const info = TYPE_INFO[typeKey];
+        let tableHtml = `<table class="stats-table"><thead><tr><th>부서</th><th style="text-align:right;">개수</th><th style="text-align:right;">인원</th><th class="hide-mobile" style="text-align:right;">1인 평균</th><th style="text-align:right;">비율</th><th class="hide-mobile">그래프</th><th>상세</th></tr></thead><tbody>`;
+        if (sorted.length === 0) {
+          tableHtml += '<tr><td colspan="7" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+        } else {
+          pager.pageRows.forEach(([name, v]) => {
+            const pct = total > 0 ? ((v.count / total) * 100).toFixed(1) : 0;
+            const avg = v.users.size > 0 ? (v.count / v.users.size).toFixed(1) : '0';
+            tableHtml += `<tr>
+              <td style="font-weight:600;">${esc(name)}</td>
+              <td class="num">${fmtNum(v.count)}</td>
+              <td class="num">${v.users.size}명</td>
+              <td class="num hide-mobile">${avg}</td>
+              <td class="num">${pct}%</td>
+              <td class="hide-mobile">${renderPctBar(pct, info.barGrad)}</td>
+              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openDeptDetail('${escAttr(name)}','${typeKey}')">상세</button></td>
+            </tr>`;
+          });
+        }
+        tableHtml += '</tbody></table>';
+        html += renderTypeSection(typeKey, '부서별 구매 통계', tableHtml, pager.pageSizeHtml, pager.pagingHtml);
+      });
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function renderUserStats(orders, profMap) {
+      const deptMap = {};
+      allDepts.forEach(d => { deptMap[d.id] = d.name; });
+      const typeKeys = getVisibleTypeKeys();
+      if (orders.length === 0) {
+        document.getElementById('statsContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">👤</div><p>구매 데이터가 없습니다.</p></div>';
+        return;
+      }
+      const groups = splitByUserType(orders, profMap);
+
+      let html = '';
+      typeKeys.forEach(typeKey => {
+        const typeOrders = groups[typeKey];
+        const total = typeOrders.length;
+        const byUser = {};
+        typeOrders.forEach(o => {
+          const prof = profMap[o.user_id];
+          if (!prof) return;
+          const dName = prof.department_id ? (deptMap[prof.department_id] || '미배정') : '미배정';
+          const uName = prof.display_name || prof.username || '-';
+          const key = prof.id;
+          if (!byUser[key]) byUser[key] = { id: prof.id, dept: dName, name: uName, classNum: prof.class_number || 0, permLevel: prof.permission_level || '', count: 0 };
+          byUser[key].count++;
+        });
+        const users = Object.values(byUser).sort((a, b) => {
+          const d = a.dept.localeCompare(b.dept, 'ko'); if (d !== 0) return d;
+          if (a.count !== b.count) return b.count - a.count;
+          return a.name.localeCompare(b.name, 'ko');
+        });
+        const pager = paginatePurchaseRows('user', typeKey, users);
+        const info = TYPE_INFO[typeKey];
+        let tableHtml = `<table class="stats-table"><thead><tr><th>부서</th><th>이름</th><th style="text-align:right;">개수</th><th style="text-align:right;">비율</th><th>그래프</th><th>상세</th></tr></thead><tbody>`;
+        if (users.length === 0) {
+          tableHtml += '<tr><td colspan="6" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+        } else {
+          pager.pageRows.forEach(u => {
+            const pct = total > 0 ? ((u.count / total) * 100).toFixed(1) : 0;
+            tableHtml += `<tr>
+              <td>${esc(u.dept)}</td>
+              <td style="font-weight:600;">${esc(u.name)}</td>
+              <td class="num">${fmtNum(u.count)}</td>
+              <td class="num">${pct}%</td>
+              <td>${renderPctBar(pct, info.barGrad)}</td>
+              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openUserDetail('${u.id}')">상세</button></td>
+            </tr>`;
+          });
+        }
+        tableHtml += '</tbody></table>';
+        html += renderTypeSection(typeKey, '사용자별 구매 통계 (' + users.length + '명)', tableHtml, pager.pageSizeHtml, pager.pagingHtml);
+      });
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function renderTypeStats(orders, profMap) {
+      const typeKeys = getVisibleTypeKeys();
+      if (orders.length === 0) {
+        document.getElementById('statsContent').innerHTML = '<div class="empty-state"><div class="empty-state-icon">📦</div><p>구매 데이터가 없습니다.</p></div>';
+        return;
+      }
+      const groups = splitByUserType(orders, profMap);
+      let html = '';
+      typeKeys.forEach(typeKey => {
+        const typeOrders = groups[typeKey];
+        const total = typeOrders.length;
+        const byProductStatus = {};
+        typeOrders.forEach(o => {
+          const name = o.product_name || '미지정';
+          const st = o.status || 'requested';
+          const key = name + '\0' + st;
+          if (!byProductStatus[key]) byProductStatus[key] = { product: name, status: st, count: 0 };
+          byProductStatus[key].count++;
+        });
+        const sorted = Object.values(byProductStatus).sort((a, b) =>
+          a.product.localeCompare(b.product, 'ko') || compareStatusAsc(a.status, b.status)
+        );
+        const pager = paginatePurchaseRows('type', typeKey, sorted);
+        const info = TYPE_INFO[typeKey];
+        let tableHtml = `<table class="stats-table"><thead><tr><th>상품</th><th>상태</th><th style="text-align:right;">개수</th><th style="text-align:right;">비율</th><th>그래프</th></tr></thead><tbody>`;
+        if (sorted.length === 0) {
+          tableHtml += '<tr><td colspan="5" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+        } else {
+          pager.pageRows.forEach(row => {
+            const pct = total > 0 ? ((row.count / total) * 100).toFixed(1) : 0;
+            const stLabel = STATUS_EMOJI[row.status] + ' ' + (STATUS_LABEL[row.status] || row.status);
+            const stColor = STATUS_COLOR[row.status] || '#868e96';
+            tableHtml += `<tr>
+              <td style="font-weight:600;">${esc(row.product)}</td>
+              <td><span style="color:${stColor};font-weight:600;">${stLabel}</span></td>
+              <td class="num">${fmtNum(row.count)}</td>
+              <td class="num">${pct}%</td>
+              <td>${renderPctBar(pct, info.barGrad)}</td>
+            </tr>`;
+          });
+        }
+        tableHtml += '</tbody></table>';
+        html += renderTypeSection(typeKey, '유형별 구매 통계', tableHtml, pager.pageSizeHtml, pager.pagingHtml);
+      });
+      document.getElementById('statsContent').innerHTML = html;
+    }
+
+    function getDeptName(userId, profMap) {
+      const prof = profMap[userId];
+      if (!prof || !prof.department_id) return '미배정';
+      const dept = allDepts.find(d => d.id === prof.department_id);
+      return dept ? dept.name : '미배정';
+    }
+
+    function openProductDetail(productName, typeKey) {
+      const { orders, profMap } = getFilteredData();
+      const productOrders = orders.filter(o => (o.product_name || '미지정') === productName && getUserTypeKey(o.user_id, profMap) === typeKey);
+      const total = productOrders.length;
+      const byStatus = {};
+      productOrders.forEach(o => {
+        const st = o.status || 'requested';
+        byStatus[st] = (byStatus[st] || 0) + 1;
+      });
+      const info = TYPE_INFO[typeKey];
+      document.getElementById('productDetailTitle').textContent = `${productName} — ${info.label} 상태별 상세`;
+      document.getElementById('productDetailItems').innerHTML = STATUS_ORDER.map(st => {
+        const count = byStatus[st] || 0;
+        if (count === 0) return '';
+        const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
+        const color = STATUS_COLOR[st];
+        return `<tr>
+          <td style="font-weight:600;color:${color};">${STATUS_EMOJI[st]} ${STATUS_LABEL[st]}</td>
+          <td class="num">${fmtNum(count)}</td>
+          <td class="num">${pct}%</td>
+          <td>${renderPctBar(pct, `linear-gradient(90deg,${color},${color})`)}</td>
+        </tr>`;
+      }).filter(Boolean).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+      document.getElementById('productDetailModal').classList.remove('hidden');
+    }
+
+    function closeProductDetailModal() {
+      document.getElementById('productDetailModal').classList.add('hidden');
+    }
+
+    function openDeptDetail(deptName, typeKey) {
+      const { orders, profMap } = getFilteredData();
+      const deptOrders = orders.filter(o => getDeptName(o.user_id, profMap) === deptName && getUserTypeKey(o.user_id, profMap) === typeKey);
+      const total = deptOrders.length;
+      const byKey = {};
+      deptOrders.forEach(o => {
+        const name = o.product_name || '미지정';
+        const st = o.status || 'requested';
+        const key = name + '\0' + st;
+        if (!byKey[key]) byKey[key] = { product: name, status: st, count: 0 };
+        byKey[key].count++;
+      });
+      const sorted = Object.values(byKey).sort((a, b) => b.count - a.count || a.product.localeCompare(b.product, 'ko'));
+      const info = TYPE_INFO[typeKey];
+      document.getElementById('deptDetailTitle').textContent = `${deptName} — ${info.label} 상품·상태 상세`;
+      document.getElementById('deptDetailItems').innerHTML = sorted.map(row => {
+        const pct = total > 0 ? ((row.count / total) * 100).toFixed(1) : 0;
+        const stLabel = STATUS_EMOJI[row.status] + ' ' + (STATUS_LABEL[row.status] || row.status);
+        const stColor = STATUS_COLOR[row.status] || '#868e96';
+        return `<tr>
+          <td style="font-weight:600;">${esc(row.product)}</td>
+          <td style="color:${stColor};font-weight:600;">${stLabel}</td>
+          <td class="num">${fmtNum(row.count)}</td>
+          <td class="num">${pct}%</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+      document.getElementById('deptDetailModal').classList.remove('hidden');
+    }
+
+    function closeDeptDetailModal() {
+      document.getElementById('deptDetailModal').classList.add('hidden');
+    }
+
+    function openUserDetail(userId) {
+      const { orders, profMap } = getFilteredData();
+      const userOrders = orders.filter(o => o.user_id === userId);
+      const prof = profMap[userId];
+      const uName = prof ? (prof.display_name || prof.username || '-') : '-';
+      const typeKey = getUserTypeKey(userId, profMap);
+      const total = userOrders.length;
+      const byKey = {};
+      userOrders.forEach(o => {
+        const name = o.product_name || '미지정';
+        const st = o.status || 'requested';
+        const key = name + '\0' + st;
+        if (!byKey[key]) byKey[key] = { product: name, status: st, count: 0 };
+        byKey[key].count++;
+      });
+      const sorted = Object.values(byKey).sort((a, b) => b.count - a.count || a.product.localeCompare(b.product, 'ko'));
+      const info = TYPE_INFO[typeKey];
+      document.getElementById('userDetailTitle').textContent = `${uName} — ${info.label} 구매 상세`;
+      document.getElementById('userDetailItems').innerHTML = sorted.map(row => {
+        const pct = total > 0 ? ((row.count / total) * 100).toFixed(1) : 0;
+        const stLabel = STATUS_EMOJI[row.status] + ' ' + (STATUS_LABEL[row.status] || row.status);
+        const stColor = STATUS_COLOR[row.status] || '#868e96';
+        return `<tr>
+          <td style="font-weight:600;">${esc(row.product)}</td>
+          <td style="color:${stColor};font-weight:600;">${stLabel}</td>
+          <td class="num">${fmtNum(row.count)}</td>
+          <td class="num">${pct}%</td>
+        </tr>`;
+      }).join('') || '<tr><td colspan="4" style="text-align:center;color:var(--admin-text-muted);padding:1rem;">데이터 없음</td></tr>';
+      document.getElementById('userDetailModal').classList.remove('hidden');
+    }
+
+    function closeUserDetailModal() {
+      document.getElementById('userDetailModal').classList.add('hidden');
+    }
+
+    function esc(s) {
+      if (s == null) return '';
+      return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function escAttr(s) {
+      return esc(s).replace(/'/g, '&#39;');
+    }
+
+    document.getElementById('productDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeProductDetailModal(); });
+    document.getElementById('deptDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeDeptDetailModal(); });
+    document.getElementById('userDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeUserDetailModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

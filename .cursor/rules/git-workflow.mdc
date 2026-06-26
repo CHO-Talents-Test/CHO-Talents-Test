@@ -1,0 +1,15 @@
+---
+description: Git 작업 규칙 - 커밋 작성자 및 브랜치 정책
+alwaysApply: true
+---
+
+# Git 작업 규칙
+
+## 커밋 작성자
+- 모든 커밋의 author를 `AI_Cursor`로 설정
+- 예: `git commit --author="AI_Cursor <ai@cursor>" -m "..."`
+
+## 브랜치 정책
+- 항상 `develop` 브랜치에서만 작업 및 push
+- `main` 브랜치로의 머지는 사용자가 명시적으로 요청한 경우에만 수행
+- push 전 현재 브랜치가 `develop`인지 반드시 확인

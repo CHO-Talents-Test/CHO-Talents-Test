@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>페이지 기능 관리 - 달란트 마을</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">⚙️ 페이지 기능 관리</h2>
+    <p style="font-size:0.85rem;color:var(--admin-text-muted);margin-bottom:1rem;">권한 등급별로 각 페이지에서 사용 가능한 기능을 관리합니다.</p>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title">권한별 기능 설정</div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>구분</th><th>유형</th><th>권한</th><th>등급</th><th>설명</th><th>관리</th></tr></thead>
+        <tbody id="permList"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="featureModal">
+    <div class="modal-box" style="max-width:750px;max-height:85vh;overflow-y:auto;">
+      <h3 class="modal-title" id="featureTitle">페이지 기능 설정</h3>
+      <div class="form-error" id="featureError"></div>
+      <div id="featureBody"></div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeFeatureModal()">취소</button>
+        <button class="btn-confirm" id="btnSaveFeature" onclick="saveFeatures()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let editingPerm = null;
+
+    const PERM_LIST = [
+      { key: 'super_admin', userType: 'teacher', perm: 'admin', label: '최고 관리자', emoji: '🔒', rank: 110, desc: '모든 기능 접근 가능 (시스템 관리자)', superOnly: true },
+      { key: 'admin', userType: 'teacher', perm: 'admin', label: '관리자', emoji: '👑', rank: 100, desc: '전체 시스템 관리' },
+      { key: 'evangelist', userType: 'teacher', perm: 'evangelist', label: '전도사님', emoji: '✝️', rank: 90, desc: '사용자/부서/관리자 관리' },
+      { key: 'chief', userType: 'teacher', perm: 'chief', label: '부장 교사', emoji: '📋', rank: 80, desc: '담당 부서 관리 + 조회' },
+      { key: 'purchase_teacher', userType: 'teacher', perm: 'purchase_teacher', label: '구매 담당 교사', emoji: '🛒', rank: 70, desc: '구매 관리 전체 부서 주문 처리' },
+      { key: 'dept_teacher', userType: 'teacher', perm: 'dept_teacher', label: '부서 담당 교사', emoji: '👩‍🏫', rank: 60, desc: '담당 부서 사용자 관리' },
+      { key: 'teacher', userType: 'teacher', perm: 'teacher', label: '일반 교사', emoji: '👨‍🏫', rank: 40, desc: '달란트 지급' },
+      { key: 'student', userType: 'student', perm: 'student', label: '학생', emoji: '🎒', rank: 20, desc: '내 달란트 조회 / 상점 이용' }
+    ];
+
+    const PAGE_FEATURES = [
+      { id: 'admin-users', name: '사용자 관리', features: [
+        { key: 'user_create', label: '사용자 등록' },
+        { key: 'user_edit', label: '사용자 수정' },
+        { key: 'user_delete', label: '사용자 삭제' },
+        { key: 'user_pw_reset', label: '비밀번호 초기화' },
+        { key: 'user_detail', label: '상세 정보 조회' },
+        { key: 'request_approve', label: '가입 신청 승인' },
+        { key: 'request_reject', label: '가입 신청 거부' },
+        { key: 'transfer_request', label: '부서 이동 요청' },
+        { key: 'transfer_approve', label: '부서 이동 승인' }
+      ]},
+      { id: 'admin-bulk-register', name: '학생 일괄 등록', features: [
+        { key: 'bulk_template_download', label: '양식 다운로드' },
+        { key: 'bulk_preview', label: '엑셀 미리보기' },
+        { key: 'bulk_create', label: '학생 일괄 생성' }
+      ]},
+      { id: 'admin-departments', name: '부서 관리', features: [
+        { key: 'dept_create', label: '부서 등록' },
+        { key: 'dept_edit', label: '부서 수정' },
+        { key: 'dept_delete', label: '부서 삭제' },
+        { key: 'dept_view_members', label: '소속 보기' }
+      ]},
+      { id: 'admin-managers', name: '관리자 관리', features: [
+        { key: 'mgr_register', label: '관리자 등록' },
+        { key: 'mgr_edit', label: '관리자 수정' }
+      ]},
+      { id: 'admin-talents', name: '달란트 관리', features: [
+        { key: 'talent_give', label: '달란트 지급' },
+        { key: 'talent_use', label: '달란트 사용 처리' },
+        { key: 'talent_view_detail', label: '상세 조회' }
+      ]},
+      { id: 'admin-talent-stats', name: '달란트 통계', features: [
+        { key: 'stats_view', label: '통계 조회' },
+        { key: 'stats_filter', label: '필터 변경' }
+      ]},
+      { id: 'admin-talent-qr', name: '달란트 QR 관리', features: [
+        { key: 'qr_create', label: 'QR 코드 생성' },
+        { key: 'qr_edit', label: 'QR 코드 수정' },
+        { key: 'qr_deactivate', label: 'QR 코드 비활성화' },
+        { key: 'qr_print', label: 'QR 코드 인쇄' },
+        { key: 'qr_copy', label: 'QR 코드 복사' }
+      ]},
+      { id: 'admin-shop', name: '상품 관리', features: [
+        { key: 'product_create', label: '상품 등록' },
+        { key: 'product_edit', label: '상품 수정' },
+        { key: 'product_delete', label: '상품 삭제' },
+        { key: 'product_toggle', label: '활성/비활성 전환' }
+      ]},
+      { id: 'admin-purchases', name: '구매 관리', features: [
+        { key: 'order_prepare', label: '상품 준비 처리' },
+        { key: 'order_purchase', label: '구매 확정 처리' },
+        { key: 'order_deliver', label: '지급 완료 처리' }
+      ]},
+      { id: 'admin-purchase-stats', name: '구매 통계', features: [
+        { key: 'purchase_stats_view', label: '통계 조회' },
+        { key: 'purchase_stats_filter', label: '필터 변경' },
+        { key: 'purchase_stats_detail', label: '상세 드릴다운' }
+      ]},
+      { id: 'admin-dashboard', name: '대시보드', features: [
+        { key: 'view_stats', label: '통계 카드 조회' },
+        { key: 'view_errors', label: '오류 로그 조회' },
+        { key: 'view_shortcuts', label: '바로가기 메뉴' }
+      ]},
+      { id: 'admin-reports', name: '보고서', features: [
+        { key: 'report_create', label: '보고서 등록' },
+        { key: 'report_delete', label: '보고서 삭제' }
+      ]},
+      { id: 'admin-logs', name: '로그', features: [
+        { key: 'log_delete', label: '로그 삭제' },
+        { key: 'log_acknowledge', label: '로그 확인 처리' }
+      ]},
+      { id: 'admin-audit', name: '작업 이력', features: [
+        { key: 'audit_view', label: '이력 조회' },
+        { key: 'audit_filter', label: '필터 변경' }
+      ]},
+      { id: 'admin-talent-items', name: '달란트 항목 관리', features: [
+        { key: 'item_create', label: '항목 등록' },
+        { key: 'item_edit', label: '항목 수정' },
+        { key: 'item_delete', label: '항목 삭제' }
+      ]},
+      { id: 'admin-page-access', name: '페이지 접근 관리', features: [
+        { key: 'access_edit', label: '접근 설정 수정' }
+      ]},
+      { id: 'admin-page-features', name: '페이지 기능 관리', features: [
+        { key: 'feature_edit', label: '기능 설정 수정' }
+      ]}
+    ];
+
+    (async () => {
+      await navInit();
+      session = await initPage(100, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+
+      const canEdit = session.permissionRank >= 90;
+      if (!canEdit) document.getElementById('btnSaveFeature').style.display = 'none';
+
+      renderPermTable();
+    })();
+
+    function renderPermTable() {
+      const isSA = session.isSuperAdmin;
+      const tbody = document.getElementById('permList');
+      tbody.innerHTML = PERM_LIST
+        .filter(p => !p.superOnly || isSA)
+        .map(p => `<tr>
+          <td><span class="level-badge">${p.emoji} ${p.label}</span></td>
+          <td>${p.userType === 'teacher' ? '교사' : '학생'}</td>
+          <td>${PERMISSION_LABELS[p.perm] || p.perm}</td>
+          <td style="font-weight:700;">${p.rank}</td>
+          <td style="font-size:0.82rem;color:var(--admin-text-muted);">${p.desc}</td>
+          <td><button class="filter-btn" onclick="openFeatureModal('${p.key}')">설정</button></td>
+        </tr>`).join('');
+    }
+
+    async function openFeatureModal(permKey) {
+      editingPerm = permKey;
+      const perm = PERM_LIST.find(p => p.key === permKey);
+      if (!perm) return;
+      document.getElementById('featureTitle').textContent = `${perm.emoji} ${perm.label} - 페이지 기능 설정`;
+
+      let saved = {};
+      const { data } = await _sb.from('role_page_features').select('*').eq('permission_key', permKey);
+      if (data) data.forEach(r => { saved[r.page_id] = r.features || {}; });
+
+      const canEdit = session.permissionRank >= 90;
+      const allEnabled = permKey === 'super_admin';
+
+      const body = document.getElementById('featureBody');
+      body.innerHTML = PAGE_FEATURES.map(p => {
+        const roleFeats = saved[p.id] || {};
+        return `<div style="border:1px solid var(--admin-border);border-radius:8px;padding:0.7rem;margin-bottom:0.4rem;">
+          <div style="font-weight:700;font-size:0.9rem;margin-bottom:0.4rem;">${p.name}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            ${p.features.map(f => {
+              const checked = allEnabled ? true : (roleFeats[f.key] !== false);
+              return `<label style="font-size:0.82rem;display:flex;align-items:center;gap:0.3rem;min-width:130px;">
+                <input type="checkbox" data-page="${p.id}" data-feature="${f.key}" class="feat-check" ${checked ? 'checked' : ''} ${(canEdit && !allEnabled) ? '' : 'disabled'} />
+                ${f.label}
+              </label>`;
+            }).join('')}
+          </div>
+        </div>`;
+      }).join('');
+
+      if (allEnabled) {
+        document.getElementById('btnSaveFeature').style.display = 'none';
+      } else {
+        document.getElementById('btnSaveFeature').style.display = canEdit ? '' : 'none';
+      }
+
+      document.getElementById('featureError').classList.remove('show');
+      document.getElementById('featureModal').classList.remove('hidden');
+    }
+
+    function closeFeatureModal() { document.getElementById('featureModal').classList.add('hidden'); }
+
+    async function saveFeatures() {
+      if (!editingPerm) return;
+      const errEl = document.getElementById('featureError');
+
+      const rows = PAGE_FEATURES.map(p => {
+        const features = {};
+        document.querySelectorAll(`.feat-check[data-page="${p.id}"]`).forEach(cb => {
+          features[cb.dataset.feature] = cb.checked;
+        });
+        return { permission_key: editingPerm, page_id: p.id, features };
+      });
+
+      await _sb.from('role_page_features').delete().eq('permission_key', editingPerm);
+      const { error } = await _sb.from('role_page_features').insert(rows);
+      if (error) {
+        await logError('ROLE_FEATURE_UPDATE_FAIL', { 권한: editingPerm, 오류: error.message });
+        errEl.textContent = '저장 실패: ' + tErr(error.message);
+        errEl.classList.add('show');
+        return;
+      }
+      await logInfo('ROLE_FEATURE_UPDATE', { 권한: editingPerm });
+      closeFeatureModal();
+      alert('저장되었습니다.');
+    }
+
+    document.getElementById('featureModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeFeatureModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

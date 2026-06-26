@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로그 관리 - CHO Talents</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <!-- Unacknowledged ERROR+ Alert -->
+    <div class="alert-banner hidden" id="unackAlert">
+      <span>&#9888;</span>
+      <span id="unackAlertText">미확인 ERROR+ 로그가 있습니다.</span>
+    </div>
+
+    <h2 style="margin-bottom:1rem;">로그 관리</h2>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">활동 로그</div>
+        <div class="filters" style="flex:1;justify-content:flex-start;flex-wrap:wrap;">
+          <button class="filter-btn active" data-level="ALL" onclick="toggleLevel('ALL', this)">전체</button>
+          <button class="filter-btn" data-level="TRACE" onclick="toggleLevel('TRACE', this)">TRACE</button>
+          <button class="filter-btn" data-level="DEBUG" onclick="toggleLevel('DEBUG', this)">DEBUG</button>
+          <button class="filter-btn" data-level="INFO" onclick="toggleLevel('INFO', this)">INFO</button>
+          <button class="filter-btn" data-level="WARN" onclick="toggleLevel('WARN', this)">WARN</button>
+          <button class="filter-btn" data-level="ERROR" onclick="toggleLevel('ERROR', this)">ERROR</button>
+          <button class="filter-btn" data-level="FATAL" onclick="toggleLevel('FATAL', this)">FATAL</button>
+          <button class="filter-btn" data-level="CRITICAL" onclick="toggleLevel('CRITICAL', this)">CRITICAL</button>
+          <span style="margin-left:0.5rem;color:#adb5bd;">|</span>
+          <span style="font-size:0.78rem;font-weight:600;color:#495057;margin-right:0.2rem;">조회 기간</span>
+          <input type="date" class="filter-input" id="dateFrom" onchange="applyFilters()" />
+          <span style="font-size:0.8rem;color:#adb5bd;">~</span>
+          <input type="date" class="filter-input" id="dateTo" onchange="applyFilters()" />
+          <span style="display:inline-flex;gap:0.2rem;margin-left:0.2rem;">
+            <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setLogPeriod('today')">오늘</button>
+            <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setLogPeriod('week')">1주</button>
+            <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setLogPeriod('month')">1달</button>
+            <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setLogPeriod('year')">1년</button>
+          </span>
+          <button class="btn-ack admin-only-btn" style="margin-left:0.5rem;display:none;" onclick="deleteByRange()">범위 삭제</button>
+          <button class="btn-ack admin-only-btn" style="background:#d63031;display:none;" onclick="deleteSelectedLogs()" id="btnDeleteLogs" disabled>선택 삭제</button>
+          <button class="filter-btn admin-only-btn" onclick="toggleDeletedView()" id="btnToggleDeleted" style="margin-left:0.3rem;display:none;">🗑️ 삭제 대기 목록</button>
+          <span id="logPageSizeWrap" style="margin-left:auto;"></span>
+        </div>
+      </div>
+
+      <!-- Unacknowledged Logs Fixed Section -->
+      <div id="unackSection" class="hidden" style="border-bottom:2px solid #ffc9c9;background:#fff5f5;">
+        <div style="padding:0.6rem 1rem;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;">
+          <span style="font-weight:700;font-size:0.85rem;color:var(--level-error);">&#128680; 미확인 ERROR+ 로그 (확인 필수)</span>
+          <button class="btn-ack admin-only-btn" style="background:#e67700;font-size:0.78rem;padding:0.3rem 0.8rem;display:none;" onclick="bulkAcknowledge()">📋 일괄 완료처리</button>
+        </div>
+        <table class="admin-table">
+          <tbody id="unackLogs"></tbody>
+        </table>
+      </div>
+
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th style="width:30px;" class="admin-only-btn" id="thChkAll"><input type="checkbox" id="logChkAll" onchange="toggleAllLogs(this)"></th>
+            <th>시간 (KST)</th><th>레벨</th><th>액션</th><th>페이지</th>
+            <th>사용자</th><th>클라이언트</th><th>상태</th><th></th>
+          </tr>
+        </thead>
+        <tbody id="logsList">
+          <tr><td colspan="9" class="empty-state">로딩 중...</td></tr>
+        </tbody>
+      </table>
+
+      <div class="pagination" id="pagination"></div>
+    </div>
+  </div>
+
+  <!-- Acknowledge Modal -->
+  <div class="modal-overlay hidden" id="ackModal">
+    <div class="modal-box">
+      <h3 class="modal-title">로그 확인 및 해결 사항 작성</h3>
+      <div id="ackLogDetail" style="margin-bottom:1rem;font-size:0.85rem;background:#f8f9fa;padding:0.8rem;border-radius:8px;"></div>
+      <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">해결 사항</label>
+      <textarea id="ackNote" placeholder="확인 내용 및 해결 사항을 작성해주세요 (필수)"></textarea>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeAckModal()">취소</button>
+        <button class="btn-confirm" id="btnAck" onclick="submitAck()">확인 완료</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Log Detail Modal -->
+  <div class="modal-overlay hidden" id="logDetailModal">
+    <div class="modal-box" style="max-width:600px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+        <h3 class="modal-title">로그 상세 정보</h3>
+        <button class="btn-cancel" onclick="closeLogDetailModal()">닫기</button>
+      </div>
+      <div id="logDetailContent"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let currentPage = 0;
+    let PAGE_SIZE = 50;
+    function getPageSize() { return PAGE_SIZE; }
+    let totalLogCount = 0;
+    let selectedLevels = [];
+    let currentAckId = null;
+    let userProfileMap = {};
+
+    async function loadUserProfiles() {
+      const { data } = await _sb.from('profiles').select('username, display_name');
+      if (data) data.forEach(p => { userProfileMap[p.username] = p.display_name || p.username; });
+    }
+
+    function getUserDisplay(username) {
+      if (!username) return '-';
+      return userProfileMap[username] ? userProfileMap[username] + ' (' + username + ')' : username;
+    }
+
+    function formatActionCell(action) {
+      const key = action || '-';
+      const label = typeof getActionLabel === 'function' ? getActionLabel(action) : key;
+      return `<span style="font-weight:600;">${label}</span><br/><span style="font-size:0.7rem;color:#868e96;">${key}</span>`;
+    }
+
+    (async () => {
+      await navInit();
+      session = await initPage(100, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      PAGE_SIZE = await loadPageSize('logs', PAGE_SIZE);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      if ((session.permissionRank || 0) >= 100) {
+        document.querySelectorAll('.admin-only-btn').forEach(b => b.style.display = '');
+      }
+      setLogPeriod('year');
+      loadAll();
+    })();
+
+    function setLogPeriod(type) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      let fromStr = todayStr;
+      if (type === 'week') { const d = new Date(today); d.setDate(d.getDate() - 6); fromStr = d.toISOString().slice(0, 10); }
+      else if (type === 'month') { fromStr = todayStr.slice(0, 8) + '01'; }
+      else if (type === 'year') { fromStr = todayStr.slice(0, 4) + '-01-01'; }
+      document.getElementById('dateFrom').value = fromStr;
+      document.getElementById('dateTo').value = todayStr;
+      applyFilters();
+    }
+
+    async function loadAll() {
+      await loadUserProfiles();
+      await Promise.all([loadUnacknowledged(), applyFilters()]);
+      await updateBadge();
+    }
+
+    async function updateBadge() { await updateLogBadge(); }
+
+    async function loadUnacknowledged() {
+      const { data } = await fetchLogs({ unacknowledgedOnly: true, limit: 100 });
+      const section = document.getElementById('unackSection');
+      const alert = document.getElementById('unackAlert');
+      const tbody = document.getElementById('unackLogs');
+
+      if (!data || data.length === 0) {
+        section.classList.add('hidden');
+        alert.classList.add('hidden');
+        return;
+      }
+
+      section.classList.remove('hidden');
+      alert.classList.remove('hidden');
+      document.getElementById('unackAlertText').textContent =
+        `미확인 ERROR 이상 로그가 ${data.length}건 있습니다. 확인이 필요합니다.`;
+
+      tbody.innerHTML = data.map(l => `
+        <tr style="background:#fff5f5;">
+          <td>${formatKSTShort(l.created_at)}</td>
+          <td><span class="level-badge ${l.level}">${l.level}</span></td>
+          <td>${formatActionCell(l.action)}</td>
+          <td>${l.page || '-'}</td>
+          <td>${getUserDisplay(l.username)}</td>
+          <td><span class="ack-badge pending">미확인</span></td>
+          <td><button class="filter-btn" onclick="showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button><button class="btn-ack" onclick="openAckModal('${l.id}')">확인하기</button></td>
+        </tr>
+      `).join('');
+    }
+
+    function toggleLevel(level, btn) {
+      if (level === 'ALL') {
+        selectedLevels = [];
+        document.querySelectorAll('.filters .filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      } else {
+        document.querySelector('.filter-btn[data-level="ALL"]').classList.remove('active');
+        btn.classList.toggle('active');
+        if (btn.classList.contains('active')) {
+          selectedLevels.push(level);
+        } else {
+          selectedLevels = selectedLevels.filter(l => l !== level);
+        }
+        if (selectedLevels.length === 0) {
+          document.querySelector('.filter-btn[data-level="ALL"]').classList.add('active');
+        }
+      }
+      currentPage = 0;
+      applyFilters();
+    }
+
+    async function applyFilters() {
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+
+      const options = {
+        limit: getPageSize(),
+        offset: currentPage * getPageSize()
+      };
+      if (selectedLevels.length > 0) options.levels = selectedLevels;
+      if (dateFrom) options.dateFrom = dateFrom + 'T00:00:00+09:00';
+      if (dateTo) options.dateTo = dateTo + 'T23:59:59+09:00';
+
+      let countQuery = _sb.from('activity_logs').select('*', { count: 'exact', head: true });
+      try {
+        countQuery = countQuery.or('is_deleted.is.null,is_deleted.eq.false');
+      } catch (e) {}
+      if (options.levels) countQuery = countQuery.in('level', options.levels);
+      if (options.dateFrom) countQuery = countQuery.gte('created_at', options.dateFrom);
+      if (options.dateTo) countQuery = countQuery.lte('created_at', options.dateTo);
+      const { count: tc } = await countQuery;
+      totalLogCount = tc || 0;
+
+      const { data } = await fetchLogs(options);
+      renderLogs(data || []);
+    }
+
+    function renderLogs(logs) {
+      const tbody = document.getElementById('logsList');
+      const title = document.getElementById('tableTitle');
+      title.textContent = `활동 로그 (${logs.length}/${totalLogCount})`;
+
+      if (logs.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+          <div class="empty-state-icon">📄</div><p>해당 조건의 로그가 없습니다.</p></div></td></tr>`;
+        renderPagination(0);
+        return;
+      }
+
+      const isAdminUser = (session.permissionRank || 0) >= 100;
+      tbody.innerHTML = logs.map(l => {
+        const isError = ['ERROR', 'FATAL', 'CRITICAL'].includes(l.level);
+        const ackHtml = isError
+          ? (l.is_acknowledged
+            ? `<span class="ack-badge done" title="${l.resolution_note || ''}">확인됨</span>`
+            : `<span class="ack-badge pending">미확인</span>`)
+          : '-';
+        const actionHtml = isError && !l.is_acknowledged
+          ? `<button class="btn-ack" onclick="openAckModal('${l.id}')">확인</button>`
+          : '';
+        const ci = l.details?._client;
+        const clientHtml = ci
+          ? `<span style="font-size:0.72rem;line-height:1.3;display:block;cursor:pointer;" title="IP: ${ci.ip||'-'}\n브라우저: ${ci.browser||'-'}\nOS: ${ci.os||'-'}\n해상도: ${ci.screenRes||'-'}\n창: ${ci.windowSize||'-'}\n기기: ${ci.deviceType||'-'}\n언어: ${ci.language||'-'}">${ci.ip||'-'}<br/>${ci.browser||'-'}<br/>${ci.deviceType||'-'}</span>`
+          : '<span style="font-size:0.72rem;color:#adb5bd;">-</span>';
+        return `<tr>
+          ${isAdminUser ? `<td><input type="checkbox" class="log-chk" value="${l.id}" onchange="updateLogDeleteBtn()"></td>` : ''}
+          <td>${formatKST(l.created_at)}</td>
+          <td><span class="level-badge ${l.level}">${l.level}</span></td>
+          <td>${formatActionCell(l.action)}</td>
+          <td>${l.page || '-'}</td>
+          <td>${getUserDisplay(l.username)}</td>
+          <td>${clientHtml}</td>
+          <td>${ackHtml}</td>
+          <td><button class="filter-btn" onclick="showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button>${actionHtml}</td>
+        </tr>`;
+      }).join('');
+
+      renderPagination(logs.length);
+    }
+
+    function goLogPage1(p) { goPage(p - 1); }
+    function renderPagination(count) {
+      const el = document.getElementById('pagination');
+      const totalPages = Math.max(1, Math.ceil(totalLogCount / getPageSize()));
+      const cur = currentPage + 1;
+      el.innerHTML = buildPagingButtons(cur, totalPages, 'goLogPage1(__PAGE__)');
+      const headerWrap = document.getElementById('logPageSizeWrap');
+      if (headerWrap) headerWrap.innerHTML = renderPageSizeSelector('logs', PAGE_SIZE, "onLogsPageSizeChange(this.value)");
+    }
+
+    async function onLogsPageSizeChange(val) {
+      PAGE_SIZE = parseInt(val) || 50;
+      await savePageSize('logs', PAGE_SIZE);
+      currentPage = 0;
+      applyFilters();
+    }
+
+    function goPage(page) {
+      currentPage = page;
+      applyFilters();
+    }
+
+    function openAckModal(logId) {
+      currentAckId = logId;
+      document.getElementById('ackNote').value = '';
+      document.getElementById('ackModal').classList.remove('hidden');
+
+      _sb.from('activity_logs').select('*').eq('id', logId).single().then(({ data }) => {
+        if (data) {
+          document.getElementById('ackLogDetail').innerHTML = `
+            <strong>${data.level}</strong> | ${data.action}<br/>
+            <small>${formatKST(data.created_at)} | ${data.page || '-'}</small><br/>
+            <small>${data.details ? JSON.stringify(data.details) : '-'}</small>
+          `;
+        }
+      });
+    }
+
+    function closeAckModal() {
+      document.getElementById('ackModal').classList.add('hidden');
+      currentAckId = null;
+    }
+
+    async function submitAck() {
+      const note = document.getElementById('ackNote').value.trim();
+      if (!note) {
+        alert('해결 사항을 입력해주세요.');
+        return;
+      }
+      const btn = document.getElementById('btnAck');
+      btn.disabled = true;
+      btn.textContent = '저장 중...';
+
+      await acknowledgeLog(currentAckId, session.username, note);
+      await logInfo('LOG_ACKNOWLEDGED', { logId: currentAckId });
+
+      closeAckModal();
+      btn.disabled = false;
+      btn.textContent = '확인 완료';
+      await loadAll();
+    }
+
+    async function bulkAcknowledge() {
+      if ((session.permissionRank || 0) < 100) { alert('관리자만 일괄 완료 처리할 수 있습니다.'); return; }
+      const note = prompt('일괄 완료 사유를 입력해주세요:', '일괄 확인 처리');
+      if (note === null) return;
+      if (!note.trim()) { alert('사유를 입력해주세요.'); return; }
+
+      const { data } = await fetchLogs({ unacknowledgedOnly: true, limit: 500 });
+      if (!data || data.length === 0) { alert('처리할 로그가 없습니다.'); return; }
+
+      if (!confirm(`미확인 로그 ${data.length}건을 일괄 완료 처리하시겠습니까?`)) return;
+
+      let done = 0;
+      for (const log of data) {
+        await acknowledgeLog(log.id, session.username, note.trim());
+        done++;
+      }
+      await logInfo('LOG_BULK_ACK', { 건수: done, 사유: note.trim() });
+      alert(`${done}건의 로그가 완료 처리되었습니다.`);
+      await loadAll();
+    }
+
+    async function deleteByRange() {
+      const dateFrom = document.getElementById('dateFrom').value;
+      const dateTo = document.getElementById('dateTo').value;
+      if (!dateFrom || !dateTo) { alert('삭제할 날짜 범위(시작~끝)를 모두 선택해주세요.'); return; }
+      if (dateFrom > dateTo) { alert('시작 날짜가 끝 날짜보다 클 수 없습니다.'); return; }
+      const fromStr = dateFrom + 'T00:00:00+09:00';
+      const toStr = dateTo + 'T23:59:59+09:00';
+      const ERROR_PLUS = ['ERROR', 'FATAL', 'CRITICAL'];
+      const levelLabel = selectedLevels.length > 0
+        ? (selectedLevels.length === 1 ? selectedLevels[0] : selectedLevels.join(', '))
+        : null;
+      try {
+        let count = 0;
+        if (selectedLevels.length === 0) {
+          let countQuery = _sb.from('activity_logs')
+            .select('*', { count: 'exact', head: true })
+            .gte('created_at', fromStr).lte('created_at', toStr);
+          try { countQuery = countQuery.or('is_deleted.is.null,is_deleted.eq.false'); } catch(e) {}
+          countQuery = countQuery.or('level.not.in.(ERROR,FATAL,CRITICAL),is_acknowledged.eq.true');
+          const { count: c, error: cntErr } = await countQuery;
+          if (cntErr && /column|schema cache/i.test(cntErr.message)) {
+            alert(_SOFT_DEL_COL_ERR || 'DB에 삭제 관리 컬럼이 없습니다.\nSupabase SQL Editor에서 docs/TASK-023_fixes.sql 을 실행해주세요.');
+            return;
+          }
+          count = c || 0;
+        } else {
+          for (const lvl of selectedLevels) {
+            let countQuery = _sb.from('activity_logs')
+              .select('*', { count: 'exact', head: true })
+              .gte('created_at', fromStr).lte('created_at', toStr)
+              .eq('level', lvl);
+            try { countQuery = countQuery.or('is_deleted.is.null,is_deleted.eq.false'); } catch(e) {}
+            if (ERROR_PLUS.includes(lvl)) countQuery = countQuery.eq('is_acknowledged', true);
+            const { count: c, error: cntErr } = await countQuery;
+            if (cntErr && /column|schema cache/i.test(cntErr.message)) {
+              alert(_SOFT_DEL_COL_ERR || 'DB에 삭제 관리 컬럼이 없습니다.\nSupabase SQL Editor에서 docs/TASK-023_fixes.sql 을 실행해주세요.');
+              return;
+            }
+            count += c || 0;
+          }
+        }
+        if (!count || count === 0) { alert('해당 범위에 삭제할 로그가 없습니다.'); return; }
+        const confirmMsg = levelLabel
+          ? dateFrom + ' ~ ' + dateTo + ' 기간의 [' + levelLabel + '] 로그 ' + count + '건을 삭제 대기 상태로 변경하시겠습니까?'
+          : dateFrom + ' ~ ' + dateTo + ' 기간의 로그 ' + count + '건을 삭제 대기 상태로 변경하시겠습니까?';
+        if (!confirm(confirmMsg)) return;
+
+        let totalDeleted = 0;
+        if (selectedLevels.length === 0) {
+          const result = await deleteLogsByDateRange(fromStr, toStr, { excludeUnacknowledged: true });
+          if (result.error) {
+            await logError('LOG_RANGE_DELETE_FAIL', { dateFrom, dateTo, 오류: result.error });
+            alert('실패:\n\n' + tErr(result.error));
+            return;
+          }
+          totalDeleted = result.count || 0;
+        } else {
+          for (const lvl of selectedLevels) {
+            const opts = { level: lvl };
+            if (ERROR_PLUS.includes(lvl)) opts.excludeUnacknowledged = true;
+            const result = await deleteLogsByDateRange(fromStr, toStr, opts);
+            if (result.error) {
+              await logError('LOG_RANGE_DELETE_FAIL', { dateFrom, dateTo, level: lvl, 오류: result.error });
+              alert('실패:\n\n' + tErr(result.error));
+              return;
+            }
+            totalDeleted += result.count || 0;
+          }
+        }
+        await logInfo('LOG_RANGE_DELETE', { dateFrom, dateTo, level: levelLabel || 'ALL', 건수: totalDeleted });
+        alert(totalDeleted + '건의 로그가 삭제 대기 상태로 변경되었습니다.\n\n실제 삭제는 관리자가 SQL로 직접 수행합니다.');
+        await loadAll();
+      } catch (err) {
+        await logError('LOG_RANGE_DELETE_ERROR', { dateFrom, dateTo, 오류: String(err) });
+        alert('오류: ' + tErr(err.message));
+      }
+    }
+
+    function showLogDetail(logId) {
+      _sb.from('activity_logs').select('*').eq('id', logId).single().then(({ data: l }) => {
+        if (!l) return;
+        const ci = l.details?._client;
+        const detailsClean = l.details ? Object.assign({}, l.details) : {};
+        delete detailsClean._client;
+        const hasDetails = Object.keys(detailsClean).length > 0;
+        let html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;width:100px;background:#fafbfc;border:1px solid #eee;">시간</td><td style="padding:0.5rem;border:1px solid #eee;">' + formatKST(l.created_at) + '</td></tr>';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">레벨</td><td style="padding:0.5rem;border:1px solid #eee;"><span class="level-badge ' + l.level + '">' + l.level + '</span></td></tr>';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">액션</td><td style="padding:0.5rem;border:1px solid #eee;">' + l.action + '</td></tr>';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">페이지</td><td style="padding:0.5rem;border:1px solid #eee;">' + (l.page || '-') + '</td></tr>';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">사용자</td><td style="padding:0.5rem;border:1px solid #eee;">' + getUserDisplay(l.username) + '</td></tr>';
+        if (ci) {
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">IP</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.ip||'-') + '</td></tr>';
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">브라우저</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.browser||'-') + '</td></tr>';
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">OS</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.os||'-') + '</td></tr>';
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">기기</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.deviceType||'-') + '</td></tr>';
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">해상도</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.screenRes||'-') + ' (창: ' + (ci.windowSize||'-') + ')</td></tr>';
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">언어</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.language||'-') + '</td></tr>';
+        }
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">확인</td><td style="padding:0.5rem;border:1px solid #eee;">' + (l.is_acknowledged ? '<span class="ack-badge done">확인됨</span> ' + (l.acknowledged_by||'') + (l.resolution_note ? ' - ' + l.resolution_note : '') : '<span class="ack-badge pending">미확인</span>') + '</td></tr>';
+        if (hasDetails) {
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;vertical-align:top;">데이터</td><td style="padding:0.5rem;border:1px solid #eee;"><pre style="font-size:0.75rem;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;margin:0;background:#f8f9fa;padding:0.5rem;border-radius:6px;">' + JSON.stringify(detailsClean, null, 2) + '</pre></td></tr>';
+        }
+        html += '</table>';
+        document.getElementById('logDetailContent').innerHTML = html;
+        document.getElementById('logDetailModal').classList.remove('hidden');
+      });
+    }
+
+    function closeLogDetailModal() {
+      document.getElementById('logDetailModal').classList.add('hidden');
+    }
+
+    document.getElementById('ackModal').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) closeAckModal();
+    });
+
+    document.getElementById('logDetailModal').addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-overlay')) closeLogDetailModal();
+    });
+
+    function toggleAllLogs(chkAll) {
+      document.querySelectorAll('.log-chk').forEach(c => { c.checked = chkAll.checked; });
+      updateLogDeleteBtn();
+    }
+
+    function updateLogDeleteBtn() {
+      const checked = document.querySelectorAll('.log-chk:checked').length;
+      document.getElementById('btnDeleteLogs').disabled = checked === 0;
+      document.getElementById('btnDeleteLogs').textContent = checked > 0 ? '선택 삭제 (' + checked + ')' : '선택 삭제';
+    }
+
+    async function deleteSelectedLogs() {
+      const ids = Array.from(document.querySelectorAll('.log-chk:checked')).map(c => c.value);
+      if (ids.length === 0) return;
+      if (!confirm(ids.length + '건의 로그를 삭제 대기 상태로 변경하시겠습니까?')) return;
+
+      try {
+        const { error, count } = await deleteLogsByIds(ids);
+        if (error) {
+          await logError('LOG_SELECT_DELETE_FAIL', { 건수: ids.length, 오류: error });
+          alert('실패:\n\n' + tErr(error));
+          return;
+        }
+        await logInfo('LOG_SELECT_DELETE', { 건수: count || ids.length });
+        document.getElementById('logChkAll').checked = false;
+        alert((count || ids.length) + '건의 로그가 삭제 대기 상태로 변경되었습니다.\n\n실제 삭제는 관리자가 SQL로 직접 수행합니다.');
+        await loadAll();
+      } catch (err) {
+        await logError('LOG_SELECT_DELETE_ERROR', { 오류: String(err) });
+        alert('오류: ' + tErr(err.message));
+      }
+    }
+
+    let showingDeleted = false;
+    async function toggleDeletedView() {
+      showingDeleted = !showingDeleted;
+      const btn = document.getElementById('btnToggleDeleted');
+      if (showingDeleted) {
+        btn.textContent = '📋 일반 목록';
+        btn.style.background = '#ffe3e3';
+        const { data, error: delErr } = await _sb.from('activity_logs').select('*')
+          .eq('is_deleted', true)
+          .order('deleted_at', { ascending: false })
+          .limit(200);
+        if (delErr && /column|schema cache/i.test(delErr.message)) {
+          alert('DB에 삭제 관리 컬럼이 없습니다.\nSupabase SQL Editor에서 docs/TASK-023_fixes.sql 을 실행해주세요.');
+          showingDeleted = false; btn.textContent = '🗑️ 삭제 대기 목록'; btn.style.background = ''; return;
+        }
+        renderDeletedLogs(data || []);
+      } else {
+        btn.textContent = '🗑️ 삭제 대기 목록';
+        btn.style.background = '';
+        await loadAll();
+      }
+    }
+
+    function renderDeletedLogs(logs) {
+      const tbody = document.getElementById('logsList');
+      const title = document.getElementById('tableTitle');
+      title.textContent = `🗑️ 삭제 대기 로그 (${logs.length}건)`;
+      document.getElementById('pagination').innerHTML = '';
+
+      if (logs.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">✅</div><p>삭제 대기 중인 로그가 없습니다.</p></div></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = logs.map(l => {
+        const deletedAt = l.deleted_at ? formatKSTShort(l.deleted_at) : '-';
+        return `<tr style="background:#fff5f5;opacity:0.8;">
+          <td><input type="checkbox" class="log-chk" value="${l.id}" onchange="updateRestoreBtn()"></td>
+          <td>${formatKST(l.created_at)}</td>
+          <td><span class="level-badge ${l.level}">${l.level}</span></td>
+          <td>${formatActionCell(l.action)}</td>
+          <td>${l.page || '-'}</td>
+          <td>${getUserDisplay(l.username)}</td>
+          <td><span style="font-size:0.72rem;color:#d63031;">삭제 대기<br/>${deletedAt}</span></td>
+          <td><span class="ack-badge pending" style="background:#ffe3e3;color:#d63031;">삭제 대기</span></td>
+          <td><button class="filter-btn" onclick="restoreLog('${l.id}')">복원</button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function updateRestoreBtn() {}
+
+    async function restoreLog(id) {
+      if (!confirm('이 로그를 삭제 대기에서 복원하시겠습니까?')) return;
+      const { error } = await _sb.from('activity_logs')
+        .update({ is_deleted: false, deleted_at: null })
+        .eq('id', id);
+      if (error) {
+        if (/column|schema cache/i.test(error.message)) { alert('DB에 삭제 관리 컬럼이 없습니다.\nSupabase SQL Editor에서 docs/TASK-023_fixes.sql 을 실행해주세요.'); return; }
+        await logError('LOG_RESTORE_FAIL', { logId: id, 오류: error.message }); alert('복원 실패: ' + tErr(error.message)); return;
+      }
+      await logInfo('LOG_RESTORE', { logId: id });
+      alert('복원되었습니다.');
+      toggleDeletedView();
+      showingDeleted = false;
+      toggleDeletedView();
+    }
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>로그인 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
+  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/admin.css?v=3.52.0" />
+  <style>
+    .login-wrapper { background: linear-gradient(135deg, #f8f5ff 0%, #e8e0ff 50%, #fce4ec 100%); }
+    .login-card { max-width: 400px; }
+    .login-title { font-size: 1.6rem; }
+    .login-role-info { text-align: center; font-size: 0.78rem; color: var(--admin-text-muted); margin-top: 1.2rem; padding-top: 1rem; border-top: 1px solid var(--admin-border); }
+    .back-home { display: block; text-align: center; margin-top: 1rem; font-size: 0.85rem; color: var(--admin-primary); text-decoration: none; }
+    .back-home:hover { text-decoration: underline; }
+    .remember-row { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin: -0.2rem 0 1rem; }
+    .remember-label { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.84rem; font-weight: 600; color: var(--admin-text-muted); cursor: pointer; user-select: none; }
+    .remember-label input { width: 16px; height: 16px; accent-color: var(--admin-primary); cursor: pointer; }
+  </style>
+</head>
+<body class="admin-body">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <div style="text-align:center;font-size:2.5rem;margin-bottom:0.5rem;">⭐</div>
+      <div class="login-title">달란트 마을 로그인</div>
+      <p class="login-sub">아이디와 비밀번호를 입력해주세요</p>
+
+      <div class="form-error" id="errorMsg"></div>
+
+      <form id="loginForm" onsubmit="return false;">
+        <div class="form-group">
+          <label for="username">아이디</label>
+          <input type="text" id="username" placeholder="아이디 입력" autocomplete="username" required />
+        </div>
+        <div class="form-group">
+          <label for="password">비밀번호</label>
+          <input type="password" id="password" placeholder="비밀번호 입력" autocomplete="current-password" required />
+        </div>
+        <div class="remember-row">
+          <label class="remember-label" for="rememberUsername">
+            <input type="checkbox" id="rememberUsername" />
+            <span>아이디 저장</span>
+          </label>
+        </div>
+        <button type="submit" class="btn-primary" id="btnLogin">로그인</button>
+      </form>
+
+      <div style="text-align:center;margin-top:1.2rem;padding-top:1rem;border-top:1px solid var(--admin-border);">
+        <a href="register.html" style="display:inline-block;padding:0.5rem 1.5rem;background:linear-gradient(135deg,#51cf66,#40c057);color:#fff;border-radius:50px;text-decoration:none;font-weight:700;font-size:0.9rem;transition:all 0.2s;">📝 계정 등록 신청</a>
+        <div style="font-size:0.75rem;color:var(--admin-text-muted);margin-top:0.5rem;">계정이 없으신가요? 신청 후 관리자 승인을 받으면 이용 가능합니다</div>
+      </div>
+      <div style="display:flex;justify-content:center;gap:1.2rem;margin-top:1rem;font-size:0.85rem;">
+        <a href="index.html" class="back-home" style="margin:0;">← 메인 페이지</a>
+        <a href="guide.html" class="back-home" style="margin:0;">📖 사용 가이드</a>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config/public-config.js?v=3.52.0"></script>
+  <script src="js/supabase-config.js?v=3.52.0"></script>
+  <script src="js/activity-log.js?v=3.52.0"></script>
+  <script src="js/codes.js?v=3.52.0"></script>
+  <script src="js/auth.js?v=3.52.0"></script>
+  <script src="js/theme.js?v=3.52.0"></script>
+  <script>
+    const SAVED_USERNAME_KEY = 'cho_saved_username';
+
+    initSupabase();
+
+    (async () => {
+      const savedUsername = localStorage.getItem(SAVED_USERNAME_KEY) || '';
+      const usernameInput = document.getElementById('username');
+      const rememberInput = document.getElementById('rememberUsername');
+      const passwordInput = document.getElementById('password');
+      if (savedUsername) {
+        usernameInput.value = savedUsername;
+        rememberInput.checked = true;
+        passwordInput.focus();
+      }
+
+      const session = await loadAuthSession();
+      if (session) {
+        if (session.isFirstLogin) {
+          window.location.href = 'admin/change-password.html';
+        } else {
+          window.location.href = 'index.html';
+        }
+        return;
+      }
+
+      document.getElementById('loginForm').addEventListener('submit', async () => {
+        const btn = document.getElementById('btnLogin');
+        const errEl = document.getElementById('errorMsg');
+        errEl.classList.remove('show');
+        btn.disabled = true;
+        btn.textContent = '로그인 중...';
+
+        const username = document.getElementById('username').value.trim();
+        const password = document.getElementById('password').value;
+        if (!rememberInput.checked) {
+          localStorage.removeItem(SAVED_USERNAME_KEY);
+        }
+        const result = await login(username, password);
+
+        if (result.success) {
+          if (rememberInput.checked) {
+            localStorage.setItem(SAVED_USERNAME_KEY, username);
+          } else {
+            localStorage.removeItem(SAVED_USERNAME_KEY);
+          }
+          logInfo('LOGIN_SUCCESS', { username });
+          if (result.data.is_first_login) {
+            window.location.href = 'admin/change-password.html';
+          } else {
+            window.location.href = 'index.html';
+          }
+        } else {
+          logWarn('LOGIN_FAIL', { username, error: result.error });
+          let regStatus = 'not_found';
+          try {
+            const { data: rpcResult } = await _sb.rpc('check_registration_status', { p_username: username });
+            if (rpcResult) regStatus = rpcResult;
+          } catch (e) { /* fallback */ }
+
+          if (regStatus === 'pending') {
+            errEl.innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;"><span style="font-size:1.6rem;">&#9203;</span><div><strong>승인 대기 중이에요</strong><br><span style="font-size:0.8rem;color:#636e72;">관리자가 승인하면 로그인할 수 있어요</span></div></div>';
+          } else if (regStatus === 'rejected') {
+            errEl.innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;"><span style="font-size:1.6rem;">&#10060;</span><div><strong>가입 신청이 거부되었어요</strong><br><span style="font-size:0.8rem;color:#636e72;">자세한 내용은 관리자에게 문의해주세요</span></div></div>';
+          } else if (regStatus === 'approved') {
+            errEl.innerHTML = '<span style="font-size:1.1rem;">&#128274;</span> 비밀번호가 일치하지 않습니다.';
+          } else {
+            errEl.innerHTML = '<span style="font-size:1.1rem;">&#128274;</span> 아이디 또는 비밀번호가 일치하지 않습니다.';
+          }
+          errEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = '로그인';
+        }
+      });
+    })();
+  </script>
+  <script src="js/version.js?v=3.52.0"></script>
+</body>
+</html>

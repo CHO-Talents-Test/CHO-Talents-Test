@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 대시보드 - CHO Talents</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <div class="alert-banner hidden" id="alertBanner" data-min-perm="100" onclick="location.href='logs.html'" style="cursor:pointer;">
+      <span>&#9888;</span>
+      <span id="alertText">미확인 ERROR 로그가 있습니다.</span>
+      <a href="logs.html" style="margin-left:auto;color:inherit;font-weight:700;">확인하기</a>
+    </div>
+
+    <h2 style="margin-bottom:1rem;" id="dashTitle">대시보드</h2>
+
+    <div class="cards-grid">
+      <div class="stat-card">
+        <div class="stat-card-label" id="totalUsersLabel">전체 사용자</div>
+        <div class="stat-card-value" id="totalUsers">-</div>
+      </div>
+      <div class="stat-card" data-min-perm="80">
+        <div class="stat-card-label">부서</div>
+        <div class="stat-card-value" id="totalDepts">-</div>
+      </div>
+      <div class="stat-card" data-min-perm="80">
+        <div class="stat-card-label">보고서</div>
+        <div class="stat-card-value" id="totalReports">-</div>
+      </div>
+      <a href="logs.html" class="stat-card error-card" style="text-decoration:none;color:inherit;cursor:pointer;" data-min-perm="100">
+        <div class="stat-card-label">미확인 ERROR+</div>
+        <div class="stat-card-value" id="unackCount">-</div>
+      </a>
+    </div>
+
+    <div class="cards-grid" style="margin-bottom:1.5rem;">
+      <div class="stat-card" style="border-left-color:#51cf66;">
+        <div class="stat-card-label">🎒 학생</div>
+        <div class="stat-card-value" id="studentCount">-</div>
+      </div>
+      <div class="stat-card" style="border-left-color:#4dabf7;">
+        <div class="stat-card-label">👩‍🏫 교사</div>
+        <div class="stat-card-value" id="teacherCount">-</div>
+      </div>
+      <div class="stat-card" style="border-left-color:#e03131;" data-min-perm="80">
+        <div class="stat-card-label">👑 관리자</div>
+        <div class="stat-card-value" id="adminCount">-</div>
+      </div>
+      <div class="stat-card" style="border-left-color:#cc5de8;" data-min-perm="80">
+        <div class="stat-card-label">📋 부서 담당</div>
+        <div class="stat-card-value" id="managerCount">-</div>
+      </div>
+      <a href="users.html" class="stat-card" style="border-left-color:#e67700;text-decoration:none;color:inherit;" data-min-perm="80">
+        <div class="stat-card-label">📝 가입 대기자</div>
+        <div class="stat-card-value" id="pendingCount">-</div>
+      </a>
+    </div>
+
+    <div class="admin-table-wrap" data-min-perm="100">
+      <div class="admin-table-header">
+        <div class="admin-table-title">최근 이슈 로그</div>
+      </div>
+      <table class="admin-table">
+        <thead><tr><th>시간</th><th>레벨</th><th>액션</th><th>페이지</th><th>사용자</th></tr></thead>
+        <tbody id="recentLogs"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      loadDashboard();
+
+    })();
+
+    async function loadDashboard() {
+      const myRank = session.permissionRank || 0;
+      const deptId = session.managedDeptId;
+      const isScoped = myRank < 80 && deptId;
+
+      const hideSA = !session.isSuperAdmin;
+      let studentsQ = _sb.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'student');
+      let teachersQ = _sb.from('profiles').select('*', { count: 'exact', head: true }).eq('user_type', 'teacher');
+      let totalQ = _sb.from('profiles').select('*', { count: 'exact', head: true });
+
+      if (hideSA) {
+        studentsQ = studentsQ.or('is_super_admin.is.null,is_super_admin.eq.false');
+        teachersQ = teachersQ.or('is_super_admin.is.null,is_super_admin.eq.false');
+        totalQ = totalQ.or('is_super_admin.is.null,is_super_admin.eq.false');
+      }
+
+      if (isScoped) {
+        studentsQ = studentsQ.eq('department_id', deptId);
+        teachersQ = teachersQ.eq('department_id', deptId);
+        totalQ = totalQ.eq('department_id', deptId);
+        document.getElementById('dashTitle').textContent = '부서 대시보드';
+        document.getElementById('totalUsersLabel').textContent = '부서 사용자';
+      }
+
+      let mgrQ = _sb.from('profiles').select('*', { count: 'exact', head: true }).in('permission_level', ['purchase_teacher','dept_teacher','chief']);
+      let adminQ = _sb.from('profiles').select('*', { count: 'exact', head: true }).in('permission_level', ['admin','evangelist']);
+      if (hideSA) mgrQ = mgrQ.or('is_super_admin.is.null,is_super_admin.eq.false');
+      if (hideSA) adminQ = adminQ.or('is_super_admin.is.null,is_super_admin.eq.false');
+
+      const promises = [totalQ, studentsQ, teachersQ];
+      if (myRank >= 80) {
+        promises.push(
+          _sb.from('departments').select('*', { count: 'exact', head: true }).eq('is_active', true),
+          _sb.from('reports').select('*', { count: 'exact', head: true }),
+          getUnacknowledgedCount(),
+          mgrQ,
+          adminQ,
+          _sb.from('registration_requests').select('*', { count: 'exact', head: true }).eq('status', 'pending')
+        );
+      }
+
+      const results = await Promise.all(promises);
+      document.getElementById('totalUsers').textContent = results[0].count || 0;
+      document.getElementById('studentCount').textContent = results[1].count || 0;
+      document.getElementById('teacherCount').textContent = results[2].count || 0;
+
+      if (myRank >= 80) {
+        document.getElementById('totalDepts').textContent = results[3].count || 0;
+        document.getElementById('totalReports').textContent = results[4].count || 0;
+        const unack = results[5];
+        document.getElementById('unackCount').textContent = unack;
+        document.getElementById('managerCount').textContent = results[6].count || 0;
+        document.getElementById('adminCount').textContent = results[7].count || 0;
+        document.getElementById('pendingCount').textContent = results[8].count || 0;
+
+        if (unack > 0) {
+          const badge = document.getElementById('navLogBadge');
+          badge.textContent = unack; badge.classList.remove('hidden');
+          document.getElementById('alertBanner').classList.remove('hidden');
+          document.getElementById('alertText').textContent = `미확인 ERROR 이상 로그가 ${unack}건 있습니다.`;
+        }
+
+        const { data: logs } = await fetchLogs({ limit: 10, levels: ['WARN','ERROR','FATAL','CRITICAL'] });
+        const tbody = document.getElementById('recentLogs');
+        if (!logs || logs.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state">로그가 없습니다.</td></tr>';
+        } else {
+          tbody.innerHTML = logs.map(l => `<tr>
+            <td>${formatKSTShort(l.created_at)}</td>
+            <td><span class="level-badge ${l.level}">${l.level}</span></td>
+            <td>${l.action}</td>
+            <td>${l.page || '-'}</td>
+            <td>${l.username || '-'}</td>
+          </tr>`).join('');
+        }
+      }
+    }
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

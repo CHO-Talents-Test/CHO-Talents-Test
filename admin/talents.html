@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">
+      <h2>💰 달란트 관리</h2>
+      <a href="talent-items.html" class="filter-btn" data-min-perm="60" style="text-decoration:none;">📋 달란트 항목 관리</a>
+    </div>
+
+    <div class="filters" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <button class="filter-btn active" id="tabStudent" onclick="switchTab('student')">🎒 학생</button>
+      <button class="filter-btn" id="tabTeacher" onclick="switchTab('teacher')">👩‍🏫 교사</button>
+      <select id="deptFilter" data-min-perm="80" style="display:none;padding:0.35rem 0.6rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.8rem;background:var(--t-input-bg, #fff);" onchange="onDeptFilterChange()">
+        <option value="">전체 부서</option>
+      </select>
+    </div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">학생 목록</div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span id="talentPageSizeWrap"></span>
+          <button class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="openAddModal()">+ 사용자 등록</button>
+        </div>
+      </div>
+      <table class="admin-table" id="talentTable">
+        <thead><tr><th data-sort-key="display_name">이름</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th class="hide-mobile" data-sort-key="_usedTalent" data-sort-type="number">사용 달란트</th><th class="hide-mobile" data-sort-key="_totalTalent" data-sort-type="number">누적 달란트</th><th>관리</th></tr></thead>
+        <tbody id="userList"><tr><td colspan="7" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="talentPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="userModal">
+    <div class="modal-box">
+      <h3 class="modal-title" id="modalTitle">사용자 등록</h3>
+      <div class="form-error" id="modalError"></div>
+      <div style="margin-bottom:0.8rem;" id="usernameWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">아이디</label>
+        <input type="text" id="mUsername" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="영문/숫자" />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이름</label>
+        <input type="text" id="mDisplayName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="표시 이름" />
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" onclick="saveUser()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="talentModal">
+    <div class="modal-box" style="max-width:500px;">
+      <h3 class="modal-title" id="talentTitle">달란트 관리</h3>
+      <div style="text-align:center;margin-bottom:1rem;">
+        <div style="font-size:0.85rem;color:var(--admin-text-muted);">현재 잔액</div>
+        <div style="font-size:2rem;font-weight:800;" id="talentBalance">0</div>
+      </div>
+      <div style="display:flex;gap:0.5rem;margin-bottom:0.8rem;" id="talentTypeArea">
+        <button class="filter-btn" id="btnEarn" style="flex:1;padding:0.6rem;background:#51cf66;color:#fff;border-color:#51cf66;">적립</button>
+      </div>
+
+      <div id="earnSection">
+        <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.5rem;">항목 선택 (체크 후 지급 확정)</div>
+        <div id="talentItemBtns" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;"></div>
+        <button class="btn-confirm" id="btnConfirmGive" onclick="confirmGiveItems()" style="width:100%;padding:0.6rem;margin-bottom:0.8rem;display:none;">✅ 지급 확정</button>
+        <details id="manualGiveSection" style="margin-bottom:0.8rem;display:none;">
+          <summary style="cursor:pointer;font-size:0.85rem;color:var(--admin-primary);">수동 입력 (항목에 없는 경우)</summary>
+          <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
+            <input type="number" id="talentAmount" min="1" max="100" style="flex:1;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="금액 (최대 100)" />
+            <input type="text" id="talentDesc" style="flex:2;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="사유" />
+          </div>
+          <div style="margin-top:0.5rem;">
+            <button class="btn-confirm" onclick="submitManualTalent()" style="width:100%;padding:0.5rem;">수동 적립</button>
+          </div>
+        </details>
+      </div>
+
+      <div class="form-error" id="talentError"></div>
+      <div class="modal-actions" style="margin-top:0.8rem;">
+        <button class="btn-cancel" onclick="closeTalentModal()">닫기</button>
+      </div>
+      <div style="margin-top:1rem;border-top:1px solid var(--admin-border);padding-top:0.8rem;">
+        <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.5rem;">최근 내역</div>
+        <div id="talentHistory" style="max-height:200px;overflow-y:auto;font-size:0.82rem;"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="detailModal">
+    <div class="modal-box" style="max-width:600px;">
+      <h3 class="modal-title" id="detailTitle">달란트 상세</h3>
+      <div id="detailSummary" style="display:flex;gap:0.8rem;margin-bottom:1rem;"></div>
+      <div class="admin-table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table class="admin-table" style="font-size:0.85rem;">
+          <thead><tr><th>날짜</th><th>유형</th><th>금액</th><th>설명</th><th>지급자</th><th>잔액</th><th></th></tr></thead>
+          <tbody id="detailHistory"></tbody>
+        </table>
+      </div>
+      <div class="modal-actions" style="margin-top:1rem;">
+        <button class="btn-cancel" onclick="closeDetailModal()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="returnModal">
+    <div class="modal-box" style="max-width:400px;">
+      <h3 class="modal-title">달란트 반환</h3>
+      <div style="margin-bottom:0.8rem;">
+        <div style="font-size:0.85rem;color:#868e96;margin-bottom:0.3rem;" id="returnInfo"></div>
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">반환 사유 (필수)</label>
+        <input type="text" id="returnReason" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="반환 사유를 입력하세요" />
+      </div>
+      <div class="form-error" id="returnError"></div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeReturnModal()">취소</button>
+        <button class="btn-confirm" style="background:#e03131;border-color:#e03131;" onclick="submitReturn()">반환 처리</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.52.0"></script>
+  <script src="../js/supabase-config.js?v=3.52.0"></script>
+  <script src="../js/activity-log.js?v=3.52.0"></script>
+  <script src="../js/codes.js?v=3.52.0"></script>
+  <script src="../js/auth.js?v=3.52.0"></script>
+  <script src="../js/theme.js?v=3.52.0"></script>
+  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../js/page-size.js?v=3.52.0"></script>
+  <script src="../js/user-mgmt.js?v=3.52.0"></script>
+  <script src="../js/table-sort.js?v=3.52.0"></script>
+  <script src="../js/talent.js?v=3.52.0"></script>
+  <style>
+    .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:120px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
+    @media(max-width:768px){.hide-mobile{display:none!important;}}
+  </style>
+  <script>
+    initSupabase();
+    let session;
+    let editingId = null;
+    let talentUserId = null;
+    let talentType = 'earn';
+    let currentTab = 'student';
+    let allDepts = [];
+    let talentItems = [];
+    let talentSummaryMap = {};
+    let currentDeptFilter = '';
+    let _attendanceGivenThisWeek = new Set();
+    let _attendanceTxnMap = {};
+    let talentPage = 1;
+    let talentUserList = [];
+    let talentPageSize = null;
+
+    function maskTalentDesc(desc) {
+      if (!desc) return '-';
+      if ((session.permissionRank || 0) >= 100) return desc;
+      return desc.replace(/\[[0-9a-f-]{36}\]\s*/gi, '');
+    }
+
+    function getWeekStartKST() {
+      const now = new Date();
+      const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const day = kst.getUTCDay();
+      const diff = day === 0 ? 6 : day - 1;
+      kst.setUTCDate(kst.getUTCDate() - diff);
+      kst.setUTCHours(0, 0, 0, 0);
+      return new Date(kst.getTime() - 9 * 60 * 60 * 1000);
+    }
+
+    function getTalentPageSize(){
+      if (talentPageSize !== null) return talentPageSize;
+      return window.innerWidth<=768?10:20;
+    }
+
+    (async () => {
+      await navInit();
+      session = await initPage(40, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      talentPageSize = await loadPageSize('talents', 10);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      const [deptRes, itemRes] = await Promise.all([
+        fetchDepartments(),
+        fetchAllTalentItems()
+      ]);
+      allDepts = deptRes.data || [];
+      talentItems = itemRes.data || [];
+      populateDeptFilter();
+      if ((session.permissionRank || 0) < 60) {
+        document.getElementById('tabTeacher').style.display = 'none';
+      }
+      loadUsers();
+    })();
+
+    function getDeptName(id) {
+      const d = allDepts.find(d => d.id === id);
+      return d ? d.name : '-';
+    }
+
+    function populateDeptFilter() {
+      const sel = document.getElementById('deptFilter');
+      if (!sel) return;
+      sel.innerHTML = '<option value="">전체 부서</option>' + allDepts.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+    }
+
+    function onDeptFilterChange() {
+      currentDeptFilter = document.getElementById('deptFilter').value;
+      talentPage = 1;
+      loadUsers();
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      talentPage = 1;
+      document.getElementById('tabStudent').classList.toggle('active', tab === 'student');
+      document.getElementById('tabTeacher').classList.toggle('active', tab === 'teacher');
+      loadUsers();
+    }
+
+    function canGiveTalent(user) {
+      if (user.id === session.id) return false;
+      const myRank = session.permissionRank || 0;
+      if (myRank >= 90) return true;
+      if (myRank >= 60 && session.managedDeptId) return user.department_id === session.managedDeptId;
+      if (myRank === 40) {
+        if (!session.departmentId || !session.classNumber) return false;
+        if (user.department_id !== session.departmentId) return false;
+        if (user.class_number !== session.classNumber) return false;
+        return true;
+      }
+      return false;
+    }
+
+    async function loadUsers() {
+      const myRank = session.permissionRank || 0;
+      const roleLabel = currentTab === 'student' ? '학생' : '교사';
+      const opts = { userType: currentTab };
+
+      if (myRank < 90) {
+        if (myRank >= 60 && myRank < 80 && session.managedDeptId) {
+          opts.departmentId = session.managedDeptId;
+        } else if (myRank === 40 && session.departmentId) {
+          opts.departmentId = session.departmentId;
+        }
+      }
+
+      let { data } = await fetchUsers(opts);
+      data = data || [];
+
+      if (!session.isSuperAdmin) {
+        data = data.filter(u => !u.is_super_admin);
+      }
+
+      if (myRank === 40) {
+        if (!session.classNumber) {
+          data = [];
+        } else {
+          data = data.filter(u => u.class_number === session.classNumber);
+        }
+      }
+
+      if (currentDeptFilter) {
+        data = data.filter(u => u.department_id === currentDeptFilter);
+      }
+
+      const tbody = document.getElementById('userList');
+      document.getElementById('tableTitle').textContent = `${roleLabel} 목록 (${data.length}명)`;
+
+      if (data.length === 0) {
+        talentUserList = [];
+        tbody.innerHTML = `<tr><td colspan="7" class="empty-state">등록된 ${roleLabel}이(가) 없습니다.</td></tr>`;
+        document.getElementById('talentPaging').innerHTML = '';
+        return;
+      }
+
+      const userIds = data.map(u => u.id);
+      await loadBatchSummary(userIds);
+      await loadAttendanceThisWeek(userIds);
+
+      talentUserList = sortUserList(data, getDeptName);
+      talentUserList.forEach(u => {
+        u._deptName = getDeptName(u.department_id);
+        const sm = talentSummaryMap[u.id] || { earned: 0, used: 0, returned: 0 };
+        u._usedTalent = sm.used; u._totalTalent = sm.earned;
+      });
+      renderTalentTable();
+    }
+
+    function renderTalentTable() {
+      const data = talentUserList;
+      const roleLabel = currentTab === 'student' ? '학생' : '교사';
+      const tbody = document.getElementById('userList');
+      document.getElementById('tableTitle').textContent = `${roleLabel} 목록 (${data.length}명)`;
+
+      const pageSize = getTalentPageSize();
+      const totalPages = Math.max(1, Math.ceil(data.length / pageSize));
+      if (talentPage > totalPages) talentPage = totalPages;
+      const startIdx = (talentPage - 1) * pageSize;
+      const pageData = data.slice(startIdx, startIdx + pageSize);
+
+      const nameMap = resolveDisplayNames(pageData);
+      tbody.innerHTML = pageData.map(u => {
+        const dn = nameMap[u.id] || u.display_name || '-';
+        const isSelf = u.id === session.id;
+        const classLabel = u.class_number ? u.class_number + '반' : '-';
+        const sm = talentSummaryMap[u.id] || { earned: 0, used: 0, returned: 0 };
+        const attendDone = _attendanceGivenThisWeek.has(u.id);
+        const attendBtn = canGiveTalent(u)
+          ? `<button class="filter-btn" style="background:${attendDone?'#e03131':'#51cf66'};color:#fff;border-color:${attendDone?'#e03131':'#51cf66'};" onclick="${attendDone ? `cancelAttendance('${u.id}','${dn.replace(/'/g,"\\'")}')` : `giveAttendance('${u.id}','${dn.replace(/'/g,"\\'")}')` }">${attendDone?'✓출석 취소':'출석'}</button>`
+          : '';
+        return `<tr>
+        <td>${dn}${(isSelf || isAdminLevel(session)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
+        <td>${getDeptName(u.department_id)}</td>
+        <td>${classLabel}</td>
+        <td style="font-weight:700;color:#2b8a3e;">${fmtNum(u.talent_balance || 0)}</td>
+        <td class="hide-mobile" style="color:#e03131;">${fmtNum(sm.used)}</td>
+        <td class="hide-mobile" style="color:#1971c2;">${fmtNum(sm.earned)}</td>
+        <td>
+          ${attendBtn}
+          <div class="mgmt-dropdown">
+            <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
+            <div class="mgmt-menu">
+              ${canGiveTalent(u) ? `<a onclick="openTalentModal('${u.id}','${dn.replace(/'/g,"\\'")}',${u.talent_balance || 0})">💰 달란트 지급</a>` : ''}
+              <a onclick="openDetailModal('${u.id}','${dn.replace(/'/g,"\\'")}')">📋 상세</a>
+            </div>
+          </div>
+        </td>
+      </tr>`;
+      }).join('');
+      renderTalentPaging(totalPages);
+      initSortableHeaders('talentTable', function(){ return talentUserList; }, function(d){ talentUserList = d; talentPage = 1; renderTalentTable(); });
+    }
+
+    function renderTalentPaging(totalPages) {
+      const wrap = document.getElementById('talentPaging');
+      const pageSize = getTalentPageSize();
+      wrap.innerHTML = buildPagingButtons(talentPage, totalPages, 'goTalentPage(__PAGE__)');
+      const headerWrap = document.getElementById('talentPageSizeWrap');
+      if (headerWrap) headerWrap.innerHTML = renderPageSizeSelector('talents', pageSize, "onTalentsPageSizeChange(this.value)");
+    }
+
+    async function onTalentsPageSizeChange(val) {
+      talentPageSize = parseInt(val) || 10;
+      await savePageSize('talents', talentPageSize);
+      talentPage = 1;
+      renderTalentTable();
+    }
+
+    function goTalentPage(p) {
+      talentPage = p;
+      renderTalentTable();
+    }
+
+    function toggleMgmt(e,btn){e.stopPropagation();document.querySelectorAll('.mgmt-menu.show').forEach(m=>{if(m!==btn.nextElementSibling)m.classList.remove('show');});btn.nextElementSibling.classList.toggle('show');}
+    document.addEventListener('click',()=>document.querySelectorAll('.mgmt-menu.show').forEach(m=>m.classList.remove('show')));
+
+    async function loadBatchSummary(userIds) {
+      if (!_sb || userIds.length === 0) return;
+      const { data: txns } = await _sb.from('talent_transactions').select('user_id,type,amount,description').in('user_id', userIds);
+      talentSummaryMap = {};
+      (txns || []).forEach(t => {
+        if (!talentSummaryMap[t.user_id]) talentSummaryMap[t.user_id] = { earned: 0, used: 0, returned: 0 };
+        if (t.type === 'earn') {
+          talentSummaryMap[t.user_id].earned += t.amount;
+        } else if (t.description && t.description.startsWith('반환:')) {
+          talentSummaryMap[t.user_id].returned += t.amount;
+        } else {
+          talentSummaryMap[t.user_id].used += t.amount;
+        }
+      });
+    }
+
+    async function loadAttendanceThisWeek(userIds) {
+      _attendanceGivenThisWeek = new Set();
+      _attendanceTxnMap = {};
+      if (!_sb || userIds.length === 0) return;
+      const attendItem = talentItems.find(i => i.is_quick_button === true && i.target_type === currentTab && i.is_active)
+        || talentItems.find(i => i.name === '출석' && i.target_type === currentTab && i.is_active);
+      if (!attendItem) return;
+      const weekStart = getWeekStartKST();
+      const { data: earns } = await _sb.from('talent_transactions')
+        .select('id, user_id, amount, description, created_at')
+        .in('user_id', userIds)
+        .eq('talent_item_id', attendItem.id)
+        .eq('type', 'earn')
+        .gte('created_at', weekStart.toISOString())
+        .order('created_at', { ascending: true });
+      const { data: returns } = await _sb.from('talent_transactions')
+        .select('user_id, amount, description')
+        .in('user_id', userIds)
+        .eq('type', 'use')
+        .like('description', '반환:%')
+        .gte('created_at', weekStart.toISOString());
+      const cancelledById = new Set();
+      const legacyRetCount = {};
+      (returns || []).forEach(r => {
+        const m = r.description.match(/반환:\s*\[([^\]]+)\]/);
+        if (m) { cancelledById.add(m[1]); }
+        else {
+          const k = r.user_id + '|' + r.amount + '|' + r.description.replace('반환: ','').replace('반환:','');
+          legacyRetCount[k] = (legacyRetCount[k] || 0) + 1;
+        }
+      });
+      (earns || []).forEach(t => {
+        if (cancelledById.has(t.id)) return;
+        const k = t.user_id + '|' + t.amount + '|' + (t.description || '');
+        if (legacyRetCount[k] > 0) { legacyRetCount[k]--; return; }
+        _attendanceGivenThisWeek.add(t.user_id);
+        _attendanceTxnMap[t.user_id] = { id: t.id, amount: t.amount, description: t.description };
+      });
+    }
+
+    let _attendBusy = false;
+    async function giveAttendance(userId, userName) {
+      if (_attendBusy) return;
+      const attendItem = talentItems.find(i => i.is_quick_button === true && i.target_type === currentTab && i.is_active)
+        || talentItems.find(i => i.name === '출석' && i.target_type === currentTab && i.is_active);
+      if (!attendItem) { alert('출석 퀵버튼 항목이 설정되지 않았습니다.\n달란트 항목 관리에서 ⚡퀵 버튼을 지정해주세요.'); return; }
+      if (_attendanceGivenThisWeek.has(userId)) { alert('이번 주에 이미 출석 달란트가 지급되었습니다.'); return; }
+      _attendBusy = true;
+      try {
+        const result = await giveTalentByItem(userId, attendItem.id, session.id);
+        if (result && result.success === false) {
+          alert(tErr(result.error || '출석 지급 실패'));
+          return;
+        }
+        _attendanceGivenThisWeek.add(userId);
+        _attendanceTxnMap[userId] = { id: result?.id || '', amount: result?.amount || attendItem.talent_amount, description: result?.description || attendItem.name };
+        renderTalentTable();
+        await logInfo('ATTENDANCE_GIVE', { targetUser: userId, 대상: userName, 금액: attendItem.talent_amount });
+        await loadUsers();
+      } finally { _attendBusy = false; }
+    }
+
+    async function cancelAttendance(userId, userName) {
+      if (_attendBusy) return;
+      const txn = _attendanceTxnMap[userId];
+      if (!txn) { alert('취소할 출석 내역을 찾을 수 없습니다.'); return; }
+      if (!confirm(`${userName}님의 출석 달란트(${txn.amount})를 취소하시겠습니까?`)) return;
+      _attendBusy = true;
+      try {
+        const desc = '[' + txn.id + '] ' + (txn.description || '출석');
+        const result = await returnTalent(userId, txn.amount, desc, session.id);
+        if (result && result.success === false) {
+          alert('취소 실패: ' + tErr(result.error));
+          return;
+        }
+        _attendanceGivenThisWeek.delete(userId);
+        delete _attendanceTxnMap[userId];
+        renderTalentTable();
+        await logInfo('ATTENDANCE_CANCEL', { targetUser: userId, 대상: userName, 금액: txn.amount, txnId: txn.id });
+        await loadUsers();
+      } catch (e) {
+        alert('취소 오류: ' + (e.message || e));
+      } finally { _attendBusy = false; }
+    }
+
+    async function openDetailModal(userId, name) {
+      document.getElementById('detailTitle').textContent = `${name} - 달란트 상세`;
+      document.getElementById('detailModal').classList.remove('hidden');
+      const summary = await fetchTalentSummary(userId);
+      document.getElementById('detailSummary').innerHTML = `
+        <div style="flex:1;text-align:center;padding:0.8rem;background:#e6fcf5;border-radius:8px;">
+          <div style="font-size:0.8rem;color:#868e96;">누적 적립</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#2b8a3e;">+${summary.earned}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:0.8rem;background:#fff5f5;border-radius:8px;">
+          <div style="font-size:0.8rem;color:#868e96;">총 사용</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#e03131;">-${summary.used}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:0.8rem;background:#fff0f6;border-radius:8px;">
+          <div style="font-size:0.8rem;color:#868e96;">총 반환</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#c2255c;">-${summary.returned}</div>
+        </div>
+        <div style="flex:1;text-align:center;padding:0.8rem;background:#e7f5ff;border-radius:8px;">
+          <div style="font-size:0.8rem;color:#868e96;">잔여</div>
+          <div style="font-size:1.5rem;font-weight:800;color:#1971c2;">${summary.balance}</div>
+        </div>`;
+      const { data: history } = await fetchTalentHistory(userId, { limit: 100 });
+      const tbody = document.getElementById('detailHistory');
+      if (!history || history.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">내역이 없습니다.</td></tr>';
+      } else {
+        const creatorIds = [...new Set(history.map(t => t.created_by).filter(Boolean))];
+        let creatorMap = {};
+        if (creatorIds.length > 0) {
+          const { data: creators } = await _sb.from('profiles').select('id,display_name,username').in('id', creatorIds);
+          (creators || []).forEach(c => { creatorMap[c.id] = c.display_name || c.username || '-'; });
+        }
+        const canReturn = (session.permissionRank || 0) >= 80;
+        const returnedTxnIds = new Set(history.filter(t => t.description && /^\[([a-f0-9-]+)\]/.test(t.description)).map(t => t.description.match(/^\[([a-f0-9-]+)\]/)[1]));
+        const returnDescTxnIds = new Set(history.filter(t => t.type === 'use' && t.description && t.description.startsWith('반환:')).map(t => {
+          const m = t.description.match(/\[([a-f0-9-]+)\]/); return m ? m[1] : null;
+        }).filter(Boolean));
+        const allReturnedIds = new Set([...returnedTxnIds, ...returnDescTxnIds]);
+        tbody.innerHTML = history.map(t => {
+          const creatorName = t.created_by ? (creatorMap[t.created_by] || '-') : '-';
+          const isReturn = t.type === 'use' && t.description && t.description.startsWith('반환:');
+          const alreadyReturned = allReturnedIds.has(t.id);
+          const returnBtn = (canReturn && t.type === 'earn' && !alreadyReturned)
+            ? `<button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="openReturnModal('${userId}','${t.id}','${t.amount}','${(t.description||'').replace(/'/g,"\\'")}')">반환</button>`
+            : (alreadyReturned && t.type === 'earn' ? '<span style="font-size:0.7rem;color:#868e96;">반환됨</span>' : '');
+          let typeBg, typeColor, typeLabel;
+          if (isReturn) { typeBg = '#fff0f6'; typeColor = '#c2255c'; typeLabel = '반환'; }
+          else if (t.type === 'earn') { typeBg = '#e6fcf5'; typeColor = '#2b8a3e'; typeLabel = '적립'; }
+          else { typeBg = '#fff5f5'; typeColor = '#e03131'; typeLabel = '사용'; }
+          return `<tr>
+          <td>${formatKSTShort(t.created_at)}</td>
+          <td><span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;background:${typeBg};color:${typeColor};">${typeLabel}</span>${t.type==='earn' && t.source==='qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</td>
+          <td style="font-weight:700;color:${typeColor}">${t.type==='earn'?'+':'-'}${t.amount}</td>
+          <td>${maskTalentDesc(t.description)}</td>
+          <td style="font-size:0.78rem;">${creatorName}</td>
+          <td>${t.balance_after != null ? t.balance_after : '-'}</td>
+          <td>${returnBtn}</td>
+        </tr>`;
+        }).join('');
+      }
+    }
+
+    function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+    function openAddModal() {
+      editingId = null;
+      const label = currentTab === 'student' ? '학생' : '교사';
+      document.getElementById('modalTitle').textContent = `${label} 등록`;
+      document.getElementById('usernameWrap').style.display = isAdminLevel(session) ? 'block' : 'none';
+      document.getElementById('mUsername').value = '';
+      document.getElementById('mUsername').disabled = false;
+      document.getElementById('mDisplayName').value = '';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id, username, displayName) {
+      editingId = id;
+      const label = currentTab === 'student' ? '학생' : '교사';
+      document.getElementById('modalTitle').textContent = `${label} 수정`;
+      document.getElementById('usernameWrap').style.display = isAdminLevel(session) ? 'block' : 'none';
+      document.getElementById('mUsername').value = username;
+      document.getElementById('mUsername').disabled = true;
+      document.getElementById('mDisplayName').value = displayName;
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('userModal').classList.remove('hidden');
+    }
+
+    function closeModal() { document.getElementById('userModal').classList.add('hidden'); }
+
+    async function saveUser() {
+      const errEl = document.getElementById('modalError');
+      let username = document.getElementById('mUsername').value.trim();
+      const displayName = document.getElementById('mDisplayName').value.trim();
+      if (!displayName) { errEl.textContent = '이름을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!editingId && !username) username = 'u_' + Date.now().toString(36);
+
+      if (editingId) {
+        const { error } = await updateUser(editingId, { displayName });
+        if (error) { errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+      } else {
+        const { error } = await createUser({
+          username, displayName: displayName || username,
+          userType: currentTab,
+          departmentId: session.managedDeptId || null
+        });
+        if (error) { errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+      }
+      closeModal();
+      await loadUsers();
+    }
+
+    async function confirmDelete(id, username) {
+      const label = currentTab === 'student' ? '학생' : '교사';
+      if (!confirm(`"${username}" ${label}을(를) 삭제하시겠습니까?`)) return;
+      await deleteUser(id);
+      await loadUsers();
+    }
+
+    async function openTalentModal(userId, name, balance) {
+      talentUserId = userId;
+      talentType = 'earn';
+      document.getElementById('talentTitle').textContent = `${name} - 달란트 관리`;
+      document.getElementById('talentBalance').textContent = fmtNum(balance);
+      document.getElementById('talentError').classList.remove('show');
+      setTalentType('earn');
+      if ((session.permissionRank || 0) >= 100) {
+        document.getElementById('manualGiveSection').style.display = '';
+      }
+      document.getElementById('talentModal').classList.remove('hidden');
+      await renderTalentItemButtons();
+      loadTalentHistory(userId);
+    }
+
+    function closeTalentModal() { document.getElementById('talentModal').classList.add('hidden'); }
+
+    function setTalentType(type) {
+      talentType = 'earn';
+      document.getElementById('earnSection').style.display = 'block';
+    }
+
+    let _weeklyGivenMap = {};
+
+    async function renderTalentItemButtons() {
+      const items = talentItems.filter(i => i.target_type === currentTab && i.is_active);
+      const container = document.getElementById('talentItemBtns');
+      const confirmBtn = document.getElementById('btnConfirmGive');
+      if (items.length === 0) {
+        container.innerHTML = '<div style="color:var(--admin-text-muted);font-size:0.85rem;">등록된 항목이 없습니다.</div>';
+        confirmBtn.style.display = 'none';
+        return;
+      }
+      const weekStart = getWeekStartKST();
+      const { data: weekEarns } = await _sb.from('talent_transactions')
+        .select('id, talent_item_id, amount, description, created_at, source')
+        .eq('user_id', talentUserId)
+        .eq('type', 'earn')
+        .gte('created_at', weekStart.toISOString())
+        .not('talent_item_id', 'is', null)
+        .order('created_at', { ascending: true });
+      const { data: weekReturns } = await _sb.from('talent_transactions')
+        .select('amount, description')
+        .eq('user_id', talentUserId)
+        .eq('type', 'use')
+        .like('description', '반환:%')
+        .gte('created_at', weekStart.toISOString());
+      const cancelledById = new Set();
+      const legacyRetCount = {};
+      (weekReturns || []).forEach(r => {
+        const m = r.description.match(/반환:\s*\[([^\]]+)\]/);
+        if (m) { cancelledById.add(m[1]); }
+        else {
+          const k = r.amount + '|' + r.description.replace('반환: ','').replace('반환:','');
+          legacyRetCount[k] = (legacyRetCount[k] || 0) + 1;
+        }
+      });
+      _weeklyGivenMap = {};
+      (weekEarns || []).forEach(t => {
+        if (cancelledById.has(t.id)) return;
+        const matchKey = t.amount + '|' + (t.description || '');
+        if (legacyRetCount[matchKey] > 0) { legacyRetCount[matchKey]--; return; }
+        _weeklyGivenMap[t.talent_item_id] = { id: t.id, amount: t.amount, description: t.description, source: t.source || 'admin' };
+      });
+
+      container.innerHTML = items.map(i => {
+        const done = !!_weeklyGivenMap[i.id];
+        return `<div style="display:flex;align-items:center;gap:0.4rem;padding:0.5rem 0.8rem;border:1px solid ${done?'#51cf66':'var(--t-border, #dee2e6)'};border-radius:8px;background:${done?'var(--t-success-surface, #e6fcf5)':'var(--t-card, #fff)'};font-size:0.88rem;color:var(--t-text, #212529);">
+          ${done
+            ? `<span style="flex:1;">${i.name} <strong style="color:#868e96;">+${i.talent_amount}</strong> <span style="font-size:0.7rem;color:#51cf66;">✓완료</span>${_weeklyGivenMap[i.id]?.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</span>
+               <button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="cancelTalentItem('${i.id}','${i.name}',${i.talent_amount})">취소</button>`
+            : `<label style="flex:1;display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                 <input type="checkbox" class="talent-item-chk" value="${i.id}" data-name="${i.name}" data-amount="${i.talent_amount}" onchange="updateConfirmBtn()" />
+                 ${i.name} <strong style="color:#2b8a3e;">+${i.talent_amount}</strong>
+               </label>`
+          }
+        </div>`;
+      }).join('');
+      updateConfirmBtn();
+    }
+
+    async function cancelTalentItem(itemId, itemName, amount) {
+      const txn = _weeklyGivenMap[itemId];
+      if (!txn) return;
+      if (!confirm(`"${itemName}" 지급을 취소하시겠습니까? (${amount} 달란트 반환)`)) return;
+      try {
+        const desc = '[' + txn.id + '] ' + (txn.description || itemName);
+        const result = await returnTalent(talentUserId, txn.amount, desc, session.id);
+        if (result && result.success === false) {
+          alert('취소 실패: ' + tErr(result.error));
+          return;
+        }
+        await logInfo('TALENT_ITEM_CANCEL', { userId: talentUserId, itemId, 항목명: itemName, 금액: txn.amount, txnId: txn.id });
+        const bal = await fetchTalentBalance(talentUserId);
+        document.getElementById('talentBalance').textContent = fmtNum(bal);
+        await renderTalentItemButtons();
+        await loadTalentHistory(talentUserId);
+      } catch (e) {
+        alert('취소 오류: ' + (e.message || e));
+      }
+    }
+
+    function updateConfirmBtn() {
+      const chks = document.querySelectorAll('.talent-item-chk:not(:disabled):checked');
+      const btn = document.getElementById('btnConfirmGive');
+      btn.style.display = chks.length > 0 ? 'block' : 'none';
+      btn.textContent = `✅ 지급 확정 (${chks.length}건)`;
+    }
+
+    async function confirmGiveItems() {
+      const chks = [...document.querySelectorAll('.talent-item-chk:not(:disabled):checked')];
+      if (chks.length === 0) return;
+      const names = chks.map(c => c.dataset.name).join(', ');
+      if (!confirm(`${chks.length}건의 달란트를 지급하시겠습니까?\n항목: ${names}`)) return;
+      const errEl = document.getElementById('talentError');
+      errEl.classList.remove('show');
+      let lastBalance = 0;
+      for (const chk of chks) {
+        if (_weeklyGivenMap[chk.value]) continue;
+        try {
+          const result = await giveTalentByItem(talentUserId, chk.value, session.id);
+          if (result.success === false) {
+            await logError('TALENT_GIVE_ITEM_FAIL', { userId: talentUserId, itemId: chk.value, 항목명: chk.dataset.name, 오류: result.error });
+            errEl.textContent = `"${chk.dataset.name}" 지급 실패: ${tErr(result.error)}`;
+            errEl.classList.add('show');
+            break;
+          }
+          _weeklyGivenMap[chk.value] = { id: result?.id || '', amount: result?.amount || Number(chk.dataset.amount), description: result?.description || chk.dataset.name };
+          lastBalance = result.balance;
+        } catch (err) {
+          await logError('TALENT_GIVE_ITEM_ERROR', { userId: talentUserId, itemId: chk.value, 오류: String(err) });
+          errEl.textContent = `오류 발생: ${tErr(err.message)}`; errEl.classList.add('show'); break;
+        }
+      }
+      await logInfo('TALENT_GIVE_ITEMS', { userId: talentUserId, items: names, 건수: chks.length });
+      document.getElementById('talentBalance').textContent = fmtNum(lastBalance);
+      await renderTalentItemButtons();
+      await loadTalentHistory(talentUserId);
+      await loadUsers();
+    }
+
+    async function submitManualTalent() {
+      const errEl = document.getElementById('talentError');
+      const amount = parseInt(document.getElementById('talentAmount').value);
+      const desc = document.getElementById('talentDesc').value.trim();
+      if (!amount || amount <= 0) { errEl.textContent = '유효한 금액을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (amount > 100) { errEl.textContent = '달란트는 최대 100까지만 지급할 수 있습니다.'; errEl.classList.add('show'); return; }
+      if (!desc) { errEl.textContent = '사유를 입력해주세요.'; errEl.classList.add('show'); return; }
+      try {
+        const result = await giveTalent(talentUserId, amount, desc, session.id);
+        if (result.success === false) {
+          await logError('TALENT_MANUAL_GIVE_FAIL', { userId: talentUserId, 금액: amount, 설명: desc, 오류: result.error });
+          errEl.textContent = tErr(result.error) || '처리 실패'; errEl.classList.add('show'); return;
+        }
+        await logInfo('TALENT_MANUAL_GIVE', { userId: talentUserId, 금액: amount, 설명: desc });
+        document.getElementById('talentBalance').textContent = fmtNum(result.balance);
+        document.getElementById('talentAmount').value = '';
+        document.getElementById('talentDesc').value = '';
+        errEl.classList.remove('show');
+        await loadTalentHistory(talentUserId);
+        await loadUsers();
+      } catch (err) {
+        await logError('TALENT_MANUAL_GIVE_ERROR', { userId: talentUserId, 금액: amount, 오류: String(err) });
+        errEl.textContent = '오류: ' + tErr(err.message); errEl.classList.add('show');
+      }
+    }
+
+    async function loadTalentHistory(userId) {
+      const { data } = await fetchTalentHistory(userId, { limit: 10 });
+      const el = document.getElementById('talentHistory');
+      if (!data || data.length === 0) { el.innerHTML = '<div style="color:var(--admin-text-muted);text-align:center;">내역 없음</div>'; return; }
+      el.innerHTML = data.map(t => {
+        const srcTag = t.type === 'earn' && t.source === 'qr' ? '<span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;margin-left:0.3rem;">QR</span>' : '';
+        return `<div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #f0f0f0;">
+          <span>${formatKSTShort(t.created_at)}${srcTag}</span>
+          <span style="color:${t.type === 'earn' ? '#2b8a3e' : '#e03131'};font-weight:700;">${t.type === 'earn' ? '+' : '-'}${t.amount}</span>
+          <span style="color:var(--admin-text-muted);">${maskTalentDesc(t.description)}</span>
+        </div>`;
+      }).join('');
+    }
+
+    let returnCtx = {};
+    function openReturnModal(userId, txnId, amount, desc) {
+      returnCtx = { userId, txnId, amount: parseInt(amount) };
+      document.getElementById('returnInfo').textContent = `항목: ${desc} / 금액: ${amount} 달란트`;
+      document.getElementById('returnReason').value = '';
+      document.getElementById('returnError').classList.remove('show');
+      document.getElementById('returnModal').classList.remove('hidden');
+    }
+    function closeReturnModal() { document.getElementById('returnModal').classList.add('hidden'); }
+    async function submitReturn() {
+      const reason = document.getElementById('returnReason').value.trim();
+      const errEl = document.getElementById('returnError');
+      if (!reason) { errEl.textContent = '반환 사유를 입력해주세요.'; errEl.classList.add('show'); return; }
+      try {
+        const desc = returnCtx.txnId ? `[${returnCtx.txnId}] 반환: ${reason}` : `반환: ${reason}`;
+        const result = await returnTalent(returnCtx.userId, returnCtx.amount, desc, session.id);
+        if (result.success === false) {
+          await logError('TALENT_RETURN_FAIL', { userId: returnCtx.userId, 금액: returnCtx.amount, 사유: reason, 오류: result.error });
+          errEl.textContent = tErr(result.error); errEl.classList.add('show'); return;
+        }
+        await logInfo('TALENT_RETURN', { userId: returnCtx.userId, 금액: returnCtx.amount, 사유: reason, txnId: returnCtx.txnId });
+        closeReturnModal();
+        await openDetailModal(returnCtx.userId, document.getElementById('detailTitle').textContent.replace(' - 달란트 상세',''));
+        await loadUsers();
+      } catch (err) {
+        await logError('TALENT_RETURN_ERROR', { userId: returnCtx.userId, 금액: returnCtx.amount, 오류: String(err) });
+        errEl.textContent = '오류: ' + tErr(err.message); errEl.classList.add('show');
+      }
+    }
+
+    document.getElementById('userModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeModal(); });
+    document.getElementById('talentModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeTalentModal(); });
+    document.getElementById('detailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeDetailModal(); });
+    document.getElementById('returnModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeReturnModal(); });
+  </script>
+  <script src="../js/version.js?v=3.52.0"></script>
+</body>
+</html>

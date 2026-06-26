@@ -1,0 +1,62 @@
+---
+description: "[최우선 룰] 모든 수정/개발 작업 시 반드시 준수해야 하는 작업 수행 8단계 프로세스"
+alwaysApply: true
+---
+
+# 작업 수행 8단계 프로세스 (최우선 룰)
+
+이 룰은 프로젝트의 모든 수정/개발 작업에서 가장 우선적으로 적용됩니다.
+다른 룰과 충돌 시 이 룰이 우선합니다.
+
+## 8단계 프로세스
+
+### 1단계: 작업 계획서 작성
+- 수정 항목별 현재 상태, 문제점, 수정 방안을 구체적으로 기술
+- 영향 범위(수정 대상 파일 목록) 명시
+
+### 2단계: 사용자 확인 및 진행 승인 관리
+- 작업 계획서를 사용자에게 제시하고 승인을 받은 후에만 작업 진행
+- 사용자가 수정/보완 요청 시 계획서 업데이트 후 재승인
+
+### 3단계: 수정 작업 진행
+- 승인된 계획서에 따라 코드 수정 수행
+- 수정 중 계획 변경이 필요하면 사용자에게 즉시 보고
+
+### 4단계: 테스트 시나리오 작성
+- 수정 항목별 검증 시나리오(입력값, 기대 결과, 확인 방법) 작성
+
+### 5단계: 테스트 결과 보고서 작성
+- 시나리오 항목별로 (성공 / 실패 + 실패 사유) 기재
+- 코드 리뷰 기반 정적 검증 결과 포함
+
+### 6단계: 문제 발생 시 반복
+- 테스트 실패 항목이 있으면 1단계로 돌아가 수정 후 재검증
+- **3회 이상 반복 실패 시** 이슈 보고서를 작성하여 사용자에게 보고하고 반복 종료
+
+### 7단계: 작업 완료 보고서 작성
+- 수정 내역 요약 (어떤 기능을 어떻게 수정/개선했는지)
+- 수정된 파일 목록
+
+### 8단계: 문서 업데이트 + GitHub 반영
+- 아래 문서들을 수정 내용에 맞게 업데이트:
+  - `README.md`
+  - `docs/SITE_USER_GUIDE.md`
+  - `docs/PROJECT_ARCHITECTURE_FLOW.md`
+  - `docs/CONFIGURATION.md`
+  - `docs/INITIAL_DATABASE_SETUP.md`
+- 아래 가이드 페이지에 수정 내용에 맞게 업데이트:
+  - `https://cho-talents.github.io/CHO-Talents/guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/teacher-guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/dept-teacher-guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/purchase-teacher-guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/chief-teacher-guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/evangelist-guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/admin-guide.html`
+  - `https://cho-talents.github.io/CHO-Talents/docs/page-permission-rules.html`
+  - `https://cho-talents.github.io/CHO-Talents/admin/log-rules.html`
+  - `https://cho-talents.github.io/CHO-Talents/admin/slack-rules.html`
+  - `https://cho-talents.github.io/CHO-Talents/admin/audit-rules.html`
+- 버전 업데이트 + 캐시 버스팅 적용
+- **develop 브랜치에만** 커밋 및 push (main 브랜치 금지)
+- 사용자가 명시적으로 main 브랜치를 요청한 경우에만 main에 반영
+- 커밋 author: `AI_Cursor <ai@cursor>`
