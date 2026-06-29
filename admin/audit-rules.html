@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>작업 이력 작성 룰 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>" />
-  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.53.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.53.0" />
   <style>
     .rule-section { background: var(--admin-card); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow); padding: 1.5rem; margin-bottom: 1.5rem; overflow-x: auto; }
     .rule-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--admin-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -153,6 +153,7 @@
           <tr><td>LOGIN_SUCCESS</td><td>로그인 성공</td><td>정상 로그인</td></tr>
           <tr><td>LOGOUT</td><td>로그아웃</td><td>로그아웃 실행</td></tr>
           <tr><td>PASSWORD_CHANGE</td><td>비밀번호 변경</td><td>비밀번호 변경 성공</td></tr>
+          <tr><td>AUTH_REDIRECT</td><td>인증/권한 리디렉트</td><td>세션 만료, 권한 부족, 페이지 접근 차단 등으로 이동. 기본 작업 이력에는 포함하지 않고 로그 화면에서 분석</td></tr>
         </tbody>
       </table>
 
@@ -220,7 +221,10 @@
         <strong>보고서/로그 그리드:</strong> 보고서 관리와 로그 화면의 페이지당 항목 수 콤보 박스는 각 필터 영역의 우측 하단 위치로 정리되어 동일한 공통 페이징 규칙을 따릅니다.
       </div>
       <div class="note-box">
-        <strong>로그 조회:</strong> <a href="logs.html" style="color:var(--admin-primary);">운영 &gt; 로그</a>에서 전체 시스템 로그 레벨별 조회 가능
+        <strong>달란트 상세 이력:</strong> 달란트 관리 상세 모달의 이력도 같은 공통 페이징 규칙과 페이지당 항목 수 설정을 사용합니다.
+      </div>
+      <div class="note-box">
+        <strong>로그 조회:</strong> <a href="logs.html" style="color:var(--admin-primary);">운영 &gt; 로그</a>에서 전체 시스템 로그 레벨별 조회 가능. 세션 만료/권한 불일치/페이지 접근 차단 원인은 <code>AUTH_SESSION_MISSING</code>, <code>AUTH_PROFILE_LOAD_FAIL</code>, <code>AUTH_REDIRECT</code>, <code>AUTH_PAGE_ACCESS_CHECK_FAIL</code> 액션으로 확인합니다.
       </div>
       <div class="note-box">
         <strong>Slack 알림 룰:</strong> <a href="slack-rules.html" style="color:var(--admin-primary);">운영 &gt; Slack 알림 룰</a>에서 WARN+ 로그와 구매/가입/Q&amp;A 알림 라우팅을 확인 가능
@@ -229,13 +233,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.52.0"></script>
-  <script src="../js/supabase-config.js?v=3.52.0"></script>
-  <script src="../js/activity-log.js?v=3.52.0"></script>
-  <script src="../js/codes.js?v=3.52.0"></script>
-  <script src="../js/auth.js?v=3.52.0"></script>
-  <script src="../js/theme.js?v=3.52.0"></script>
-  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../config/public-config.js?v=3.53.0"></script>
+  <script src="../js/supabase-config.js?v=3.53.0"></script>
+  <script src="../js/activity-log.js?v=3.53.0"></script>
+  <script src="../js/codes.js?v=3.53.0"></script>
+  <script src="../js/auth.js?v=3.53.0"></script>
+  <script src="../js/theme.js?v=3.53.0"></script>
+  <script src="../js/nav.js?v=3.53.0"></script>
   <script>
     initSupabase();
     (async () => {

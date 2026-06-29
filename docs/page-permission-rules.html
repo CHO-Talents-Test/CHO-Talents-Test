@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CHO-Talents 페이지별 권한 설정 정리</title>
-<link rel="stylesheet" href="../css/themes.css?v=3.52.0">
-<link rel="stylesheet" href="../css/admin.css?v=3.52.0">
+<link rel="stylesheet" href="../css/themes.css?v=3.53.0">
+<link rel="stylesheet" href="../css/admin.css?v=3.53.0">
 <style>
   body.permission-rules-body { padding-top:54px; }
   .container { max-width:1080px; margin:0 auto; padding:2rem 1.5rem 4rem; }
@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.52.0 / 2026-06-23. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.53.0 / 2026-06-29. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -100,7 +100,7 @@
     <table>
       <thead><tr><th>파일</th><th>페이지명</th><th>최소 권한</th><th>핵심 스코핑</th></tr></thead>
       <tbody>
-        <tr><td><code>admin/talents.html</code></td><td>달란트 관리</td><td><span class="badge b-40">40</span></td><td>일반 교사는 같은 부서+반, 부서 담당은 담당 부서, 80+는 더 넓은 조회. v3.48.0: 상세 팝업 상단에 <strong>누적적립·총사용·총반환·잔여</strong> 4칸 요약 표시</td></tr>
+        <tr><td><code>admin/talents.html</code></td><td>달란트 관리</td><td><span class="badge b-40">40</span></td><td>일반 교사는 같은 부서+반, 부서 담당은 담당 부서, 80+는 더 넓은 조회. 상세 팝업 상단에 <strong>누적적립·총사용·총반환·잔여</strong> 4칸 요약과 이력 페이징/페이지당 항목 수 선택 표시</td></tr>
         <tr><td><code>admin/index.html</code></td><td>대시보드</td><td><span class="badge b-60">60</span></td><td>통계 카드와 이슈 로그 테이블만 표시. v3.50.0: 바로가기(quickLinks) 박스 제거. 최근 이슈 로그는 100+만 표시</td></tr>
         <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>60+는 담당 부서 중심, 80+는 요청 처리 범위 확대, 90+ 전체 처리. v3.50.0: 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
         <tr><td><code>admin/departments.html</code></td><td>부서 관리</td><td><span class="badge b-60">60</span></td><td>생성/수정 80+, 삭제/비활성화 90+ 성격. 부서명 오름차순 기본 정렬과 페이지당 항목 수 선택 지원</td></tr>
@@ -132,9 +132,9 @@
     </table>
   </div>
 
-  <h2>6. 24시간 세션 관리 (v3.48.0)</h2>
+  <h2>6. 24시간 세션 관리 및 리디렉트 로그</h2>
   <div class="rule-card">
-    <p class="note" style="margin:0;"><code>js/auth.js</code>의 <code>initPage()</code>가 성공하면 <code>startSessionTimer()</code>가 자동 시작됩니다. 마지막 활동(클릭·키입력·스크롤·터치 등)으로부터 <strong>24시간</strong> 유휴 시 세션이 만료되고 로그인 페이지로 이동합니다. 활동 시간은 <code>localStorage</code>(<code>cho_last_activity</code>)로 멀티탭 간 공유되며, 탭 전환 시에도 만료 여부를 재검증합니다.</p>
+    <p class="note" style="margin:0;"><code>js/auth.js</code>의 <code>initPage()</code>가 성공하면 <code>startSessionTimer()</code>가 자동 시작됩니다. 마지막 활동(클릭·키입력·스크롤·터치 등)으로부터 <strong>24시간</strong> 유휴 시 세션이 만료되고 로그인 페이지로 이동합니다. 활동 시간은 <code>localStorage</code>(<code>cho_last_activity</code>)로 멀티탭 간 공유되며, 탭 전환 시에도 만료 여부를 재검증합니다. v3.53.0부터 세션 없음/만료, 최초 로그인 이동, 권한 등급 부족, 허용 권한 불일치, <code>role_page_access</code> 차단은 <code>AUTH_REDIRECT</code> 로그에 요청 페이지, page_id, 필요/실제 권한, 이동 대상을 남깁니다.</p>
   </div>
 
   <h2>7. 보조 권한 테이블</h2>
@@ -166,17 +166,17 @@
     </table>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.52.0 · 실제 소스 코드 기준 권한 설정 · 2026-06-23 작성</p>
+  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.53.0 · 실제 소스 코드 기준 권한 설정 · 2026-06-29 작성</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../config/public-config.js?v=3.52.0"></script>
-<script src="../js/supabase-config.js?v=3.52.0"></script>
-<script src="../js/activity-log.js?v=3.52.0"></script>
-  <script src="../js/codes.js?v=3.52.0"></script>
-<script src="../js/auth.js?v=3.52.0"></script>
-<script src="../js/theme.js?v=3.52.0"></script>
-<script src="../js/nav.js?v=3.52.0"></script>
+<script src="../config/public-config.js?v=3.53.0"></script>
+<script src="../js/supabase-config.js?v=3.53.0"></script>
+<script src="../js/activity-log.js?v=3.53.0"></script>
+  <script src="../js/codes.js?v=3.53.0"></script>
+<script src="../js/auth.js?v=3.53.0"></script>
+<script src="../js/theme.js?v=3.53.0"></script>
+<script src="../js/nav.js?v=3.53.0"></script>
 <script>
 initSupabase();
 (async () => {
@@ -188,6 +188,6 @@ initSupabase();
   autoLogPageView();
 })();
 </script>
-<script src="../js/version.js?v=3.52.0"></script>
+<script src="../js/version.js?v=3.53.0"></script>
 </body>
 </html>

@@ -234,16 +234,43 @@ async function validateAuthSession(loginPath) {
   return getSession();
 }
 
+function _getAuthRedirectBase(loginPath) {
+  return loginPath ? loginPath.replace(/[^/]*$/, '') : '../';
+}
+
+async function _logAuthRedirect(reason, session, target, extra) {
+  if (typeof logWarn !== 'function') return;
+  const details = Object.assign({
+    사유: reason,
+    요청페이지: window.location.pathname,
+    pageId: typeof detectCurrentPageId === 'function' ? detectCurrentPageId() : null,
+    이동대상: target,
+    사용자: session ? session.username : null,
+    권한: session ? session.permissionLevel : null,
+    권한등급: session ? session.permissionRank : null,
+    최고관리자: session ? !!session.isSuperAdmin : false
+  }, extra || {});
+  await logWarn('AUTH_REDIRECT', details);
+}
+
 async function initPage(allowedRolesOrMinRank, loginPath) {
   const session = await loadAuthSession();
   if (!session) {
-    window.location.href = loginPath || '../login.html';
+    const target = loginPath || '../login.html';
+    await _logAuthRedirect('세션 없음 또는 만료', null, target, {
+      필요조건: allowedRolesOrMinRank,
+      세션실패: window.__lastAuthSessionFailure || null
+    });
+    window.location.href = target;
     return null;
   }
 
   if (session.isFirstLogin && !window.location.pathname.includes('change-password')) {
-    const basePath = loginPath ? loginPath.replace(/[^/]*$/, '') : '../';
-    window.location.href = basePath + 'admin/change-password.html';
+    const target = _getAuthRedirectBase(loginPath) + 'admin/change-password.html';
+    await _logAuthRedirect('첫 로그인 비밀번호 변경 필요', session, target, {
+      필요조건: allowedRolesOrMinRank
+    });
+    window.location.href = target;
     return null;
   }
 
@@ -251,15 +278,25 @@ async function initPage(allowedRolesOrMinRank, loginPath) {
 
   if (typeof allowedRolesOrMinRank === 'number') {
     if (rank < allowedRolesOrMinRank) {
-      const basePath = loginPath ? loginPath.replace(/[^/]*$/, '') : '../';
-      window.location.href = getRedirectUrl(session, basePath);
+      const basePath = _getAuthRedirectBase(loginPath);
+      const target = getRedirectUrl(session, basePath);
+      await _logAuthRedirect('권한 등급 부족', session, target, {
+        필요권한등급: allowedRolesOrMinRank,
+        실제권한등급: rank
+      });
+      window.location.href = target;
       return null;
     }
   } else if (Array.isArray(allowedRolesOrMinRank) && allowedRolesOrMinRank.length) {
     const perm = session.permissionLevel;
     if (!allowedRolesOrMinRank.includes(perm)) {
-      const basePath = loginPath ? loginPath.replace(/[^/]*$/, '') : '../';
-      window.location.href = getRedirectUrl(session, basePath);
+      const basePath = _getAuthRedirectBase(loginPath);
+      const target = getRedirectUrl(session, basePath);
+      await _logAuthRedirect('허용 권한 목록 불일치', session, target, {
+        허용권한: allowedRolesOrMinRank,
+        실제권한: perm
+      });
+      window.location.href = target;
       return null;
     }
   }
@@ -277,8 +314,16 @@ async function initPage(allowedRolesOrMinRank, loginPath) {
         if (pageAccess && pageAccess.can_access === false) {
           const minRank = typeof allowedRolesOrMinRank === 'number' ? allowedRolesOrMinRank : 0;
           if (rank < minRank || minRank === 0) {
-            const basePath = loginPath ? loginPath.replace(/[^/]*$/, '') : '../';
-            window.location.href = getRedirectUrl(session, basePath);
+            const basePath = _getAuthRedirectBase(loginPath);
+            const target = getRedirectUrl(session, basePath);
+            await _logAuthRedirect('DB 페이지 접근 권한 차단', session, target, {
+              pageId,
+              roleKey,
+              필요권한등급: minRank,
+              실제권한등급: rank,
+              rolePageAccessId: pageAccess.id || null
+            });
+            window.location.href = target;
             return null;
           }
         }
@@ -289,7 +334,18 @@ async function initPage(allowedRolesOrMinRank, loginPath) {
           });
         }
       }
-    } catch (e) { console.warn('[AUTH] role_page_access check skipped:', e.message); }
+    } catch (e) {
+      console.warn('[AUTH] role_page_access check skipped:', e.message);
+      if (typeof logError === 'function') {
+        await logError('AUTH_PAGE_ACCESS_CHECK_FAIL', {
+          요청페이지: window.location.pathname,
+          pageId: typeof detectCurrentPageId === 'function' ? detectCurrentPageId() : null,
+          권한: session.permissionLevel,
+          권한등급: rank,
+          오류: e.message || String(e)
+        });
+      }
+    }
   }
 
   return session;
@@ -438,22 +494,25 @@ function _onUserActivity() {
 
 function _resetSessionTimer() {
   if (_sessionTimer) clearTimeout(_sessionTimer);
-  _sessionTimer = setTimeout(() => {
+  _sessionTimer = setTimeout(async () => {
     const s = typeof getSession === 'function' ? getSession() : null;
     if (!s) return;
     alert('세션이 만료되었습니다. 다시 로그인해주세요.');
     if (typeof logout === 'function') {
       const loginPath = window.location.pathname.includes('/admin/') || window.location.pathname.includes('/docs/') ? '../login.html' : 'login.html';
-      logout(loginPath);
+      await _logAuthRedirect('24시간 비활성 세션 만료', s, loginPath, { 만료기준: 'idle_timer' });
+      await logout(loginPath);
     }
   }, SESSION_TIMEOUT_MS);
 }
 
-function startSessionTimer() {
+async function startSessionTimer() {
   if (_checkSessionExpiry()) {
+    const s = typeof getSession === 'function' ? getSession() : null;
     clearSession();
     const loginPath = window.location.pathname.includes('/admin/') || window.location.pathname.includes('/docs/') ? '../login.html' : 'login.html';
     if (!window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html')) {
+      await _logAuthRedirect('24시간 비활성 세션 만료', s, loginPath, { 만료기준: 'last_activity' });
       window.location.href = loginPath;
     }
     return;
@@ -470,7 +529,10 @@ function startSessionTimer() {
         if (s) {
           alert('세션이 만료되었습니다. 다시 로그인해주세요.');
           const loginPath = window.location.pathname.includes('/admin/') || window.location.pathname.includes('/docs/') ? '../login.html' : 'login.html';
-          if (typeof logout === 'function') logout(loginPath);
+          if (typeof logout === 'function') {
+            _logAuthRedirect('24시간 비활성 세션 만료', s, loginPath, { 만료기준: 'visibilitychange' })
+              .finally(() => logout(loginPath));
+          }
         }
       } else {
         _onUserActivity();
