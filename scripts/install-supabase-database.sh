@@ -49,8 +49,8 @@ Options:
   --skip-verify              Skip post-apply TASK-057 verification.
   -h, --help                 Show this help.
 
-The script automatically appends docs/TASK-057_code_master.sql when no
---extra-sql-path is provided.
+The script automatically appends docs/TASK-057_code_master.sql and
+docs/TASK-058_product_category_policy.sql when no --extra-sql-path is provided.
 USAGE
 }
 
@@ -248,6 +248,10 @@ if [ "${#EXTRA_SQL_PATHS[@]}" -eq 0 ]; then
   DEFAULT_CODE_MASTER_SQL="$ROOT_DIR/docs/TASK-057_code_master.sql"
   if [ -f "$DEFAULT_CODE_MASTER_SQL" ]; then
     EXTRA_SQL_PATHS+=("$DEFAULT_CODE_MASTER_SQL")
+  fi
+  DEFAULT_PRODUCT_CATEGORY_POLICY_SQL="$ROOT_DIR/docs/TASK-058_product_category_policy.sql"
+  if [ -f "$DEFAULT_PRODUCT_CATEGORY_POLICY_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_CATEGORY_POLICY_SQL")
   fi
 fi
 

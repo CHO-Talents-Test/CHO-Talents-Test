@@ -242,6 +242,7 @@ VALUES
   ('activity_logs.action', 'qr_toggle', 'QR 코드 토글', 4160, '{"category":"TALENT","emoji":"🔘"}'),
   ('activity_logs.action', 'qr_scan', 'QR 달란트 수령', 4170, '{"category":"TALENT","emoji":"📱"}'),
   ('activity_logs.action', 'PRODUCT_CREATE', '상품 등록', 5010, '{"category":"ORDER","emoji":"🛍️"}'),
+  ('activity_logs.action', 'PRODUCT_CATEGORY_CREATE', '상품 카테고리 등록', 5015, '{"category":"ORDER","emoji":"🏷️"}'),
   ('activity_logs.action', 'PRODUCT_UPDATE', '상품 수정', 5020, '{"category":"ORDER","emoji":"✏️"}'),
   ('activity_logs.action', 'PRODUCT_DELETE', '상품 삭제', 5030, '{"category":"ORDER","emoji":"🗑️"}'),
   ('activity_logs.action', 'PRODUCT_DEACTIVATE', '상품 비활성화', 5040, '{"category":"ORDER","emoji":"🚫"}'),
@@ -517,6 +518,14 @@ CREATE POLICY code_items_manage ON public.code_items
   FOR ALL TO authenticated
   USING (public.get_permission_rank(public.get_my_role()) >= 100)
   WITH CHECK (public.get_permission_rank(public.get_my_role()) >= 100);
+
+DROP POLICY IF EXISTS code_items_product_category_insert ON public.code_items;
+CREATE POLICY code_items_product_category_insert ON public.code_items
+  FOR INSERT TO authenticated
+  WITH CHECK (
+    group_key = 'products.category'
+    AND public.get_permission_rank(public.get_my_role()) >= 60
+  );
 
 GRANT SELECT ON public.code_groups, public.code_items TO anon, authenticated;
 GRANT INSERT, UPDATE, DELETE ON public.code_groups, public.code_items TO authenticated;

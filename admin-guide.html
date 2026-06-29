@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>관리자 가이드 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.53.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.53.0" />
-  <link rel="stylesheet" href="css/guide.css?v=3.53.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.55.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.55.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.55.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -141,7 +141,7 @@
           <h3>상품 관리</h3>
           <ul class="guide-list">
             <li>교사용/학생용 그룹별로 상품이 분리 표시됩니다(모바일 10개/PC 20개 페이징). 테이블 헤더를 클릭하면 카테고리, 상품명, 가격 기준으로 정렬할 수 있습니다.</li>
-            <li>상품명, 코드 마스터 기준 카테고리, 가격, 설명, 이미지 또는 이모지를 입력합니다.</li>
+            <li>상품명, 코드 마스터 기준 카테고리, 가격, 설명, 이미지 또는 이모지를 입력합니다. 필요한 카테고리가 없으면 상품 등록/수정 모달의 <strong>+ 추가</strong> 버튼으로 새 카테고리명과 이모지를 등록한 뒤 바로 선택할 수 있습니다.</li>
             <li>관리 드롭다운에서 수정 또는 삭제를 선택합니다.</li>
           </ul>
         </div>
@@ -237,7 +237,7 @@
     </section>
 
     <section class="guide-section">
-      <h2>⏱️ 세션 관리 · 📱 모바일 네비게이션 (v3.48.0~v3.53.0)</h2>
+      <h2>⏱️ 세션 관리 · 📱 모바일 네비게이션 (v3.48.0~v3.55.0)</h2>
       <div class="guide-grid">
         <div class="guide-card">
           <h3>24시간 유휴 자동 로그아웃</h3>
@@ -265,7 +265,7 @@
           <li>권한이 낮은 계정은 일부 버튼이 보이지 않거나, 보이더라도 처리 권한이 제한될 수 있습니다.</li>
           <li>삭제 대기 처리된 로그나 상품은 일반 목록에서 숨겨지지만 기록은 남습니다.</li>
           <li>작업 이력은 별도 저장소가 아니라 활동 로그 중 관리 작업만 필터링해서 보여줍니다.</li>
-          <li>새 권한/상태/카테고리/로그 유형을 추가할 때는 <code>js/codes.js</code> 기본값과 DB <code>code_items</code> 마스터를 함께 확인합니다.</li>
+          <li>상품 카테고리는 상품 등록/수정 모달에서 추가할 수 있습니다. 새 권한/상태/로그 유형을 추가할 때는 <code>js/codes.js</code> 기본값과 DB <code>code_items</code> 마스터를 함께 확인합니다.</li>
           <li>QR 위치 제한을 쓰려면 사용자가 수령할 때 브라우저 위치 권한을 허용해야 합니다. 차단된 경우 수령 화면에서 알림창이 표시되고 <code>QR_LOCATION_PERMISSION_BLOCKED</code> 로그가 기록됩니다. 위치 제한 반경의 기본값은 500m입니다.</li>
           <li>목록형 화면과 달란트 관리 상세 이력은 공통 페이징 규칙을 사용합니다. 현재 페이지 주변과 첫/마지막 페이지를 표시하고, 페이지가 7개를 초과하면 말줄임표(...)로 축약됩니다. 각 그리드/모달의 <strong>페이지당 항목 수</strong> 콤보 박스(3~30개)로 개인 설정이 가능하며 DB에 저장됩니다.</li>
           <li>주요 관리 그리드는 기본 정렬을 갖습니다. 사용자/달란트 관리는 부서·반·이름, 관리자 관리는 권한 등급·부서·이름, 부서 관리는 부서명, 통계 화면은 각 통계 목적에 맞는 합계·개수·부서·이름 순서로 정렬됩니다.</li>
@@ -279,13 +279,13 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.53.0"></script>
-  <script src="js/supabase-config.js?v=3.53.0"></script>
-  <script src="js/activity-log.js?v=3.53.0"></script>
-  <script src="js/codes.js?v=3.53.0"></script>
-  <script src="js/auth.js?v=3.53.0"></script>
-  <script src="js/theme.js?v=3.53.0"></script>
-  <script src="js/nav.js?v=3.53.0"></script>
+  <script src="config/public-config.js?v=3.55.0"></script>
+  <script src="js/supabase-config.js?v=3.55.0"></script>
+  <script src="js/activity-log.js?v=3.55.0"></script>
+  <script src="js/codes.js?v=3.55.0"></script>
+  <script src="js/auth.js?v=3.55.0"></script>
+  <script src="js/theme.js?v=3.55.0"></script>
+  <script src="js/nav.js?v=3.55.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -307,6 +307,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="js/version.js?v=3.53.0"></script>
+  <script src="js/version.js?v=3.55.0"></script>
 </body>
 </html>

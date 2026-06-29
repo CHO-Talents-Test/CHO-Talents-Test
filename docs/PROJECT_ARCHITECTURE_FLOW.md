@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-06-29 KST 현재 코드 기준 (v3.53.0)
+작성 기준: 2026-06-29 KST 현재 코드 기준 (v3.55.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -100,7 +100,7 @@ flowchart LR
 | `admin/talent-stats.html` | 60등급 이상 달란트 누적적립 통계. 반환(`type='use'`, `description`이 `반환:`)된 달란트를 원 지급 건에서 차감해 실제 지급 달란트로 집계. 부서별 기본 정렬: 달란트 DESC → 인원 ASC → 항목 ASC → 부서 ASC. 사용자별 기본 정렬: 달란트 DESC → 항목 ASC → 부서 ASC → 이름 ASC. 사용자별 목록 공통 페이징과 페이지당 항목 수 설정. 라디오 필터, 부서 필터, 기간 프리셋 |
 | `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). QR 목록과 수령자 팝업 모두 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
-| `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 관리 드롭다운(수정/삭제). 삭제는 소프트 삭제 |
+| `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 상품 등록/수정 모달에서 `products.category` 새 카테고리 추가 가능. 관리 드롭다운(수정/삭제). 삭제는 소프트 삭제 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
 | `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
@@ -483,7 +483,7 @@ flowchart TD
   ConfirmRPC --> Delivered["✅ 상품 지급 (status: delivered)<br/>일괄 처리 가능"]
 ```
 
-상품 구매 흐름에서 `products.target_role`, `products.category`, `product_orders.status`는 코드 마스터 기준으로 표시한다. 상점, 상품 관리, 내 구매 상품, 구매 관리, 구매 통계는 같은 `products.category`와 `product_orders.status` 코드 그룹을 사용하므로 라벨, 색상, 정렬 순서가 동일하다.
+상품 구매 흐름에서 `products.target_role`, `products.category`, `product_orders.status`는 코드 마스터 기준으로 표시한다. 상점, 상품 관리, 내 구매 상품, 구매 관리, 구매 통계는 같은 `products.category`와 `product_orders.status` 코드 그룹을 사용하므로 라벨, 색상, 정렬 순서가 동일하다. 상품 등록/수정 모달의 카테고리 추가 패널은 `code_items(group_key='products.category')`에 새 행을 넣고, 성공 시 브라우저 코드북을 즉시 갱신해 새 카테고리를 선택한다.
 
 구매 관리 권한:
 
@@ -502,6 +502,7 @@ flowchart TD
 | 교사용 상품 | 로그인한 교사 또는 60등급 이상만 조회 |
 | 교사 기본 필터 | 교사 접속 시 교사용 탭 자동 선택 |
 | 상품 등록/수정 | 60등급 이상 |
+| 상품 카테고리 추가 | 60등급 이상. `docs/TASK-058_product_category_policy.sql`의 `code_items_product_category_insert` 정책으로 `products.category` INSERT만 허용 |
 | 상품 삭제 | 90등급 이상. 소프트 삭제(삭제 대기=비활성화) - 목록에서 숨김 |
 | 구매 신청 | 로그인 사용자 (잔여 달란트 확인) |
 | 대리 구매 | 40등급 이상. 권한별 부서/반/사용자 범위 제한 |
@@ -528,6 +529,7 @@ flowchart TD
 
 - v3.40.0부터 `autoLogPageView()`는 no-op이며 PAGE_VIEW 로그를 기록하지 않는다 (함수 호출은 각 페이지에 유지)
 - v3.53.0부터 인증/권한 원인 분석용 action을 구분한다: `AUTH_SESSION_MISSING`, `AUTH_PROFILE_LOAD_FAIL`, `AUTH_REDIRECT`, `AUTH_PAGE_ACCESS_CHECK_FAIL`, `QR_LOCATION_PERMISSION_BLOCKED`.
+- v3.54.0부터 상품 등록 모달에서 새 카테고리를 추가하면 `PRODUCT_CATEGORY_CREATE`를 기록하고, 실패 시 `PRODUCT_CATEGORY_CREATE_FAIL`/`PRODUCT_CATEGORY_CREATE_ERROR`를 기록한다.
 - `AUTH_REDIRECT`는 로그인 필수 페이지가 로그인 화면 또는 `index.html`로 이동한 원인을 추적하기 위한 로그이며, 세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단을 구분한다.
 - `activity-log.js`의 `getActionLabel()`은 `js/codes.js`/DB `activity_logs.action` 코드 그룹을 우선 사용하고, 기존 로그의 `details._actionLabel`을 하위호환 라벨로 함께 사용한다
 - `writeLog()`는 기록 시 action 라벨이 있으면 `details._actionLabel`에 한글 라벨을 자동 저장한다

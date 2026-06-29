@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>작업 이력 작성 룰 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📝</text></svg>" />
-  <link rel="stylesheet" href="../css/themes.css?v=3.53.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.53.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.55.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.55.0" />
   <style>
     .rule-section { background: var(--admin-card); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow); padding: 1.5rem; margin-bottom: 1.5rem; overflow-x: auto; }
     .rule-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--admin-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -37,7 +37,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📝 작업 이력 작성 룰</h1>
-      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v3.51.0 기준 QR 유효 시간·위치 반경 변경도 QR 관리 작업 상세에 포함합니다.</p>
+      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v3.55.0 기준 상품 카테고리 추가도 상품/주문 관리 작업으로 기록합니다.</p>
     </div>
 
     <!-- 개요 -->
@@ -126,6 +126,7 @@
         <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
         <tbody>
           <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td>상품 CRUD</td><td>상품 등록/수정/삭제</td></tr>
+          <tr><td>PRODUCT_CATEGORY_CREATE</td><td>상품 카테고리 등록</td><td>상품 등록 모달에서 새 카테고리 추가</td></tr>
           <tr><td>PRODUCT_DEACTIVATE / PRODUCT_SOFT_DELETE</td><td>상품 비활성화/소프트삭제</td><td>상품 숨김 처리</td></tr>
           <tr><td>ORDER_REQUEST_SUCCESS</td><td>구매 요청 성공</td><td>학생이 상품 구매 요청</td></tr>
           <tr><td>ORDER_STATUS_CHANGE / ORDER_CANCEL / ORDER_REVERT</td><td>주문 상태 변경</td><td>관리자 주문 처리</td></tr>
@@ -233,13 +234,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.53.0"></script>
-  <script src="../js/supabase-config.js?v=3.53.0"></script>
-  <script src="../js/activity-log.js?v=3.53.0"></script>
-  <script src="../js/codes.js?v=3.53.0"></script>
-  <script src="../js/auth.js?v=3.53.0"></script>
-  <script src="../js/theme.js?v=3.53.0"></script>
-  <script src="../js/nav.js?v=3.53.0"></script>
+  <script src="../config/public-config.js?v=3.55.0"></script>
+  <script src="../js/supabase-config.js?v=3.55.0"></script>
+  <script src="../js/activity-log.js?v=3.55.0"></script>
+  <script src="../js/codes.js?v=3.55.0"></script>
+  <script src="../js/auth.js?v=3.55.0"></script>
+  <script src="../js/theme.js?v=3.55.0"></script>
+  <script src="../js/nav.js?v=3.55.0"></script>
   <script>
     initSupabase();
     (async () => {

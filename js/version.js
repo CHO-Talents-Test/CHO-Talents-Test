@@ -2,9 +2,30 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.53.0',
+  current: '3.55.0',
   date: '2026-06-29',
   history: [
+    {
+      version: '3.55.0',
+      date: '2026-06-29',
+      title: '환경별 Kakao Map Key 분기',
+      changes: [
+        'public-config.js에서 TARGET_ENV가 DEV이면 DEV Kakao Map Key를, PROD이면 PROD Kakao Map Key를 사용하도록 분기',
+        '전체 HTML 캐시 버스팅 참조를 v3.55.0으로 갱신'
+      ]
+    },
+    {
+      version: '3.54.0',
+      date: '2026-06-29',
+      title: '상품 카테고리 추가 모달 + 코드 마스터 권한 보강',
+      changes: [
+        '상품 등록/수정 모달의 카테고리 선택 옆에 새 카테고리 추가 패널을 추가',
+        '새 카테고리명과 이모지를 products.category 코드 마스터에 저장하고 즉시 선택되도록 로컬 코드북 갱신',
+        '동일한 카테고리명이 이미 있으면 기존 항목을 자동 선택하고, 저장 실패/권한 오류는 모달 안에서 안내',
+        '상품 등록 모달의 카테고리 추가 패널과 이미지 드롭존을 다크 테마 배경에 맞게 보정',
+        'PRODUCT_CATEGORY_CREATE 로그/작업 이력 액션과 60등급 이상 상품 카테고리 INSERT 정책 SQL(TASK-058) 추가'
+      ]
+    },
     {
       version: '3.53.0',
       date: '2026-06-29',

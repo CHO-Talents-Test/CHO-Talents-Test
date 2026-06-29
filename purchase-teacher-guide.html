@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>구매 담당 교사 가이드 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.53.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.53.0" />
-  <link rel="stylesheet" href="css/guide.css?v=3.53.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.55.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.55.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.55.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -50,7 +50,7 @@
           <tbody>
             <tr><td>구매 관리</td><td>전체 부서 주문 조회, 상태 변경, 일괄 상품 준비/구매 확정/지급 처리</td><td>부서 제한 없이 전체 주문 처리 가능</td></tr>
             <tr><td>구매 통계</td><td>전체/부서별/사용자별/유형별 구매 현황 확인</td><td>전체 부서 통계를 볼 수 있음</td></tr>
-            <tr><td>상품 관리</td><td>상품 등록/수정, 가격/카테고리/이미지 점검</td><td>상품 삭제는 전도사님 이상</td></tr>
+            <tr><td>상품 관리</td><td>상품 등록/수정, 가격/카테고리/이미지 점검, 새 카테고리 추가</td><td>상품 삭제는 전도사님 이상</td></tr>
             <tr><td>내 구매 상품</td><td>본인 명의 구매 신청 상태 확인</td><td>대리 구매나 학생 주문은 학생 명의로 기록됨</td></tr>
             <tr><td>상단 상품 배지</td><td>처리 가능한 주문 건수 확인</td><td>구매 담당 교사는 전체 부서 주문이 집계됨</td></tr>
           </tbody>
@@ -75,7 +75,7 @@
       <div class="guide-grid">
         <div class="guide-card">
           <h3>상품 정보</h3>
-          <p>상품명, 가격, 카테고리, 대상(학생용/교사용)이 실제 구매 품목과 맞는지 확인합니다. 카테고리와 대상은 공통 코드 기준 선택값으로 관리됩니다.</p>
+          <p>상품명, 가격, 카테고리, 대상(학생용/교사용)이 실제 구매 품목과 맞는지 확인합니다. 카테고리와 대상은 공통 코드 기준 선택값으로 관리되며, 필요한 카테고리가 없으면 상품 등록/수정 모달에서 새 카테고리를 추가한 뒤 선택할 수 있습니다.</p>
         </div>
         <div class="guide-card">
           <h3>주문 대상</h3>
@@ -123,13 +123,13 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.53.0"></script>
-  <script src="js/supabase-config.js?v=3.53.0"></script>
-  <script src="js/activity-log.js?v=3.53.0"></script>
-  <script src="js/codes.js?v=3.53.0"></script>
-  <script src="js/auth.js?v=3.53.0"></script>
-  <script src="js/theme.js?v=3.53.0"></script>
-  <script src="js/nav.js?v=3.53.0"></script>
+  <script src="config/public-config.js?v=3.55.0"></script>
+  <script src="js/supabase-config.js?v=3.55.0"></script>
+  <script src="js/activity-log.js?v=3.55.0"></script>
+  <script src="js/codes.js?v=3.55.0"></script>
+  <script src="js/auth.js?v=3.55.0"></script>
+  <script src="js/theme.js?v=3.55.0"></script>
+  <script src="js/nav.js?v=3.55.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -149,6 +149,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="js/version.js?v=3.53.0"></script>
+  <script src="js/version.js?v=3.55.0"></script>
 </body>
 </html>

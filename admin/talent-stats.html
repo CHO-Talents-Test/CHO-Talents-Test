@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 통계 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.53.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.53.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.55.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.55.0" />
   <style>
     .stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.8rem; margin-bottom: 1.5rem; }
     .stat-card { background: linear-gradient(135deg, var(--t-subtle-surface, #f8f9fa) 0%, var(--t-card, #fff) 100%); border: 1px solid var(--t-border, #e9ecef); border-radius: 14px; padding: 1rem 1.2rem; text-align: center; transition: transform 0.15s, box-shadow 0.15s; }
@@ -113,15 +113,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.53.0"></script>
-  <script src="../js/supabase-config.js?v=3.53.0"></script>
-  <script src="../js/activity-log.js?v=3.53.0"></script>
-  <script src="../js/codes.js?v=3.53.0"></script>
-  <script src="../js/auth.js?v=3.53.0"></script>
-  <script src="../js/theme.js?v=3.53.0"></script>
-  <script src="../js/nav.js?v=3.53.0"></script>
-  <script src="../js/page-size.js?v=3.53.0"></script>
-  <script src="../js/table-sort.js?v=3.53.0"></script>
+  <script src="../config/public-config.js?v=3.55.0"></script>
+  <script src="../js/supabase-config.js?v=3.55.0"></script>
+  <script src="../js/activity-log.js?v=3.55.0"></script>
+  <script src="../js/codes.js?v=3.55.0"></script>
+  <script src="../js/auth.js?v=3.55.0"></script>
+  <script src="../js/theme.js?v=3.55.0"></script>
+  <script src="../js/nav.js?v=3.55.0"></script>
+  <script src="../js/page-size.js?v=3.55.0"></script>
+  <script src="../js/table-sort.js?v=3.55.0"></script>
   <script>
     initSupabase();
     let session, allTxns = [], allProfiles = [], allDepts = [];
@@ -582,6 +582,6 @@
     document.getElementById('deptDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeDeptDetailModal(); });
     document.getElementById('userDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeUserDetailModal(); });
   </script>
-  <script src="../js/version.js?v=3.53.0"></script>
+  <script src="../js/version.js?v=3.55.0"></script>
 </body>
 </html>
