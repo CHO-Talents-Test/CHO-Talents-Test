@@ -12,12 +12,16 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v3.55.0` (`js/version.js` 기준, 2026-06-29) |
+| 현재 버전 | `v3.56.0` (`js/version.js` 기준, 2026-06-29) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
 
-- `APP_VERSION.current`는 `3.55.0`으로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `3.56.0`으로 갱신되어 있습니다.
+- **v3.56.0 주요 변경 사항**:
+  - `public-config.js`에 명시된 환경별 Kakao Map Key가 Supabase `app_config`의 오래된 값으로 덮어써지지 않도록 수정했습니다.
+  - DEV `app_config` 초기 SQL의 `KAKAO_MAP_KEY`를 DEV JavaScript 키(`f880c1746c4cd81e2fa54df45ebea41d`)로 갱신했습니다.
+  - QR 관리 페이지의 캐시 버스팅 참조를 v3.56.0으로 갱신했습니다.
 - **v3.55.0 주요 변경 사항**:
   - `config/public-config.js`에서 `TARGET_ENV='DEV'`일 때 DEV Kakao Map Key(`f880c1746c4cd81e2fa54df45ebea41d`), `TARGET_ENV='PROD'`일 때 PROD Kakao Map Key(`0ef8925b28135eeac474bc411c456170`)를 사용하도록 분기했습니다.
   - 전체 HTML 캐시 버스팅 참조를 v3.55.0으로 갱신했습니다.

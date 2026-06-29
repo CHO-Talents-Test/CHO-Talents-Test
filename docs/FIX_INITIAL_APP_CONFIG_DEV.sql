@@ -16,7 +16,7 @@ VALUES
   ('DEV', 'SUPABASE_URL', 'https://blitrrcdkkkszvgylnus.supabase.co', false, true, '브라우저 Supabase 클라이언트 부트스트랩 URL'),
   ('DEV', 'SUPABASE_ANON_KEY', 'sb_publishable_TgsQePzjxca9Hr3Lh_dHvA_O1JqRAQ6', false, true, '브라우저 공개 publishable/anon key. RLS/RPC로 권한 제한'),
   ('DEV', 'SUPABASE_AUTH_EMAIL_DOMAIN', '@cho-talents.app', false, true, '아이디 로그인용 내부 이메일 도메인'),
-  ('DEV', 'KAKAO_MAP_KEY', '0ef8925b28135eeac474bc411c456170', false, true, '카카오 지도 JavaScript 공개 키'),
+  ('DEV', 'KAKAO_MAP_KEY', 'f880c1746c4cd81e2fa54df45ebea41d', false, true, '카카오 지도 JavaScript 공개 키'),
   ('DEV', 'GITHUB_OWNER', 'CHO-Talents', false, true, 'GitHub 저장소 owner 메타데이터'),
   ('DEV', 'GITHUB_REPO', 'CHO-Talents', false, true, 'GitHub 저장소 이름 메타데이터'),
   ('DEV', 'GITHUB_BRANCH', 'develop', false, true, '기본 배포/형상관리 브랜치 메타데이터'),
