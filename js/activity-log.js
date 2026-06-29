@@ -63,6 +63,11 @@ const ACTION_LABELS = {
   LOGIN_SUCCESS: '로그인 성공',
   LOGIN_FAIL: '로그인 실패',
   LOGIN_ERROR: '로그인 오류',
+  AUTH_SESSION_MISSING: '인증 세션 없음',
+  AUTH_PROFILE_LOAD_FAIL: '인증 프로필 조회 실패',
+  AUTH_REDIRECT: '인증/권한 리디렉트',
+  AUTH_PAGE_ACCESS_CHECK_FAIL: '페이지 접근 권한 확인 실패',
+  QR_LOCATION_PERMISSION_BLOCKED: 'QR 위치 권한 차단',
   LOGOUT: '로그아웃',
   PASSWORD_CHANGE: '비밀번호 변경',
   PASSWORD_CHANGE_FAIL: '비밀번호 변경 실패',
@@ -544,15 +549,84 @@ function clearSession() {
 }
 
 async function loadAuthSession() {
-  if (!_sb) return null;
-  const { data: { session } } = await _sb.auth.getSession();
-  if (!session) return null;
+  if (!_sb) {
+    window.__lastAuthSessionFailure = {
+      reason: 'Supabase client not initialized',
+      page: window.location.pathname
+    };
+    return null;
+  }
 
   const cached = getSession();
-  if (cached && cached.id === session.user.id && cached.isSuperAdmin !== undefined) return cached;
+  let authSession = null;
+  try {
+    const { data: authData, error: authError } = await _sb.auth.getSession();
+    if (authError) {
+      window.__lastAuthSessionFailure = {
+        reason: 'Supabase auth session error',
+        message: authError.message,
+        page: window.location.pathname,
+        cachedUsername: cached ? cached.username : null,
+        cachedPermissionLevel: cached ? cached.permissionLevel : null
+      };
+      await logWarn('AUTH_SESSION_MISSING', window.__lastAuthSessionFailure);
+      clearSession();
+      return null;
+    }
+    authSession = authData.session;
+  } catch (err) {
+    window.__lastAuthSessionFailure = {
+      reason: 'Supabase auth session exception',
+      message: err.message || String(err),
+      page: window.location.pathname,
+      cachedUsername: cached ? cached.username : null,
+      cachedPermissionLevel: cached ? cached.permissionLevel : null
+    };
+    await logWarn('AUTH_SESSION_MISSING', window.__lastAuthSessionFailure);
+    clearSession();
+    return null;
+  }
 
-  const { data } = await _sb.rpc('get_my_profile');
-  if (!data) return null;
+  if (!authSession) {
+    let lastActivityAt = null;
+    let idleExpired = false;
+    try {
+      const last = parseInt(localStorage.getItem('cho_last_activity') || '0', 10);
+      if (last > 0) {
+        lastActivityAt = new Date(last).toISOString();
+        idleExpired = Date.now() - last > 24 * 60 * 60 * 1000;
+      }
+    } catch (e) {}
+    window.__lastAuthSessionFailure = {
+      reason: 'Supabase auth session missing',
+      page: window.location.pathname,
+      cachedUsername: cached ? cached.username : null,
+      cachedPermissionLevel: cached ? cached.permissionLevel : null,
+      cachedPermissionRank: cached ? cached.permissionRank : null,
+      hasCachedSession: !!cached,
+      lastActivityAt,
+      idleExpired
+    };
+    await logInfo('AUTH_SESSION_MISSING', window.__lastAuthSessionFailure);
+    clearSession();
+    return null;
+  }
+
+  if (cached && cached.id === authSession.user.id && cached.isSuperAdmin !== undefined) return cached;
+
+  const { data, error: profileError } = await _sb.rpc('get_my_profile');
+  if (profileError || !data) {
+    window.__lastAuthSessionFailure = {
+      reason: 'Profile RPC returned no profile',
+      message: profileError ? profileError.message : null,
+      page: window.location.pathname,
+      authUserId: authSession.user.id,
+      cachedUsername: cached ? cached.username : null
+    };
+    await logError('AUTH_PROFILE_LOAD_FAIL', window.__lastAuthSessionFailure);
+    clearSession();
+    return null;
+  }
 
   const perm = data.permission_level;
   const _isSA = data.is_super_admin || false;
@@ -568,7 +642,8 @@ async function loadAuthSession() {
     departmentId: data.department_id,
     managedDeptId: data.managed_dept_id,
     talentBalance: data.talent_balance || 0,
-    departmentName: data.department_name
+    departmentName: data.department_name,
+    classNumber: data.class_number
   };
   setSession(profile);
   return profile;

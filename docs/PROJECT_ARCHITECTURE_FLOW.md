@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-06-23 KST 현재 코드 기준 (v3.52.0)
+작성 기준: 2026-06-29 KST 현재 코드 기준 (v3.53.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -15,7 +15,7 @@ CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시
 | 상품 구매 시스템 | 4단계 구매 흐름(신청→준비→구매→지급)으로 상품 교환을 관리하며, 되돌리기와 구매 취소(cancelled)도 가능하다. 취소는 RPC 우선 시도 + .select() 기반 결과 검증으로 안전하게 처리된다. |
 | 승인 기반 계정 운영 | 신규 사용자는 신청 후 관리자 승인으로 계정이 생성된다. |
 | 부서 이동 관리 | 부서 변경은 요청→승인 흐름으로 처리한다 (90등급 이상은 즉시 이동). |
-| 운영 추적 | 로그인, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
+| 운영 추적 | 로그인, 인증/권한 리디렉트, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
 | Slack 알림 | 부서별/유형별 채널로 구매/가입/부서이동/WARN+ 로그/Q&A 등 운영 이벤트를 Edge Function 경유 분리 전송한다. |
 | 코드 마스터 | 권한/유형/상태/카테고리/로그 액션 같은 구분값을 `code_groups`, `code_items`, `js/codes.js`로 통합 관리한다. |
 | 에러 한글화 | 영문 DB/RPC 에러를 `tErr()` 함수로 한글 변환하여 사용자에게 표시한다. |
@@ -27,8 +27,8 @@ CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시
 flowchart LR
   User["사용자 브라우저"] --> Pages["GitHub Pages 정적 화면<br/>HTML/CSS/Vanilla JS"]
 
-  Pages --> AuthJS["js/auth.js<br/>로그인/세션/24h 타임아웃/권한/tErr()/fmtNum()"]
-  Pages --> LogJS["js/activity-log.js<br/>로그/action 라벨/세션 캐시/소프트 삭제"]
+  Pages --> AuthJS["js/auth.js<br/>로그인/세션/24h 타임아웃/권한/리디렉트 진단/tErr()/fmtNum()"]
+  Pages --> LogJS["js/activity-log.js<br/>로그/action 라벨/세션 캐시/인증 실패 분류/소프트 삭제"]
   Pages --> CodesJS["js/codes.js<br/>공통 코드북/라벨/정렬/옵션"]
   Pages --> UserMgmt["js/user-mgmt.js<br/>사용자/부서 관리"]
   Pages --> TalentJS["js/talent.js<br/>달란트 조회/지급/사용/반환"]
@@ -72,7 +72,7 @@ flowchart LR
 
 ## 3. 폴더 및 파일 구성
 
-목록 페이징은 사용자 관리, 달란트 관리, 상품 관리, 달란트 통계, 구매 관리, 구매 통계, 로그, 작업 이력, 보고서, 내 구매 상품, 달란트 수령 최근 내역, 달란트 항목, 달란트 QR, 관리자 관리, 부서 관리 등에서 PC 20개/모바일 10개 기본값을 사용하며, `js/page-size.js`로 그리드별 3~30개 사용자 설정(`user_preferences.page_sizes`)을 지원합니다. 현재 페이지 번호가 강조 표시되고, 7개를 초과하는 페이지는 예시 규칙에 따라 말줄임표로 축약됩니다.
+목록 페이징은 사용자 관리, 달란트 관리, 달란트 관리 상세 이력, 상품 관리, 달란트 통계, 구매 관리, 구매 통계, 로그, 작업 이력, 보고서, 내 구매 상품, 달란트 수령 최근 내역, 달란트 항목, 달란트 QR, 관리자 관리, 부서 관리 등에서 PC 20개/모바일 10개 기본값을 사용하며, `js/page-size.js`로 그리드별 3~30개 사용자 설정(`user_preferences.page_sizes`)을 지원합니다. 현재 페이지 번호가 강조 표시되고, 7개를 초과하는 페이지는 예시 규칙에 따라 말줄임표로 축약됩니다. 모달 이력도 같은 `renderPageSizeSelector()`와 `buildPagingButtons()`를 사용합니다.
 
 | 경로 | 역할 |
 |---|---|
@@ -89,13 +89,14 @@ flowchart LR
 | `qna.html` | Q&A/FAQ. 공개 FAQ 조회, 관리자 FAQ 직접 등록, 로그인 사용자 질문/답변 등록, 60등급 이상 답변+FAQ 등록, 90등급 이상 삭제 |
 | `earn-talents.html` | 달란트 적립 방법 안내. 항목 카드 그리드(모바일 3열, PC 5열)와 `talent_items` 활성 항목 지급 수량 배지 표시. 로그인 사용자의 `user_type`에 따라 학생/교사 탭 기본 선택 |
 | `shop.html` | 상점 조회 + 구매 신청 + 대리 구매. 비로그인은 학생용, 교사는 교사용 기본 필터 |
+| `talent-receive.html` | 로그인 사용자 QR 달란트 수령. 카메라 스캔 또는 코드 입력, 대상/기간/시간/반복/위치 조건 검증, 최근 수령 내역 페이징. 카메라 스캔 결과 메시지는 카메라 영역 위에 표시하며 위치 권한 차단 시 alert와 `QR_LOCATION_PERMISSION_BLOCKED` 로그를 남김 |
 | `my-talents.html` | 로그인 사용자 본인의 사용 가능 달란트/상품 수령 예정/사용 대기/사용 완료/반환/누적 적립 달란트, 달란트 내역(적립·사용·반환 3종 배지), 구매 내역. `fetchTalentSummary()`의 `returned` 필드로 반환 요약 표시. 지급 취소 이력의 트랜잭션 ID는 숨김 |
 | `my-orders.html` | 로그인 사용자 본인의 구매 신청 내역과 4단계 상태 조회. 공통 페이징과 페이지당 항목 수 설정 |
 | `admin/index.html` | 60등급 이상 대시보드. 사용자/부서/보고서/가입대기 통계 카드. 미확인 ERROR+ 카드는 100등급 이상만 표시(클릭→로그). 최근 이슈 로그 테이블(100등급+) |
 | `admin/users.html` | 60등급 이상 사용자 관리. 상단 통계 카드(전체/관리자/부서 담당/교사/학생) 클릭 필터. 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher. 교사/학생 그룹별 분리(학생은 권한 열 제거). 관리 드롭다운. 가입 신청/부서 이동 요청/승인 처리. 공통 페이징(PC 20/모바일 10) |
 | `admin/departments.html` | 60등급 이상 부서 관리. 부서명 오름차순 정렬, 공통 페이징과 페이지당 항목 수 설정. 관리 드롭다운(소속보기/수정/삭제). 부서별 인원(교사 전체 포함)/담당자 확인. 소속보기에서 100등급+는 마지막 로그인 일시 표시 |
 | `admin/managers.html` | 80등급 이상 관리자 계열 권한 관리. 수정만 가능. 구매 담당 교사 역할명 표시. 공통 페이징(PC 20/모바일 10) |
-| `admin/talents.html` | 40등급 이상 달란트 처리. 출석 버튼+관리 드롭다운(달란트 지급/상세). 잔여 달란트→달란트 명칭 변경. 사용/누적 달란트 모바일 숨김. 공통 페이징(PC 20/모바일 10). 지급 취소 항목 트랜잭션 ID는 100등급+만 표시. 수동 적립은 100등급(관리자)만 표시 |
+| `admin/talents.html` | 40등급 이상 달란트 처리. 출석 버튼+관리 드롭다운(달란트 지급/상세). 잔여 달란트→달란트 명칭 변경. 사용/누적 달란트 모바일 숨김. 목록과 상세 모달 이력 모두 공통 페이징/페이지당 항목 수 설정 사용. 지급 취소 항목 트랜잭션 ID는 100등급+만 표시. 수동 적립은 100등급(관리자)만 표시 |
 | `admin/talent-stats.html` | 60등급 이상 달란트 누적적립 통계. 반환(`type='use'`, `description`이 `반환:`)된 달란트를 원 지급 건에서 차감해 실제 지급 달란트로 집계. 부서별 기본 정렬: 달란트 DESC → 인원 ASC → 항목 ASC → 부서 ASC. 사용자별 기본 정렬: 달란트 DESC → 항목 ASC → 부서 ASC → 이름 ASC. 사용자별 목록 공통 페이징과 페이지당 항목 수 설정. 라디오 필터, 부서 필터, 기간 프리셋 |
 | `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). QR 목록과 수령자 팝업 모두 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
@@ -248,12 +249,15 @@ flowchart TD
 보호 페이지는 `initPage()`에서 다음 순서로 처리한다.
 
 1. Supabase Auth 세션 확인
-2. 프로필/권한 로드 (세션 캐시 활용)
-3. 최초 로그인 상태면 비밀번호 변경 화면으로 이동
-4. 최소 권한 미달이면 `index.html`로 이동
-5. `role_page_access` 확인: 페이지 최소 등급 통과 후 보조 접근/요소 숨김 설정 적용
-6. 통과 시 `auth-ready` 적용, 역할 배지/메뉴/페이지 데이터 로드
-7. `startSessionTimer()` 호출 — 24시간 유휴 세션 타임아웃 시작 (v3.48.0)
+2. 세션이 없거나 Auth 오류가 있으면 `AUTH_SESSION_MISSING`과 `AUTH_REDIRECT` 로그를 남기고 로그인 페이지로 이동
+3. 프로필/권한 로드 (세션 캐시 활용). 프로필 RPC 실패 시 `AUTH_PROFILE_LOAD_FAIL` 기록
+4. 최초 로그인 상태면 `AUTH_REDIRECT` 로그를 남기고 비밀번호 변경 화면으로 이동
+5. 최소 권한 미달이면 `AUTH_REDIRECT` 로그를 남기고 `index.html`로 이동
+6. `role_page_access` 확인: DB 접근 차단 시 `AUTH_REDIRECT`, 조회 실패 시 `AUTH_PAGE_ACCESS_CHECK_FAIL` 기록
+7. 통과 시 `auth-ready` 적용, 역할 배지/메뉴/페이지 데이터 로드
+8. `startSessionTimer()` 호출 — 24시간 유휴 세션 타임아웃 시작 (v3.48.0)
+
+`AUTH_REDIRECT` details에는 요청 페이지, `detectCurrentPageId()` 결과, 이동 대상, 사용자, 권한, 권한등급, 필요권한등급/허용권한, 세션 실패 상세가 들어간다. 로그인 필수 페이지가 간헐적으로 `index.html`로 보이는 경우는 대부분 `initPage()`의 권한 미달/허용 권한 불일치/DB 페이지 접근 차단에서 `getRedirectUrl()`이 권한별 기본 화면(`index.html`)을 반환했기 때문이다. 세션 없음/만료는 `login.html` 이동과 `AUTH_SESSION_MISSING` 로그로 구분한다.
 
 ### 24시간 세션 타임아웃 (v3.48.0)
 
@@ -286,7 +290,7 @@ flowchart TD
 | 디바운스 | 60초 — 연속 이벤트 폭주 방지 |
 | 탭 복귀 | `visibilitychange`에서 만료 재검증, 미만료 시 활동 갱신 |
 | 멀티탭 | `storage` 이벤트로 다른 탭의 활동 갱신 시 타이머 동기화 |
-| 만료 처리 | alert 안내 후 `logout()` → 로그인 페이지 이동 |
+| 만료 처리 | `AUTH_REDIRECT`에 만료 기준(`idle_timer`, `last_activity`, `visibilitychange`) 기록 후 alert 안내/`logout()` → 로그인 페이지 이동 |
 
 ### 메인 페이지 즐겨찾기 흐름
 
@@ -409,7 +413,7 @@ flowchart TD
   Tx --> Balance["profiles.talent_balance 갱신"]
   Balance --> UserView["my-talents.html에서 조회"]
 
-  Target --> Detail["상세 모달 → 지급자/내역 확인"]
+  Target --> Detail["상세 모달 → 지급자/내역 확인<br/>공통 페이징/표시 개수 설정"]
   Detail --> Return["반환 (80등급+, 사유 입력, 잔액 확인)"]
   Return --> ReturnRPC["use_talent RPC<br/>(반환 사유 기록)"]
   ReturnRPC --> Tx
@@ -506,7 +510,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  Event["로그인/오류/관리 작업"] --> WriteLog["writeLog() → activity_logs INSERT<br/>반환 error 감지 + 호환 재시도"]
+  Event["로그인/인증 리디렉트/오류/관리 작업"] --> WriteLog["writeLog() → activity_logs INSERT<br/>반환 error 감지 + 호환 재시도"]
   WriteLog --> ActionLabel["activity_logs.action 코드 라벨<br/>details._actionLabel 자동 저장"]
   ActionLabel --> Logs["admin/logs.html (100등급+)"]
   Logs --> Filter["레벨/기간 필터"]
@@ -523,6 +527,8 @@ flowchart TD
 로그 레벨: `TRACE`, `DEBUG`, `INFO`, `WARN`, `ERROR`, `FATAL`, `CRITICAL`
 
 - v3.40.0부터 `autoLogPageView()`는 no-op이며 PAGE_VIEW 로그를 기록하지 않는다 (함수 호출은 각 페이지에 유지)
+- v3.53.0부터 인증/권한 원인 분석용 action을 구분한다: `AUTH_SESSION_MISSING`, `AUTH_PROFILE_LOAD_FAIL`, `AUTH_REDIRECT`, `AUTH_PAGE_ACCESS_CHECK_FAIL`, `QR_LOCATION_PERMISSION_BLOCKED`.
+- `AUTH_REDIRECT`는 로그인 필수 페이지가 로그인 화면 또는 `index.html`로 이동한 원인을 추적하기 위한 로그이며, 세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단을 구분한다.
 - `activity-log.js`의 `getActionLabel()`은 `js/codes.js`/DB `activity_logs.action` 코드 그룹을 우선 사용하고, 기존 로그의 `details._actionLabel`을 하위호환 라벨로 함께 사용한다
 - `writeLog()`는 기록 시 action 라벨이 있으면 `details._actionLabel`에 한글 라벨을 자동 저장한다
 - `writeLog()`는 Supabase insert 결과의 `error`를 확인하고, 구버전 DB 스키마에서 `user_name`/`is_acknowledged` 컬럼 오류가 나면 해당 선택 컬럼을 제거해 재시도한다

@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeeLIS MDC · 룰 뷰어</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
+    --bg-elev: #ffffff;
+    --sidebar-bg: #f7f9fb;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text: #1f2733;
+    --text-soft: #5b6675;
+    --text-mute: #8a95a5;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --accent-text: #1d4ed8;
+    --code-bg: #f6f8fa;
+    --code-text: #24292f;
+    --table-head: #eef2f7;
+    --table-stripe: #f8fafc;
+    --quote-bar: #93c5fd;
+    --quote-bg: #f1f6ff;
+    --mark: #fde68a;
+    --mark-active: #fb923c;
+    --shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.04);
+    --tok-keyword: #cf222e;
+    --tok-string: #0a7c2f;
+    --tok-comment: #6e7781;
+    --tok-number: #0550ae;
+    --maxw: 860px;
+  }
+  html[data-theme="dark"] {
+    --bg: #0d1117;
+    --bg-soft: #161b22;
+    --bg-elev: #161b22;
+    --sidebar-bg: #0f141b;
+    --border: #232b36;
+    --border-strong: #30363d;
+    --text: #e6edf3;
+    --text-soft: #adbac7;
+    --text-mute: #768390;
+    --accent: #4493f8;
+    --accent-soft: #1c2d44;
+    --accent-text: #79b8ff;
+    --code-bg: #161b22;
+    --code-text: #e6edf3;
+    --table-head: #1b222c;
+    --table-stripe: #11161d;
+    --quote-bar: #2f5a91;
+    --quote-bg: #131b26;
+    --mark: #7a5d00;
+    --mark-active: #b45309;
+    --shadow: 0 1px 3px rgba(0,0,0,.5);
+    --tok-keyword: #ff7b72;
+    --tok-string: #7ee787;
+    --tok-comment: #8b949e;
+    --tok-number: #79c0ff;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "맑은 고딕", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 16px;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+  }
+  /* ---------- Layout ---------- */
+  .app { display: grid; grid-template-columns: 300px 1fr; height: 100vh; }
+  .sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .main { overflow-y: auto; position: relative; scroll-behavior: smooth; }
+
+  /* ---------- Sidebar ---------- */
+  .brand {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand .logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff; font-weight: 700; font-size: 14px;
+    display: grid; place-items: center; flex: none;
+  }
+  .brand h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
+  .brand small { display:block; color: var(--text-mute); font-size: 11px; font-weight: 500; }
+
+  .side-actions { padding: 12px 14px; border-bottom: 1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+  .btn {
+    appearance: none; border: 1px solid var(--border-strong); background: var(--bg-elev);
+    color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 13px;
+    cursor: pointer; font-weight: 600; transition: .15s; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-text); }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.05); color:#fff; }
+
+  .search-box { padding: 0 14px 12px; border-bottom: 1px solid var(--border); }
+  .search-wrap { position: relative; }
+  .search-wrap input {
+    width: 100%; padding: 8px 30px 8px 32px; border: 1px solid var(--border-strong);
+    border-radius: 8px; background: var(--bg-elev); color: var(--text); font-size: 13px; font-family: inherit;
+  }
+  .search-wrap input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search-wrap .s-ico { position:absolute; left:10px; top:50%; transform:translateY(-50%); color:var(--text-mute); font-size:13px; pointer-events:none; }
+  .search-count { position:absolute; right:10px; top:50%; transform:translateY(-50%); font-size:11px; color:var(--text-mute); }
+
+  .side-scroll { flex: 1; overflow-y: auto; padding: 10px 8px 24px; }
+  .side-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--text-mute); padding: 10px 10px 6px;
+  }
+
+  .file-item {
+    display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; color: var(--text-soft); transition: .12s; position: relative;
+  }
+  .file-item:hover { background: var(--bg-soft); color: var(--text); }
+  .file-item.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  .file-item .fi-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex:1; }
+  .file-item .fi-badge { font-size: 10px; padding: 1px 6px; border-radius: 999px; flex:none; font-weight:700; }
+
+  .toc { padding: 0 4px; }
+  .toc a {
+    display: block; padding: 4px 10px; border-radius: 6px; color: var(--text-soft);
+    text-decoration: none; font-size: 12.5px; line-height: 1.5; border-left: 2px solid transparent;
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap; transition: .12s;
+  }
+  .toc a:hover { background: var(--bg-soft); color: var(--text); }
+  .toc a.active { color: var(--accent-text); border-left-color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+  .toc a.lvl-1 { padding-left: 10px; font-weight: 600; }
+  .toc a.lvl-2 { padding-left: 22px; }
+  .toc a.lvl-3 { padding-left: 34px; font-size: 12px; }
+
+  /* ---------- Topbar ---------- */
+  .topbar {
+    position: sticky; top: 0; z-index: 20; background: var(--bg);
+    border-bottom: 1px solid var(--border); padding: 10px 26px;
+    display: flex; align-items: center; gap: 14px; backdrop-filter: blur(6px);
+  }
+  .doc-title-wrap { flex: 1; min-width: 0; }
+  .doc-title-wrap .dt { font-size: 14px; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .doc-title-wrap .dm { font-size: 11.5px; color: var(--text-mute); }
+  .type-badge {
+    font-size: 11px; font-weight: 700; padding: 4px 10px; border-radius: 999px; flex: none;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .badge-reference { background:#fef3c7; color:#92400e; }
+  .badge-checklist { background:#dcfce7; color:#166534; }
+  .badge-technical { background:#e0e7ff; color:#3730a3; }
+  .badge-general   { background:#e2e8f0; color:#334155; }
+  html[data-theme="dark"] .badge-reference { background:#3a2e08; color:#fcd34d; }
+  html[data-theme="dark"] .badge-checklist { background:#0f2e1a; color:#86efac; }
+  html[data-theme="dark"] .badge-technical { background:#1e1b4b; color:#a5b4fc; }
+  html[data-theme="dark"] .badge-general   { background:#1e293b; color:#cbd5e1; }
+  /* 룰 타입 배지 */
+  .badge-always { background:#fee2e2; color:#991b1b; }
+  .badge-auto   { background:#dbeafe; color:#1e40af; }
+  .badge-agent  { background:#dcfce7; color:#166534; }
+  .badge-manual { background:#e2e8f0; color:#334155; }
+  html[data-theme="dark"] .badge-always { background:#3f1d1d; color:#fca5a5; }
+  html[data-theme="dark"] .badge-auto   { background:#14233f; color:#93c5fd; }
+  html[data-theme="dark"] .badge-agent  { background:#0f2e1a; color:#86efac; }
+  html[data-theme="dark"] .badge-manual { background:#1e293b; color:#cbd5e1; }
+
+  /* ---------- 프론트매터(룰 메타데이터) 카드 ---------- */
+  .fm-card {
+    border: 1px solid var(--border); border-left: 4px solid var(--accent);
+    background: var(--bg-soft); border-radius: 12px; padding: 16px 18px; margin: 4px 0 26px;
+  }
+  .fm-card-head { display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+  .fm-card-title { font-size:13px; font-weight:800; letter-spacing:.01em; }
+  .fm-grid { display:grid; grid-template-columns:max-content 1fr; gap:8px 16px; align-items:start; font-size:13.5px; }
+  .fm-grid .fm-k { color:var(--text-soft); font-weight:700; white-space:nowrap; }
+  .fm-grid .fm-v { color:var(--text); min-width:0; word-break:break-word; }
+  .fm-empty { color:var(--text-mute); font-style:italic; }
+  .glob-chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .glob-chip {
+    font-family: var(--mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size:12px; background:var(--accent-soft); color:var(--accent-text);
+    padding:2px 8px; border-radius:6px; border:1px solid var(--border);
+  }
+  .fm-note { margin-top:12px; font-size:12.5px; color:var(--text-soft); background:var(--bg-elev);
+             border:1px dashed var(--border-strong); border-radius:8px; padding:8px 12px; }
+  .fm-raw { margin-top:12px; }
+  .fm-raw summary { cursor:pointer; font-size:12.5px; color:var(--text-soft); font-weight:600; user-select:none; }
+  .fm-raw summary:hover { color:var(--accent-text); }
+  .fm-raw pre { margin-top:8px; background:var(--code-bg); border:1px solid var(--border); border-radius:8px;
+                padding:12px 14px; overflow:auto; }
+  .fm-raw pre code { font-size:12.5px; white-space:pre; }
+
+  .icon-btn {
+    appearance:none; border:1px solid var(--border-strong); background:var(--bg-elev); color:var(--text);
+    width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:15px; display:grid; place-items:center; flex:none; transition:.15s;
+  }
+  .icon-btn:hover { border-color:var(--accent); color:var(--accent-text); }
+
+  /* ---------- Progress bar (checklist docs) ---------- */
+  .progress-wrap { padding: 12px 26px 0; max-width: var(--maxw); margin: 0 auto; }
+  .progress-card {
+    background: var(--bg-soft); border:1px solid var(--border); border-radius: 10px; padding: 12px 16px;
+    display:flex; align-items:center; gap:14px;
+  }
+  .progress-card .pc-label { font-size:13px; font-weight:600; color:var(--text-soft); white-space:nowrap; }
+  .progress-track { flex:1; height:10px; background:var(--border); border-radius:999px; overflow:hidden; }
+  .progress-fill { height:100%; background:linear-gradient(90deg,#22c55e,#16a34a); width:0%; transition:width .35s ease; }
+  .progress-pct { font-size:13px; font-weight:700; color:#16a34a; white-space:nowrap; min-width:42px; text-align:right; }
+
+  /* ---------- Content ---------- */
+  .content { max-width: var(--maxw); margin: 0 auto; padding: 30px 26px 120px; transition: max-width .2s; }
+  .content.wide { max-width: 1200px; }
+
+  .empty {
+    height: calc(100vh - 56px); display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; color: var(--text-mute); gap: 18px; padding: 40px;
+  }
+  .empty .big { font-size: 54px; }
+  .empty h2 { color: var(--text); margin: 0; font-weight: 700; }
+  .empty p { margin: 0; font-size: 14px; max-width: 440px; }
+  .dropzone {
+    border: 2px dashed var(--border-strong); border-radius: 14px; padding: 34px 50px; cursor: pointer;
+    transition: .15s; background: var(--bg-soft);
+  }
+  .dropzone:hover { border-color: var(--accent); background: var(--accent-soft); }
+  body.dragging .main { outline: 3px dashed var(--accent); outline-offset: -10px; }
+  body.dragging .drop-overlay { display:flex; }
+  .drop-overlay {
+    display:none; position:fixed; inset:0; z-index:100; background:rgba(37,99,235,.10);
+    align-items:center; justify-content:center; pointer-events:none;
+  }
+  .drop-overlay div { background:var(--accent); color:#fff; padding:18px 30px; border-radius:12px; font-weight:700; font-size:16px; box-shadow:var(--shadow); }
+
+  /* ---------- Markdown typography ---------- */
+  .md { word-wrap: break-word; }
+  .md h1, .md h2, .md h3, .md h4, .md h5, .md h6 { scroll-margin-top: 72px; font-weight: 700; line-height: 1.3; letter-spacing: -.3px; }
+  .md h1 { font-size: 2em; margin: .2em 0 .6em; padding-bottom: .3em; border-bottom: 1px solid var(--border); }
+  .md h2 { font-size: 1.5em; margin: 1.6em 0 .6em; padding-bottom: .25em; border-bottom: 1px solid var(--border); }
+  .md h3 { font-size: 1.22em; margin: 1.4em 0 .5em; }
+  .md h4 { font-size: 1.05em; margin: 1.2em 0 .4em; }
+  .md h5, .md h6 { font-size: .95em; margin: 1em 0 .4em; color: var(--text-soft); }
+  .md p { margin: .7em 0; }
+  .md a { color: var(--accent-text); text-decoration: none; }
+  .md a:hover { text-decoration: underline; }
+  .md ul, .md ol { padding-left: 1.6em; margin: .6em 0; }
+  .md li { margin: .25em 0; }
+  .md li > ul, .md li > ol { margin: .2em 0; }
+  .md blockquote {
+    margin: .9em 0; padding: .5em 1em; border-left: 4px solid var(--quote-bar);
+    background: var(--quote-bg); border-radius: 0 8px 8px 0; color: var(--text-soft);
+  }
+  .md blockquote p { margin: .3em 0; }
+  .md hr { border: none; border-top: 1px solid var(--border); margin: 1.8em 0; }
+  .md img { max-width: 100%; border-radius: 8px; }
+  .md strong { font-weight: 700; }
+  .md del { color: var(--text-mute); }
+
+  /* inline code */
+  .md code {
+    background: var(--accent-soft); color: var(--accent-text); padding: .15em .4em; border-radius: 5px;
+    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: .87em;
+  }
+  /* code block */
+  .code-block { position: relative; margin: 1em 0; }
+  .code-block .code-head {
+    display:flex; align-items:center; justify-content:space-between;
+    background: var(--table-head); border:1px solid var(--border); border-bottom:none;
+    border-radius: 10px 10px 0 0; padding: 5px 12px; font-size: 11.5px; color: var(--text-mute); font-weight:600;
+  }
+  .code-block .lang-label { text-transform: uppercase; letter-spacing:.5px; }
+  .copy-btn {
+    appearance:none; border:1px solid var(--border-strong); background:var(--bg-elev); color:var(--text-soft);
+    border-radius:6px; padding:2px 9px; font-size:11px; cursor:pointer; font-weight:600; transition:.12s; font-family:inherit;
+  }
+  .copy-btn:hover { border-color:var(--accent); color:var(--accent-text); }
+  .copy-btn.copied { background:#16a34a; border-color:#16a34a; color:#fff; }
+  .md pre {
+    margin: 0; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 0 0 10px 10px; padding: 14px 16px; overflow-x: auto;
+  }
+  .code-block.no-head pre { border-radius: 10px; }
+  .md pre code {
+    background: none; color: var(--code-text); padding: 0; border-radius: 0; font-size: 13px; line-height: 1.55;
+    font-family: "JetBrains Mono", "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  .tok-keyword { color: var(--tok-keyword); font-weight:600; }
+  .tok-string  { color: var(--tok-string); }
+  .tok-comment { color: var(--tok-comment); font-style: italic; }
+  .tok-number  { color: var(--tok-number); }
+
+  /* tables */
+  .table-scroll { overflow-x: auto; margin: 1em 0; border:1px solid var(--border); border-radius: 10px; }
+  .md table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .md th, .md td { border: 1px solid var(--border); padding: 8px 13px; text-align: left; vertical-align: top; }
+  .md th { background: var(--table-head); font-weight: 700; white-space: nowrap; position: sticky; top: 0; }
+  .md tbody tr:nth-child(even) { background: var(--table-stripe); }
+  .md tbody tr:hover { background: var(--accent-soft); }
+  /* reference doc table emphasis */
+  .doc-reference .md td:first-child { font-weight: 600; color: var(--text); }
+  .doc-reference .md table { font-size: 14.5px; }
+
+  /* task list */
+  .task-list-item { list-style: none; margin-left: -1.5em; display:flex; align-items:flex-start; gap:8px; }
+  .task-list-item input[type=checkbox] { margin-top: 6px; width:16px; height:16px; cursor:pointer; accent-color: var(--accent); flex:none; }
+  .task-list-item.done > span { color: var(--text-mute); text-decoration: line-through; }
+  .doc-checklist .task-list-item { padding: 4px 8px; border-radius: 8px; transition: background .12s; }
+  .doc-checklist .task-list-item:hover { background: var(--bg-soft); }
+
+  mark.search-hit { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 1px; }
+  mark.search-hit.current { background: var(--mark-active); color:#fff; }
+
+  /* scrollbars */
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-mute); background-clip: content-box; }
+
+  @media (max-width: 820px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; inset: 0 auto 0 0; width: 290px; z-index: 50; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow); }
+    .sidebar.open { transform: none; }
+    .menu-toggle { display: grid !important; }
+  }
+  .menu-toggle { display: none; }
+</style>
+</head>
+<body>
+<div class="drop-overlay"><div>여기에 .mdc / .md 파일을 놓으세요</div></div>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">LIS</div>
+      <div>
+        <h1>SeeLIS MDC 뷰어</h1>
+        <small>MDC · Cursor Rules Viewer</small>
+      </div>
+    </div>
+    <div class="side-actions">
+      <button class="btn btn-primary" id="openBtn">📂 .mdc 파일 열기</button>
+      <input type="file" id="fileInput" accept=".mdc,.md,.markdown,.mdown,.txt" multiple hidden>
+    </div>
+    <div class="search-box">
+      <div class="search-wrap">
+        <span class="s-ico">🔍</span>
+        <input type="text" id="searchInput" placeholder="현재 문서 내 검색…" autocomplete="off">
+        <span class="search-count" id="searchCount"></span>
+      </div>
+    </div>
+    <div class="side-scroll">
+      <div class="side-section-title">불러온 문서</div>
+      <div id="fileList"></div>
+      <div class="side-section-title" id="tocTitle" style="display:none">목차</div>
+      <nav class="toc" id="toc"></nav>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="main">
+    <div class="topbar">
+      <button class="icon-btn menu-toggle" id="menuToggle" title="메뉴">☰</button>
+      <div class="doc-title-wrap">
+        <div class="dt" id="docTitle">문서를 불러오세요</div>
+        <div class="dm" id="docMeta"></div>
+      </div>
+      <span class="type-badge badge-general" id="typeBadge" style="display:none">일반 가이드</span>
+      <button class="icon-btn" id="themeToggle" title="테마 전환">🌙</button>
+    </div>
+    <div id="progressArea"></div>
+    <div id="viewer">
+      <div class="empty">
+        <div class="big">📋</div>
+        <h2>SeeLIS MDC · 룰 뷰어</h2>
+        <p>Cursor 룰(<code>.mdc</code>) 및 <code>.md</code> 문서를 보기 좋게 렌더링합니다. YAML 프론트매터(<code>description</code>·<code>globs</code>·<code>alwaysApply</code>)를 분석해 룰 타입을 표시하고, 본문은 마크다운으로 렌더링합니다. 아래 영역을 클릭하거나 파일을 끌어다 놓으세요.</p>
+        <div class="dropzone" id="dropzone">📂 클릭하여 .mdc / .md 파일 선택 &nbsp;·&nbsp; 또는 드래그 앤 드롭</div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+"use strict";
+
+/* ============================================================
+ *  경량 마크다운 파서 (순수 JS, 오프라인 동작, XSS 이스케이프)
+ *  지원: ATX 제목, GFM 표, 순서/비순서/중첩 목록, 체크박스,
+ *        코드펜스, 인라인코드, 굵게/기울임/취소선, 링크, 이미지,
+ *        인용, 수평선, 단락, 하드 줄바꿈
+ * ============================================================ */
+const MD = (function () {
+
+  function escapeHtml(s) {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  }
+
+  function sanitizeUrl(url) {
+    const u = (url || "").trim();
+    if (/^\s*javascript:/i.test(u)) return "#";
+    if (/^\s*data:(?!image\/)/i.test(u)) return "#";
+    return u;
+  }
+
+  /* 맨 URL 자동 하이퍼링크 (기존 <a>/태그/인라인코드는 건드리지 않음) */
+  function autolinkUrls(html) {
+    return html.replace(/(<a\b[^>]*>[\s\S]*?<\/a>)|(<[^>]*>)|([^<]+)/gi, function (m, anchor, tag, plain) {
+      if (anchor != null) return anchor;
+      if (tag != null) return tag;
+      return plain.replace(/https?:\/\/[^\s<]+/g, function (url) {
+        let trailing = "", mt;
+        while ((mt = url.match(/(&quot;|&gt;|&lt;|[.,;:!?'")\]}])$/))) {
+          trailing = mt[0] + trailing;
+          url = url.slice(0, -mt[0].length);
+        }
+        if (!url) return trailing;
+        return '<a href="' + url + '" target="_blank" rel="noopener noreferrer">' + url + "</a>" + trailing;
+      });
+    });
+  }
+
+  function slugify(text, used) {
+    let base = text.toLowerCase().trim()
+      .replace(/[`*_~\[\]()#>!]/g, "")
+      .replace(/\s+/g, "-")
+      .replace(/[^\w가-힣ㄱ-ㅎ\-]/g, "")
+      .replace(/-+/g, "-").replace(/^-|-$/g, "");
+    if (!base) base = "section";
+    let slug = base, n = 1;
+    while (used[slug]) { slug = base + "-" + (n++); }
+    used[slug] = true;
+    return slug;
+  }
+
+  /* ---------- 인라인 파싱 ---------- */
+  function parseInline(text) {
+    if (text == null) text = "";
+    // 코드 스팬 보호
+    const codes = [];
+    text = text.replace(/`([^`]+)`/g, function (m, c) {
+      codes.push(c);
+      return "\u0000C" + (codes.length - 1) + "\u0000";
+    });
+    // 하드 줄바꿈 (두 칸 이상 + 줄끝, 또는 백슬래시 줄끝)
+    text = text.replace(/(  +)\n/g, "\u0000BR\u0000").replace(/\\\n/g, "\u0000BR\u0000");
+    text = text.replace(/\n/g, " ");
+    // 이스케이프
+    text = escapeHtml(text);
+    // 이미지
+    text = text.replace(/!\[([^\]]*)\]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g, function (m, alt, src, title) {
+      return '<img src="' + sanitizeUrl(src) + '" alt="' + alt + '"' + (title ? ' title="' + title + '"' : "") + ">";
+    });
+    // 링크
+    text = text.replace(/\[([^\]]+)\]\(([^)\s]+)(?:\s+&quot;([^&]*)&quot;)?\)/g, function (m, label, href, title) {
+      const safe = sanitizeUrl(href);
+      const ext = /^https?:/i.test(safe) ? ' target="_blank" rel="noopener noreferrer"' : "";
+      return '<a href="' + safe + '"' + ext + (title ? ' title="' + title + '"' : "") + ">" + label + "</a>";
+    });
+    // 맨 URL 자동 링크 (참고문헌 등 단순 텍스트 URL)
+    text = autolinkUrls(text);
+    // 굵게 / 기울임 / 취소선
+    text = text.replace(/\*\*([^\s*][\s\S]*?[^\s*]|\S)\*\*/g, "<strong>$1</strong>");
+    text = text.replace(/__([^\s_][\s\S]*?[^\s_]|\S)__/g, "<strong>$1</strong>");
+    text = text.replace(/(^|[^\w*])\*([^\s*][\s\S]*?[^\s*]|\S)\*(?=[^\w*]|$)/g, "$1<em>$2</em>");
+    text = text.replace(/(^|[^\w_])_([^\s_][\s\S]*?[^\s_]|\S)_(?=[^\w_]|$)/g, "$1<em>$2</em>");
+    text = text.replace(/~~([^~]+)~~/g, "<del>$1</del>");
+    // 복원
+    text = text.replace(/\u0000BR\u0000/g, "<br>");
+    text = text.replace(/\u0000C(\d+)\u0000/g, function (m, i) { return "<code>" + escapeHtml(codes[i]) + "</code>"; });
+    return text;
+  }
+
+  /* ---------- 단순 코드 강조 (언어 무관, 보수적) ---------- */
+  function highlightCode(code) {
+    code = escapeHtml(code);
+    const store = [];
+    const keep = function (cls, txt) { store.push('<span class="tok-' + cls + '">' + txt + "</span>"); return "\u0000H" + (store.length - 1) + "\u0000"; };
+    // 블록 주석
+    code = code.replace(/\/\*[\s\S]*?\*\//g, function (m) { return keep("comment", m); });
+    // 줄 주석 ( // 또는 # )
+    code = code.replace(/(^|\n)([ \t]*(?:\/\/|#)[^\n]*)/g, function (m, p, c) { return p + keep("comment", c); });
+    // 문자열
+    code = code.replace(/&quot;(?:[^&\n]|&(?!quot;))*?&quot;/g, function (m) { return keep("string", m); });
+    code = code.replace(/'[^'\n]*'/g, function (m) { return keep("string", m); });
+    code = code.replace(/`[^`\n]*`/g, function (m) { return keep("string", m); });
+    // 숫자
+    code = code.replace(/\b\d[\d._]*\b/g, function (m) { return keep("number", m); });
+    // 키워드
+    code = code.replace(/\b(function|var|let|const|return|if|else|elif|for|foreach|while|do|switch|case|break|continue|class|interface|enum|extends|implements|public|private|protected|static|final|abstract|void|new|this|super|import|export|from|as|package|def|lambda|self|true|false|null|nil|None|True|False|try|catch|except|finally|throw|throws|async|await|yield|typeof|instanceof|in|of|module|namespace|using|struct|val|fun|when|val)\b/g, function (m) { return keep("keyword", m); });
+    code = code.replace(/\u0000H(\d+)\u0000/g, function (m, i) { return store[i]; });
+    return code;
+  }
+
+  function splitRow(line) {
+    let s = line.trim();
+    s = s.replace(/^\|/, "").replace(/\|$/, "");
+    const cells = [];
+    let cur = "", esc = false;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (esc) { cur += ch; esc = false; continue; }
+      if (ch === "\\") { cur += ch; esc = true; continue; }
+      if (ch === "|") { cells.push(cur); cur = ""; continue; }
+      cur += ch;
+    }
+    cells.push(cur);
+    return cells.map(function (c) { return c.trim(); });
+  }
+
+  function isTableSep(line) {
+    // 표 구분선은 반드시 파이프(|)를 포함해야 한다 (수평선 ---/*** 과 구분).
+    return line.indexOf("|") !== -1 && line.indexOf("-") !== -1 &&
+      /^\s*\|?\s*:?-{1,}:?\s*(\|\s*:?-{1,}:?\s*)*\|?\s*$/.test(line);
+  }
+
+  const listRe = /^(\s*)([-*+]|\d+[.)])\s+(.*)$/;
+
+  /* ---------- 블록 파싱 ---------- */
+  function parseBlocks(lines, ctx) {
+    let out = "";
+    let i = 0;
+    while (i < lines.length) {
+      let line = lines[i];
+
+      // 빈 줄
+      if (line.trim() === "") { i++; continue; }
+
+      // 코드펜스
+      const fence = line.match(/^(\s*)(`{3,}|~{3,})\s*([^`]*)$/);
+      if (fence) {
+        const marker = fence[2][0];
+        const minLen = fence[2].length;
+        const lang = (fence[3] || "").trim();
+        const buf = [];
+        i++;
+        while (i < lines.length) {
+          const cl = lines[i];
+          const close = cl.match(/^(\s*)(`{3,}|~{3,})\s*$/);
+          if (close && close[2][0] === marker && close[2].length >= minLen) { i++; break; }
+          buf.push(cl);
+          i++;
+        }
+        const raw = buf.join("\n");
+        const hasHead = lang !== "";
+        out += '<div class="code-block' + (hasHead ? "" : " no-head") + '">';
+        if (hasHead) {
+          out += '<div class="code-head"><span class="lang-label">' + escapeHtml(lang) + '</span>' +
+                 '<button class="copy-btn" type="button">복사</button></div>';
+        } else {
+          out += '<button class="copy-btn copy-float" type="button" style="position:absolute;top:8px;right:8px;z-index:2">복사</button>';
+        }
+        out += "<pre><code>" + highlightCode(raw) + "</code></pre></div>";
+        continue;
+      }
+
+      // 제목
+      const h = line.match(/^(#{1,6})\s+(.*?)\s*#*\s*$/);
+      if (h) {
+        const level = h[1].length;
+        const inner = parseInline(h[2]);
+        const plain = h[2].replace(/[`*_~]/g, "").replace(/\[([^\]]+)\]\([^)]*\)/g, "$1");
+        const id = slugify(plain, ctx.used);
+        if (level <= 3) ctx.headings.push({ level: level, text: plain, id: id });
+        out += "<h" + level + ' id="' + id + '">' + inner + "</h" + level + ">";
+        i++;
+        continue;
+      }
+
+      // 수평선
+      if (/^\s{0,3}(-{3,}|\*{3,}|_{3,})\s*$/.test(line) && !isTableSep(line)) {
+        out += "<hr>";
+        i++;
+        continue;
+      }
+
+      // 표 (현재 줄에 | 가 있고 다음 줄이 구분선)
+      if (line.indexOf("|") !== -1 && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+        const header = splitRow(line);
+        const seps = splitRow(lines[i + 1]);
+        const aligns = seps.map(function (s) {
+          const l = s.startsWith(":"), r = s.endsWith(":");
+          if (l && r) return "center"; if (r) return "right"; if (l) return "left"; return "";
+        });
+        i += 2;
+        const rows = [];
+        while (i < lines.length && lines[i].indexOf("|") !== -1 && lines[i].trim() !== "" && !/^#{1,6}\s/.test(lines[i])) {
+          rows.push(splitRow(lines[i]));
+          i++;
+        }
+        let t = '<div class="table-scroll"><table><thead><tr>';
+        header.forEach(function (c, idx) {
+          const a = aligns[idx] ? ' style="text-align:' + aligns[idx] + '"' : "";
+          t += "<th" + a + ">" + parseInline(c) + "</th>";
+        });
+        t += "</tr></thead><tbody>";
+        rows.forEach(function (r) {
+          t += "<tr>";
+          for (let c = 0; c < header.length; c++) {
+            const a = aligns[c] ? ' style="text-align:' + aligns[c] + '"' : "";
+            t += "<td" + a + ">" + parseInline(r[c] != null ? r[c] : "") + "</td>";
+          }
+          t += "</tr>";
+        });
+        t += "</tbody></table></div>";
+        out += t;
+        continue;
+      }
+
+      // 인용
+      if (/^\s*>/.test(line)) {
+        const buf = [];
+        while (i < lines.length && /^\s*>/.test(lines[i])) {
+          buf.push(lines[i].replace(/^\s*>\s?/, ""));
+          i++;
+        }
+        out += "<blockquote>" + parseBlocks(buf, ctx) + "</blockquote>";
+        continue;
+      }
+
+      // 목록
+      if (listRe.test(line)) {
+        const res = parseList(lines, i, ctx);
+        out += res.html;
+        i = res.end;
+        continue;
+      }
+
+      // 단락
+      {
+        const buf = [];
+        while (i < lines.length) {
+          const cl = lines[i];
+          if (cl.trim() === "") break;
+          if (/^(\s*)(`{3,}|~{3,})/.test(cl)) break;
+          if (/^#{1,6}\s/.test(cl)) break;
+          if (/^\s*>/.test(cl)) break;
+          if (listRe.test(cl)) break;
+          if (/^\s{0,3}(-{3,}|\*{3,}|_{3,})\s*$/.test(cl)) break;
+          if (cl.indexOf("|") !== -1 && i + 1 < lines.length && isTableSep(lines[i + 1])) break;
+          buf.push(cl);
+          i++;
+        }
+        if (buf.length === 0) { i++; continue; } // 안전장치: 무한루프 방지
+        out += "<p>" + parseInline(buf.join("\n")) + "</p>";
+      }
+    }
+    return out;
+  }
+
+  /* ---------- 목록 (중첩 지원) ---------- */
+  function parseList(lines, start, ctx) {
+    const first = lines[start].match(listRe);
+    const baseIndent = first[1].length;
+    const ordered = /\d/.test(first[2]);
+    let out = ordered ? "<ol>" : "<ul>";
+    let i = start;
+
+    while (i < lines.length) {
+      const line = lines[i];
+      if (line.trim() === "") {
+        // 한 줄 공백 허용: 다음에 같은/더 깊은 목록 줄이 있으면 계속
+        let j = i + 1;
+        if (j < lines.length && listRe.test(lines[j]) && lines[j].match(listRe)[1].length >= baseIndent) {
+          i++;
+          continue;
+        }
+        break;
+      }
+      const m = line.match(listRe);
+      if (!m) break;
+      const indent = m[1].length;
+      if (indent < baseIndent) break;
+      if (indent > baseIndent) break; // 더 깊은 건 자식으로 처리됨
+      // 같은 들여쓰기에서 순서/비순서가 바뀌면 별도 목록으로 분리
+      if (/\d/.test(m[2]) !== ordered) break;
+
+      let content = m[3];
+      i++;
+
+      // 자식 줄(더 깊은 들여쓰기 / 연속 텍스트) 수집
+      const childLines = [];
+      while (i < lines.length) {
+        const cl = lines[i];
+        if (cl.trim() === "") {
+          // 다음 비어있지 않은 줄이 더 깊으면 자식에 포함
+          let k = i + 1;
+          if (k < lines.length && cl.trim() === "") {
+            const nx = lines[k];
+            const firstNonSpace = nx.search(/\S/);
+            if (nx.trim() !== "" && firstNonSpace > baseIndent) { childLines.push(""); i++; continue; }
+          }
+          break;
+        }
+        const indentOf = cl.search(/\S/);
+        const cm = cl.match(listRe);
+        if (cm && cm[1].length > baseIndent) { childLines.push(cl); i++; continue; }
+        if (!cm && indentOf > baseIndent) { childLines.push(cl); i++; continue; }
+        break;
+      }
+
+      // 체크박스 감지
+      let liClass = "";
+      let inner;
+      const cb = content.match(/^\[([ xX])\]\s+(.*)$/);
+      if (cb) {
+        const checked = cb[1].toLowerCase() === "x";
+        liClass = ' class="task-list-item' + (checked ? " done" : "") + '"';
+        inner = '<input type="checkbox"' + (checked ? " checked" : "") + "><span>" + parseInline(cb[2]) + "</span>";
+      } else {
+        inner = parseInline(content);
+      }
+
+      if (childLines.length) {
+        // 자식 줄 디덴트 후 재귀
+        const dedented = dedent(childLines);
+        inner += parseBlocks(dedented, ctx);
+      }
+      out += "<li" + liClass + ">" + inner + "</li>";
+    }
+    out += ordered ? "</ol>" : "</ul>";
+    return { html: out, end: i };
+  }
+
+  function dedent(lines) {
+    let min = Infinity;
+    lines.forEach(function (l) {
+      if (l.trim() === "") return;
+      const n = l.search(/\S/);
+      if (n < min) min = n;
+    });
+    if (!isFinite(min) || min === 0) return lines.slice();
+    return lines.map(function (l) { return l.length >= min ? l.slice(min) : l.replace(/^\s+/, ""); });
+  }
+
+  /* ---------- 문서 통계 & 분류 ---------- */
+  function analyze(src) {
+    const lines = src.replace(/\r\n?/g, "\n").split("\n");
+    let tables = 0, codeBlocks = 0, checkboxes = 0, headings = 0;
+    let inFence = false, fenceMarker = "";
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      const f = line.match(/^\s*(`{3,}|~{3,})/);
+      if (f) {
+        if (!inFence) { inFence = true; fenceMarker = f[1][0]; codeBlocks++; }
+        else if (line.trim()[0] === fenceMarker) { inFence = false; }
+        continue;
+      }
+      if (inFence) continue;
+      if (/^#{1,6}\s/.test(line)) headings++;
+      if (/^\s*([-*+]|\d+[.)])\s+\[([ xX])\]\s/.test(line)) checkboxes++;
+      if (line.indexOf("|") !== -1 && i + 1 < lines.length && isTableSep(lines[i + 1])) tables++;
+    }
+    return { tables: tables, codeBlocks: codeBlocks, checkboxes: checkboxes, headings: headings, lineCount: lines.length };
+  }
+
+  function classify(stats) {
+    if (stats.checkboxes >= 5) return "checklist";
+    if (stats.tables >= 4) return "reference";
+    if (stats.codeBlocks >= 3) return "technical";
+    if (stats.tables >= 2) return "reference";
+    return "general";
+  }
+
+  function render(src) {
+    const norm = src.replace(/\r\n?/g, "\n").replace(/\t/g, "    ");
+    const lines = norm.split("\n");
+    const ctx = { headings: [], used: {} };
+    const html = parseBlocks(lines, ctx);
+    return { html: html, headings: ctx.headings };
+  }
+
+  return { render: render, analyze: analyze, classify: classify, escapeHtml: escapeHtml };
+})();
+
+/* ============================================================
+ *  뷰어 애플리케이션
+ * ============================================================ */
+(function () {
+  const TYPE_INFO = {
+    reference: { label: "레퍼런스 / 표 중심", badge: "badge-reference", icon: "📊", wide: true },
+    checklist: { label: "체크리스트 / 플랜", badge: "badge-checklist", icon: "✅", wide: false },
+    technical: { label: "기술 / 아키텍처", badge: "badge-technical", icon: "🧩", wide: false },
+    general: { label: "일반 가이드", badge: "badge-general", icon: "📘", wide: false }
+  };
+
+  /* Cursor 룰 타입 (frontmatter 기반) */
+  const RULE_TYPE_INFO = {
+    always: { label: "Always · 항상 적용", badge: "badge-always", icon: "📌", desc: "모든 대화·요청에 항상 포함됩니다 (alwaysApply: true)." },
+    auto:   { label: "Auto Attached · 자동 첨부", badge: "badge-auto", icon: "🎯", desc: "열린/참조 파일 경로가 globs와 일치하면 자동으로 로드됩니다." },
+    agent:  { label: "Agent Requested · 에이전트 요청", badge: "badge-agent", icon: "🤖", desc: "description을 보고 에이전트가 필요하다고 판단할 때 불러옵니다." },
+    manual: { label: "Manual · 수동(@멘션)", badge: "badge-manual", icon: "✋", desc: "@룰이름으로 직접 호출할 때만 적용됩니다." }
+  };
+
+  function stripQuotes(s) {
+    s = (s == null ? "" : String(s)).trim();
+    if (s.length >= 2 && ((s[0] === '"' && s.slice(-1) === '"') || (s[0] === "'" && s.slice(-1) === "'"))) {
+      return s.slice(1, -1);
+    }
+    return s;
+  }
+  function coerceScalar(v) {
+    const t = stripQuotes(v);
+    if (/^(true|false)$/i.test(t)) return /^true$/i.test(t);
+    return t;
+  }
+  function normalizeGlobs(g) {
+    if (g == null) return [];
+    if (Array.isArray(g)) return g.map(function (x) { return String(x).trim(); }).filter(Boolean);
+    return String(g).split(",").map(function (x) { return stripQuotes(x).trim(); }).filter(Boolean);
+  }
+
+  /* YAML 프론트매터 추출 (mdc: --- ... --- 블록이 파일 맨 앞) */
+  function parseFrontmatter(text) {
+    const norm = (text || "").replace(/\r\n?/g, "\n").replace(/^\uFEFF/, "");
+    const m = norm.match(/^---[ \t]*\n([\s\S]*?)\n---[ \t]*(?:\n|$)/);
+    if (!m) return { fm: null, raw: "", body: norm };
+    const raw = m[1];
+    const body = norm.slice(m[0].length);
+    const fm = {};
+    const order = [];
+    let curKey = null;
+    raw.split("\n").forEach(function (line) {
+      if (!line.trim()) return;
+      const li = line.match(/^\s*-\s+(.*)$/);
+      if (li && curKey) {
+        if (!Array.isArray(fm[curKey])) fm[curKey] = [];
+        fm[curKey].push(stripQuotes(li[1]));
+        return;
+      }
+      const kv = line.match(/^([A-Za-z0-9_.-]+)\s*:\s*(.*)$/);
+      if (kv) {
+        const key = kv[1];
+        const val = kv[2].trim();
+        curKey = key;
+        if (order.indexOf(key) < 0) order.push(key);
+        fm[key] = (val === "") ? "" : coerceScalar(val);
+      }
+    });
+    return { fm: fm, raw: raw, body: body, order: order };
+  }
+
+  function ruleTypeOf(fm) {
+    if (!fm) return null;
+    if (fm.alwaysApply === true || fm.alwaysApply === "true") return "always";
+    if (normalizeGlobs(fm.globs).length) return "auto";
+    if (fm.description != null && String(fm.description).trim() !== "") return "agent";
+    return "manual";
+  }
+
+  /* 프론트매터 카드 HTML */
+  function fmRow(kHtml, vHtml) {
+    return '<div class="fm-k">' + kHtml + '</div><div class="fm-v">' + vHtml + '</div>';
+  }
+  function buildFmCard(d) {
+    if (!d.fm) return "";
+    const esc = MD.escapeHtml;
+    const rt = RULE_TYPE_INFO[d.ruleType] || null;
+    const handled = { description: 1, globs: 1, alwaysApply: 1 };
+    let rows = "";
+
+    const desc = d.fm.description != null ? String(d.fm.description).trim() : "";
+    if (desc !== "") rows += fmRow("설명 (description)", esc(desc));
+    else if ("description" in d.fm) rows += fmRow("설명 (description)", '<span class="fm-empty">(없음)</span>');
+
+    if ("globs" in d.fm) {
+      const globs = normalizeGlobs(d.fm.globs);
+      if (globs.length) {
+        const chips = globs.map(function (g) { return '<code class="glob-chip">' + esc(g) + '</code>'; }).join("");
+        rows += fmRow("globs", '<div class="glob-chips">' + chips + '</div>');
+      } else {
+        rows += fmRow("globs", '<span class="fm-empty">(없음)</span>');
+      }
+    }
+    if ("alwaysApply" in d.fm) rows += fmRow("alwaysApply", '<code>' + esc(String(d.fm.alwaysApply)) + '</code>');
+
+    (d.fmOrder || Object.keys(d.fm)).forEach(function (k) {
+      if (handled[k]) return;
+      const v = d.fm[k];
+      const vHtml = Array.isArray(v)
+        ? v.map(function (x) { return '<code class="glob-chip">' + esc(String(x)) + '</code>'; }).join(" ")
+        : esc(String(v));
+      rows += fmRow(esc(k), vHtml);
+    });
+
+    const badge = rt ? '<span class="type-badge ' + rt.badge + '">' + rt.icon + " " + esc(rt.label) + '</span>' : "";
+    const note = rt ? '<div class="fm-note">' + rt.icon + " " + esc(rt.desc) + '</div>' : "";
+    return '<div class="fm-card">' +
+      '<div class="fm-card-head"><span class="fm-card-title">📋 룰 메타데이터 (frontmatter)</span>' + badge + '</div>' +
+      '<div class="fm-grid">' + rows + '</div>' + note +
+      '<details class="fm-raw"><summary>원본 frontmatter 보기</summary><pre><code>' + esc(d.rawFm || "") + '</code></pre></details>' +
+      '</div>';
+  }
+
+  const docs = [];
+  let activeIndex = -1;
+
+  const $ = function (id) { return document.getElementById(id); };
+  const fileInput = $("fileInput");
+  const fileListEl = $("fileList");
+  const tocEl = $("toc");
+  const tocTitle = $("tocTitle");
+  const viewerEl = $("viewer");
+  const docTitleEl = $("docTitle");
+  const docMetaEl = $("docMeta");
+  const typeBadgeEl = $("typeBadge");
+  const progressArea = $("progressArea");
+  const searchInput = $("searchInput");
+  const searchCount = $("searchCount");
+  const mainEl = $("main");
+
+  /* ---------- 테마 ---------- */
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    $("themeToggle").textContent = t === "dark" ? "☀️" : "🌙";
+    try { localStorage.setItem("md-viewer-theme", t); } catch (e) {}
+  }
+  (function initTheme() {
+    let saved = null;
+    try { saved = localStorage.getItem("md-viewer-theme"); } catch (e) {}
+    if (!saved) saved = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    applyTheme(saved);
+  })();
+  $("themeToggle").addEventListener("click", function () {
+    const cur = document.documentElement.getAttribute("data-theme");
+    applyTheme(cur === "dark" ? "light" : "dark");
+  });
+
+  /* ---------- 파일 로드 ---------- */
+  $("openBtn").addEventListener("click", function () { fileInput.click(); });
+  $("dropzone").addEventListener("click", function () { fileInput.click(); });
+  fileInput.addEventListener("change", function (e) { handleFiles(e.target.files); fileInput.value = ""; });
+
+  function handleFiles(fileList) {
+    const arr = Array.prototype.slice.call(fileList || []);
+    const mdFiles = arr.filter(function (f) { return /\.(mdc|md|markdown|mdown|txt)$/i.test(f.name); });
+    if (mdFiles.length === 0) { alert(".mdc / .md 파일을 선택하세요."); return; }
+    let firstNew = -1;
+    let pending = mdFiles.length;
+    mdFiles.forEach(function (file) {
+      const reader = new FileReader();
+      reader.onload = function (ev) {
+        const content = ev.target.result;
+        const fmRes = parseFrontmatter(content);
+        const stats = MD.analyze(fmRes.body);
+        const type = MD.classify(stats);
+        const existing = docs.findIndex(function (d) { return d.name === file.name; });
+        const docObj = {
+          name: file.name, content: content, body: fmRes.body,
+          fm: fmRes.fm, rawFm: fmRes.raw, fmOrder: fmRes.order, ruleType: ruleTypeOf(fmRes.fm),
+          stats: stats, type: type, size: file.size
+        };
+        if (existing >= 0) { docs[existing] = docObj; if (firstNew < 0) firstNew = existing; }
+        else { docs.push(docObj); if (firstNew < 0) firstNew = docs.length - 1; }
+        pending--;
+        if (pending === 0) {
+          renderFileList();
+          selectDoc(firstNew >= 0 ? firstNew : 0);
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    });
+  }
+
+  /* ---------- 드래그 앤 드롭 ---------- */
+  let dragDepth = 0;
+  window.addEventListener("dragenter", function (e) { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+  window.addEventListener("dragover", function (e) { e.preventDefault(); });
+  window.addEventListener("dragleave", function (e) { e.preventDefault(); dragDepth--; if (dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+  window.addEventListener("drop", function (e) {
+    e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+    if (e.dataTransfer && e.dataTransfer.files) handleFiles(e.dataTransfer.files);
+  });
+
+  /* ---------- 사이드바: 파일 목록 ---------- */
+  function renderFileList() {
+    fileListEl.innerHTML = "";
+    docs.forEach(function (d, idx) {
+      const info = TYPE_INFO[d.type];
+      const rt = RULE_TYPE_INFO[d.ruleType] || null;
+      const icon = rt ? rt.icon : info.icon;
+      const badgeClass = rt ? rt.badge : info.badge;
+      const item = document.createElement("div");
+      item.className = "file-item" + (idx === activeIndex ? " active" : "");
+      item.innerHTML = '<span>' + icon + '</span><span class="fi-name" title="' + MD.escapeHtml(d.name) + '">' +
+        MD.escapeHtml(d.name) + '</span><span class="fi-badge ' + badgeClass + '">' + icon + '</span>';
+      item.addEventListener("click", function () { selectDoc(idx); closeSidebarMobile(); });
+      fileListEl.appendChild(item);
+    });
+  }
+
+  /* ---------- 문서 선택/렌더 ---------- */
+  function selectDoc(idx) {
+    if (idx < 0 || idx >= docs.length) return;
+    activeIndex = idx;
+    const d = docs[idx];
+    const info = TYPE_INFO[d.type];
+
+    const result = MD.render(d.body != null ? d.body : d.content);
+    d.headings = result.headings;
+
+    // 콘텐츠 렌더 (프론트매터 카드 + 본문)
+    const article = document.createElement("article");
+    article.className = "md content doc-" + d.type + (info.wide ? " wide" : "");
+    article.id = "article";
+    article.innerHTML = buildFmCard(d) + result.html;
+    viewerEl.innerHTML = "";
+    viewerEl.appendChild(article);
+
+    // 헤더 정보
+    docTitleEl.textContent = d.name;
+    const rt = RULE_TYPE_INFO[d.ruleType] || null;
+    docMetaEl.textContent = (rt ? rt.label + " · " : "") +
+      "제목 " + d.stats.headings + " · 표 " + d.stats.tables +
+      " · 코드블록 " + d.stats.codeBlocks + " · 체크박스 " + d.stats.checkboxes +
+      " · " + d.stats.lineCount + "줄";
+    typeBadgeEl.style.display = "";
+    if (rt) {
+      typeBadgeEl.className = "type-badge " + rt.badge;
+      typeBadgeEl.innerHTML = rt.icon + " " + rt.label;
+    } else {
+      typeBadgeEl.className = "type-badge " + info.badge;
+      typeBadgeEl.innerHTML = info.icon + " " + info.label;
+    }
+
+    renderFileList();
+    buildTOC(d.headings);
+    setupCopyButtons(article);
+    setupTaskList(article, d);
+    setupProgress(d, article);
+    setupScrollSpy(d.headings);
+    runSearch(searchInput.value);
+
+    mainEl.scrollTop = 0;
+  }
+
+  /* ---------- 목차 ---------- */
+  function buildTOC(headings) {
+    tocEl.innerHTML = "";
+    if (!headings || headings.length === 0) { tocTitle.style.display = "none"; return; }
+    tocTitle.style.display = "";
+    headings.forEach(function (h) {
+      const a = document.createElement("a");
+      a.className = "lvl-" + h.level;
+      a.href = "#" + h.id;
+      a.textContent = h.text;
+      a.dataset.id = h.id;
+      a.addEventListener("click", function (e) {
+        e.preventDefault();
+        const target = document.getElementById(h.id);
+        if (target) { target.scrollIntoView({ behavior: "smooth", block: "start" }); }
+        closeSidebarMobile();
+      });
+      tocEl.appendChild(a);
+    });
+  }
+
+  /* ---------- 코드 복사 ---------- */
+  function setupCopyButtons(article) {
+    article.querySelectorAll(".copy-btn").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        const block = btn.closest(".code-block");
+        const code = block ? block.querySelector("code") : null;
+        if (!code) return;
+        const text = code.innerText;
+        const done = function () { btn.textContent = "복사됨!"; btn.classList.add("copied"); setTimeout(function () { btn.textContent = "복사"; btn.classList.remove("copied"); }, 1400); };
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+        } else { fallbackCopy(text); done(); }
+      });
+    });
+  }
+  function fallbackCopy(text) {
+    const ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  /* ---------- 체크박스 인터랙션 + 진행률 ---------- */
+  function storageKey(name) { return "md-viewer-checks::" + name; }
+  function loadChecks(name) {
+    try { return JSON.parse(localStorage.getItem(storageKey(name)) || "{}"); } catch (e) { return {}; }
+  }
+  function saveChecks(name, obj) {
+    try { localStorage.setItem(storageKey(name), JSON.stringify(obj)); } catch (e) {}
+  }
+
+  function setupTaskList(article, d) {
+    const boxes = article.querySelectorAll(".task-list-item input[type=checkbox]");
+    const saved = loadChecks(d.name);
+    boxes.forEach(function (box, i) {
+      if (saved.hasOwnProperty(i)) {
+        box.checked = saved[i];
+        box.closest(".task-list-item").classList.toggle("done", box.checked);
+      }
+      box.addEventListener("change", function () {
+        const li = box.closest(".task-list-item");
+        li.classList.toggle("done", box.checked);
+        const cur = loadChecks(d.name);
+        cur[i] = box.checked;
+        saveChecks(d.name, cur);
+        updateProgress(article);
+      });
+    });
+  }
+
+  function setupProgress(d, article) {
+    progressArea.innerHTML = "";
+    if (d.type !== "checklist") return;
+    const total = article.querySelectorAll(".task-list-item input[type=checkbox]").length;
+    if (total === 0) return;
+    const wrap = document.createElement("div");
+    wrap.className = "progress-wrap";
+    wrap.innerHTML =
+      '<div class="progress-card">' +
+        '<span class="pc-label">진행률</span>' +
+        '<div class="progress-track"><div class="progress-fill" id="progFill"></div></div>' +
+        '<span class="progress-pct" id="progPct">0%</span>' +
+      "</div>";
+    progressArea.appendChild(wrap);
+    updateProgress(article);
+  }
+
+  function updateProgress(article) {
+    const fill = $("progFill"), pct = $("progPct");
+    if (!fill || !pct) return;
+    const boxes = article.querySelectorAll(".task-list-item input[type=checkbox]");
+    const total = boxes.length;
+    let done = 0;
+    boxes.forEach(function (b) { if (b.checked) done++; });
+    const p = total ? Math.round((done / total) * 100) : 0;
+    fill.style.width = p + "%";
+    pct.textContent = p + "% (" + done + "/" + total + ")";
+  }
+
+  /* ---------- 스크롤 스파이 ---------- */
+  let spyObserver = null;
+  function setupScrollSpy(headings) {
+    if (spyObserver) spyObserver.disconnect();
+    if (!headings || headings.length === 0) return;
+    const map = {};
+    tocEl.querySelectorAll("a").forEach(function (a) { map[a.dataset.id] = a; });
+    const visible = new Set();
+    spyObserver = new IntersectionObserver(function (entries) {
+      entries.forEach(function (en) {
+        if (en.isIntersecting) visible.add(en.target.id); else visible.delete(en.target.id);
+      });
+      // 가장 위에 보이는 헤딩 활성화
+      let activeId = null;
+      for (let k = 0; k < headings.length; k++) {
+        if (visible.has(headings[k].id)) { activeId = headings[k].id; break; }
+      }
+      if (!activeId) return;
+      tocEl.querySelectorAll("a.active").forEach(function (a) { a.classList.remove("active"); });
+      if (map[activeId]) {
+        map[activeId].classList.add("active");
+        map[activeId].scrollIntoView({ block: "nearest" });
+      }
+    }, { root: mainEl, rootMargin: "-64px 0px -70% 0px", threshold: 0 });
+    headings.forEach(function (h) {
+      const el = document.getElementById(h.id);
+      if (el) spyObserver.observe(el);
+    });
+  }
+
+  /* ---------- 검색 ---------- */
+  let searchHits = [];
+  let searchCursor = -1;
+  let searchTimer = null;
+
+  searchInput.addEventListener("input", function () {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(function () { runSearch(searchInput.value); }, 180);
+  });
+  searchInput.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      if (searchHits.length) { searchCursor = (searchCursor + (e.shiftKey ? -1 : 1) + searchHits.length) % searchHits.length; focusHit(); }
+    }
+    if (e.key === "Escape") { searchInput.value = ""; runSearch(""); }
+  });
+
+  function clearSearch(article) {
+    article = article || document.getElementById("article");
+    if (!article) return;
+    article.querySelectorAll("mark.search-hit").forEach(function (m) {
+      const parent = m.parentNode;
+      parent.replaceChild(document.createTextNode(m.textContent), m);
+      parent.normalize();
+    });
+  }
+
+  function runSearch(query) {
+    const article = document.getElementById("article");
+    searchHits = []; searchCursor = -1;
+    if (!article) { searchCount.textContent = ""; return; }
+    clearSearch(article);
+    const q = (query || "").trim();
+    if (!q) { searchCount.textContent = ""; return; }
+    const lower = q.toLowerCase();
+
+    const walker = document.createTreeWalker(article, NodeFilter.SHOW_TEXT, {
+      acceptNode: function (node) {
+        if (!node.nodeValue || !node.nodeValue.trim()) return NodeFilter.FILTER_REJECT;
+        const p = node.parentElement;
+        if (!p || p.closest("script,style,.code-head")) return NodeFilter.FILTER_REJECT;
+        return node.nodeValue.toLowerCase().indexOf(lower) !== -1 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+      }
+    });
+    const nodes = [];
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+
+    nodes.forEach(function (node) {
+      const text = node.nodeValue;
+      const frag = document.createDocumentFragment();
+      let idx = 0, pos;
+      const low = text.toLowerCase();
+      while ((pos = low.indexOf(lower, idx)) !== -1) {
+        if (pos > idx) frag.appendChild(document.createTextNode(text.slice(idx, pos)));
+        const mark = document.createElement("mark");
+        mark.className = "search-hit";
+        mark.textContent = text.slice(pos, pos + q.length);
+        frag.appendChild(mark);
+        searchHits.push(mark);
+        idx = pos + q.length;
+      }
+      if (idx < text.length) frag.appendChild(document.createTextNode(text.slice(idx)));
+      node.parentNode.replaceChild(frag, node);
+    });
+
+    if (searchHits.length) { searchCursor = 0; focusHit(); }
+    searchCount.textContent = searchHits.length ? (searchCursor + 1) + "/" + searchHits.length : "0건";
+  }
+
+  function focusHit() {
+    searchHits.forEach(function (m) { m.classList.remove("current"); });
+    const hit = searchHits[searchCursor];
+    if (!hit) return;
+    hit.classList.add("current");
+    hit.scrollIntoView({ behavior: "smooth", block: "center" });
+    searchCount.textContent = (searchCursor + 1) + "/" + searchHits.length;
+  }
+
+  /* ---------- 모바일 사이드바 ---------- */
+  $("menuToggle").addEventListener("click", function () { $("sidebar").classList.toggle("open"); });
+  function closeSidebarMobile() { if (window.innerWidth <= 820) $("sidebar").classList.remove("open"); }
+
+  // 키보드 단축키: Ctrl/Cmd+F → 검색 포커스
+  document.addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+      e.preventDefault(); searchInput.focus(); searchInput.select();
+    }
+  });
+})();
+</script>
+</body>
+</html>

@@ -2,9 +2,23 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.52.0',
-  date: '2026-06-23',
+  current: '3.53.0',
+  date: '2026-06-29',
   history: [
+    {
+      version: '3.53.0',
+      date: '2026-06-29',
+      title: '인증 리디렉트 진단 로그 + QR 위치 권한 안내 + 달란트 상세 페이징',
+      changes: [
+        '보호 페이지 진입 시 세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단 리디렉트 사유를 AUTH_REDIRECT 로그로 상세 기록',
+        'Supabase Auth 세션 없음/오류와 프로필 RPC 조회 실패를 AUTH_SESSION_MISSING, AUTH_PROFILE_LOAD_FAIL 로그로 구분 기록',
+        '24시간 유휴 세션 만료 리디렉트에 만료 기준(idle_timer, last_activity, visibilitychange)을 기록',
+        '위치 제한 QR 수령 시 기기 또는 브라우저 위치 권한이 차단된 경우 alert와 화면 메시지를 함께 표시하고 QR_LOCATION_PERMISSION_BLOCKED 로그를 기록',
+        '달란트 수령 카메라 스캔 결과 메시지를 카메라 영역 위에 표시',
+        '달란트 관리 상세 모달의 전체 이력을 공통 페이징 버튼과 페이지당 항목 수 설정으로 조회',
+        '페이징 적용 범위와 인증/권한 로그 기준을 README, 사용자 안내서, 아키텍처 문서, 역할별/운영 룰 가이드에 반영'
+      ]
+    },
     {
       version: '3.52.0',
       date: '2026-06-23',

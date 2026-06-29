@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>로그 작성 룰 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" />
-  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.53.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.53.0" />
   <style>
     .rule-section { background: var(--admin-card); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow); padding: 1.5rem; margin-bottom: 1.5rem; overflow-x: auto; }
     .rule-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--admin-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.51.0 기준 로그 화면의 페이지당 항목 수 선택은 삭제 대기 목록 줄 오른쪽에 배치됩니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.53.0 기준 인증/권한 리디렉트 원인과 QR 위치 권한 차단도 로그로 구분합니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -215,14 +215,27 @@
           <tr><td>LOGIN_SUCCESS</td><td><span class="level-tag info">INFO</span></td><td>로그인 성공</td></tr>
           <tr><td>LOGIN_FAIL</td><td><span class="level-tag warn">WARN</span></td><td>잘못된 자격증명</td></tr>
           <tr><td>LOGIN_ERROR</td><td><span class="level-tag error">ERROR</span></td><td>로그인 처리 중 예외</td></tr>
+          <tr><td>AUTH_SESSION_MISSING</td><td><span class="level-tag info">INFO</span> / <span class="level-tag warn">WARN</span></td><td>보호 페이지 진입 시 Supabase Auth 세션이 없거나 만료됨(INFO). Auth 조회 오류/예외는 WARN</td></tr>
+          <tr><td>AUTH_PROFILE_LOAD_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>Auth 세션은 있으나 <code>get_my_profile</code> RPC가 프로필을 반환하지 못함</td></tr>
+          <tr><td>AUTH_REDIRECT</td><td><span class="level-tag warn">WARN</span></td><td>세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단, 24시간 유휴 만료로 리디렉트</td></tr>
+          <tr><td>AUTH_PAGE_ACCESS_CHECK_FAIL</td><td><span class="level-tag error">ERROR</span></td><td><code>role_page_access</code> 조회 중 오류</td></tr>
           <tr><td>LOGOUT</td><td><span class="level-tag info">INFO</span></td><td>로그아웃 (수동 또는 24시간 세션 만료 자동 로그아웃)</td></tr>
           <tr><td>PASSWORD_CHANGE</td><td><span class="level-tag info">INFO</span></td><td>비밀번호 변경 성공</td></tr>
           <tr><td>PASSWORD_CHANGE_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>비밀번호 변경 RPC 오류</td></tr>
         </tbody>
       </table>
       <div class="note-box">
-        <strong>24시간 세션 만료 (v3.48.0):</strong> <code>initPage()</code> 성공 시 <code>startSessionTimer()</code>가 시작됩니다. 24시간 유휴 후 만료되면 <code>logout()</code>이 호출되어 <code>LOGOUT</code> 액션이 INFO 레벨로 기록됩니다. 탭 전환·멀티탭 동기화 시에도 동일하게 처리됩니다.
+        <strong>24시간 세션 만료:</strong> <code>initPage()</code> 성공 시 <code>startSessionTimer()</code>가 시작됩니다. 24시간 유휴 후 만료되면 <code>AUTH_REDIRECT</code>에 만료 기준(<code>idle_timer</code>, <code>last_activity</code>, <code>visibilitychange</code>)을 기록하고 로그인 페이지로 이동합니다.
       </div>
+
+      <h3>QR 수령</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>레벨</th><th>발생 시점</th></tr></thead>
+        <tbody>
+          <tr><td>qr_scan</td><td><span class="level-tag info">INFO</span></td><td>QR 달란트 수령 성공</td></tr>
+          <tr><td>QR_LOCATION_PERMISSION_BLOCKED</td><td><span class="level-tag info">INFO</span></td><td>위치 제한 QR 수령 중 기기/브라우저 위치 권한 차단 감지</td></tr>
+        </tbody>
+      </table>
 
       <h3>사용자 관리 (USER)</h3>
       <table class="rule-table">
@@ -320,13 +333,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.52.0"></script>
-  <script src="../js/supabase-config.js?v=3.52.0"></script>
-  <script src="../js/activity-log.js?v=3.52.0"></script>
-  <script src="../js/codes.js?v=3.52.0"></script>
-  <script src="../js/auth.js?v=3.52.0"></script>
-  <script src="../js/theme.js?v=3.52.0"></script>
-  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../config/public-config.js?v=3.53.0"></script>
+  <script src="../js/supabase-config.js?v=3.53.0"></script>
+  <script src="../js/activity-log.js?v=3.53.0"></script>
+  <script src="../js/codes.js?v=3.53.0"></script>
+  <script src="../js/auth.js?v=3.53.0"></script>
+  <script src="../js/theme.js?v=3.53.0"></script>
+  <script src="../js/nav.js?v=3.53.0"></script>
   <script>
     initSupabase();
     (async () => {

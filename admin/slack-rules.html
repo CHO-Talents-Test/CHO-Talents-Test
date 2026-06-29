@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Slack 알림 룰 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔔</text></svg>" />
-  <link rel="stylesheet" href="../css/themes.css?v=3.52.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.52.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.53.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.53.0" />
   <style>
     .rule-section { background: var(--admin-card); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow); padding: 1.5rem; margin-bottom: 1.5rem; overflow-x: auto; }
     .rule-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--admin-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -39,7 +39,7 @@
         <thead><tr><th>구간</th><th>담당 파일</th><th>역할</th></tr></thead>
         <tbody>
           <tr><td>브라우저 공통 유틸</td><td><code>js/slack-notify.js</code></td><td><code>sendSlackNotify(type, data)</code>를 제공하고 동일 알림을 5초 동안 중복 전송하지 않습니다.</td></tr>
-          <tr><td>로그 알림</td><td><code>js/activity-log.js</code></td><td>WARN, ERROR, FATAL, CRITICAL 로그 기록 시 <code>log_alert</code>를 Edge Function으로 보냅니다.</td></tr>
+          <tr><td>로그 알림</td><td><code>js/activity-log.js</code></td><td>WARN, ERROR, FATAL, CRITICAL 로그 기록 시 <code>log_alert</code>를 Edge Function으로 보냅니다. 권한 부족/세션 만료 리디렉트 중 WARN으로 남는 <code>AUTH_REDIRECT</code>도 운영 채널 알림 대상입니다.</td></tr>
           <tr><td>Edge Function</td><td><code>docs/edge-function-slack-notify.ts</code></td><td>알림 유형과 부서명에 따라 사용할 Slack Webhook Secret을 선택하고 Block Kit 메시지를 구성합니다.</td></tr>
         </tbody>
       </table>
@@ -55,11 +55,12 @@
           <tr><td><code>purchase_status</code></td><td><code>admin/purchases.html</code> 구매 신청 → 상품 준비</td><td><code>product_orders.status</code> 코드 <code>requested</code> → <code>preparing</code></td><td><span class="route-badge">상품 관리 채널</span></td></tr>
           <tr><td><code>user_register</code></td><td><code>register.html</code> 계정 등록 신청</td><td><code>data.부서</code></td><td><span class="route-badge">해당 부서 채널</span></td></tr>
           <tr><td><code>dept_transfer</code></td><td><code>admin/users.html</code> 부서 이동 요청</td><td><code>data.이동부서</code></td><td><span class="route-badge">이동 대상 부서 채널</span></td></tr>
-          <tr><td><code>log_alert</code></td><td><code>js/activity-log.js</code> WARN 이상 로그</td><td>로그 레벨</td><td><span class="route-badge">운영 채널</span></td></tr>
+          <tr><td><code>log_alert</code></td><td><code>js/activity-log.js</code> WARN 이상 로그</td><td>로그 레벨. 예: <code>AUTH_REDIRECT</code>, 로그인 실패, 권한 거부, ERROR+ 오류</td><td><span class="route-badge">운영 채널</span></td></tr>
           <tr><td><code>qna_new</code></td><td><code>qna.html</code> 새 질문 등록</td><td>고정 라우팅</td><td><span class="route-badge">Q&amp;A 채널</span></td></tr>
         </tbody>
       </table>
       <div class="note-box">구매 상태의 화면 표시명은 공통 코드북/DB <code>product_orders.status</code> 코드 마스터를 따릅니다. Slack 발송 조건은 표시명이 아니라 상태 코드 전환을 기준으로 유지합니다.</div>
+      <div class="note-box">위치 제한 QR에서 위치 권한 차단이 발생하면 <code>QR_LOCATION_PERMISSION_BLOCKED</code>가 INFO 로그로 저장됩니다. INFO 로그는 기본 Slack WARN+ 알림 대상이 아니며, 현장 문의 분석은 로그 화면에서 action 필터로 확인합니다.</div>
     </div>
 
     <div class="rule-section">
@@ -102,13 +103,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.52.0"></script>
-  <script src="../js/supabase-config.js?v=3.52.0"></script>
-  <script src="../js/activity-log.js?v=3.52.0"></script>
-  <script src="../js/codes.js?v=3.52.0"></script>
-  <script src="../js/auth.js?v=3.52.0"></script>
-  <script src="../js/theme.js?v=3.52.0"></script>
-  <script src="../js/nav.js?v=3.52.0"></script>
+  <script src="../config/public-config.js?v=3.53.0"></script>
+  <script src="../js/supabase-config.js?v=3.53.0"></script>
+  <script src="../js/activity-log.js?v=3.53.0"></script>
+  <script src="../js/codes.js?v=3.53.0"></script>
+  <script src="../js/auth.js?v=3.53.0"></script>
+  <script src="../js/theme.js?v=3.53.0"></script>
+  <script src="../js/nav.js?v=3.53.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -123,6 +124,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="../js/version.js?v=3.52.0"></script>
+  <script src="../js/version.js?v=3.53.0"></script>
 </body>
 </html>

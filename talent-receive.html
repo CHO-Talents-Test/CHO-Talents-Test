@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 수령 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.52.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.52.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.53.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.53.0" />
   <style>
     .qr-hero { text-align: center; margin-bottom: 1.5rem; }
     .qr-hero h1 { font-size: 1.6rem; color: var(--c-primary); }
@@ -19,7 +19,7 @@
     .qr-input:focus { border-color: var(--c-primary); outline: none; }
     .btn-scan { display: inline-flex; align-items: center; gap: 0.5rem; margin-top: 1rem; padding: 0.7rem 1.5rem; background: var(--c-primary); color: #fff; border: none; border-radius: 50px; font-size: 1rem; font-weight: 700; cursor: pointer; }
     .btn-scan:disabled { opacity: 0.5; cursor: not-allowed; }
-    .qr-result { margin-top: 1rem; padding: 1rem; border-radius: 12px; font-size: 0.95rem; display: none; }
+    .qr-result { max-width: 360px; margin: 0 auto 1rem; padding: 1rem; border-radius: 12px; font-size: 0.95rem; display: none; white-space: pre-line; box-sizing: border-box; }
     .qr-result.show { display: block; }
     .qr-result.ok { background: #d3f9d8; color: #2b8a3e; }
     .qr-result.fail { background: #ffe3e3; color: #e03131; }
@@ -57,6 +57,7 @@
         </div>
       </div>
 
+      <div class="qr-result" id="qrResult"></div>
       <div id="cameraWrap">
         <video id="cameraVideo" playsinline muted></video>
         <canvas id="cameraCanvas"></canvas>
@@ -67,7 +68,6 @@
       </div>
 
       <button class="btn-scan" id="btnCamera" onclick="toggleCamera()" style="background:#868e96;">📷 카메라</button>
-      <div class="qr-result" id="qrResult"></div>
     </div>
     <div id="qrCodeListSection" style="margin-top:1.5rem;"></div>
 
@@ -87,14 +87,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script src="config/public-config.js?v=3.52.0"></script>
-  <script src="js/supabase-config.js?v=3.52.0"></script>
-  <script src="js/activity-log.js?v=3.52.0"></script>
-  <script src="js/codes.js?v=3.52.0"></script>
-  <script src="js/auth.js?v=3.52.0"></script>
-  <script src="js/theme.js?v=3.52.0"></script>
-  <script src="js/nav.js?v=3.52.0"></script>
-  <script src="js/page-size.js?v=3.52.0"></script>
+  <script src="config/public-config.js?v=3.53.0"></script>
+  <script src="js/supabase-config.js?v=3.53.0"></script>
+  <script src="js/activity-log.js?v=3.53.0"></script>
+  <script src="js/codes.js?v=3.53.0"></script>
+  <script src="js/auth.js?v=3.53.0"></script>
+  <script src="js/theme.js?v=3.53.0"></script>
+  <script src="js/nav.js?v=3.53.0"></script>
+  <script src="js/page-size.js?v=3.53.0"></script>
   <script>
     initSupabase();
     let session;
@@ -221,7 +221,19 @@
             }
           } catch (geoErr) {
             const locName = qr.location_name ? ' (' + qr.location_name + ')' : '';
-            showResult('fail', '📍 위치 확인이 필요한 코드입니다.' + locName + '\n위치 권한을 허용해주세요.\n(' + (geoErr.message || geoErr) + ')');
+            const msg = getGeoPermissionMessage(geoErr, locName);
+            if (isGeoPermissionBlocked(geoErr)) {
+              alert(msg);
+              if (typeof logInfo === 'function') {
+                await logInfo('QR_LOCATION_PERMISSION_BLOCKED', {
+                  qrCodeId: qr.id,
+                  코드: qr.code,
+                  위치명: qr.location_name || null,
+                  오류: geoErr.message || String(geoErr)
+                });
+              }
+            }
+            showResult('fail', msg);
             return;
           }
         }
@@ -362,6 +374,20 @@
         + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180)
         * Math.sin(dLon/2) * Math.sin(dLon/2);
       return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    }
+
+    function isGeoPermissionBlocked(err) {
+      if (!err) return false;
+      const msg = (err.message || String(err)).toLowerCase();
+      return err.code === 1 || /denied|permission|permissions policy|blocked|위치 서비스를 지원하지/.test(msg);
+    }
+
+    function getGeoPermissionMessage(err, locName) {
+      const errMsg = err && (err.message || String(err)) ? String(err.message || err) : '위치 정보를 확인할 수 없습니다.';
+      if (isGeoPermissionBlocked(err)) {
+        return '📍 위치 확인이 필요한 코드입니다.' + locName + '\n기기 또는 브라우저에서 위치 정보 제공이 차단되어 있습니다.\n설정에서 위치 권한을 허용한 뒤 다시 시도해주세요.';
+      }
+      return '📍 위치 확인이 필요한 코드입니다.' + locName + '\n위치 정보를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.\n(' + errMsg + ')';
     }
 
     function showResult(type, msg) {
@@ -600,6 +626,6 @@
       renderQRList();
     }
   </script>
-  <script src="js/version.js?v=3.52.0"></script>
+  <script src="js/version.js?v=3.53.0"></script>
 </body>
 </html>

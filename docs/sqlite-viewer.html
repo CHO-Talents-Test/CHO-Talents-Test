@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SeeLIS SQLite 뷰어</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --bg-soft: #f6f8fa;
+    --bg-elev: #ffffff;
+    --sidebar-bg: #f7f9fb;
+    --border: #e2e8f0;
+    --border-strong: #cbd5e1;
+    --text: #1f2733;
+    --text-soft: #5b6675;
+    --text-mute: #8a95a5;
+    --accent: #2563eb;
+    --accent-soft: #dbeafe;
+    --accent-text: #1d4ed8;
+    --code-bg: #f6f8fa;
+    --code-text: #24292f;
+    --table-head: #eef2f7;
+    --table-stripe: #f8fafc;
+    --null-color: #9333ea;
+    --blob-color: #b45309;
+    --ok: #16a34a;
+    --warn-bg: #fef3c7;
+    --warn-text: #92400e;
+    --err-bg: #fee2e2;
+    --err-text: #b91c1c;
+    --shadow: 0 1px 3px rgba(15,23,42,.08), 0 1px 2px rgba(15,23,42,.04);
+    --mono: "JetBrains Mono", "Cascadia Code", "Consolas", ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  html[data-theme="dark"] {
+    --bg: #0d1117;
+    --bg-soft: #161b22;
+    --bg-elev: #161b22;
+    --sidebar-bg: #0f141b;
+    --border: #232b36;
+    --border-strong: #30363d;
+    --text: #e6edf3;
+    --text-soft: #adbac7;
+    --text-mute: #768390;
+    --accent: #4493f8;
+    --accent-soft: #1c2d44;
+    --accent-text: #79b8ff;
+    --code-bg: #161b22;
+    --code-text: #e6edf3;
+    --table-head: #1b222c;
+    --table-stripe: #11161d;
+    --null-color: #c084fc;
+    --blob-color: #fbbf24;
+    --ok: #3fb950;
+    --warn-bg: #3a2e08;
+    --warn-text: #fcd34d;
+    --err-bg: #3a1212;
+    --err-text: #ff7b72;
+    --shadow: 0 1px 3px rgba(0,0,0,.5);
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Malgun Gothic", "맑은 고딕", Roboto, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---------- Layout ---------- */
+  .app { display: grid; grid-template-columns: 310px 1fr; height: 100vh; }
+  .sidebar {
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .main { overflow: hidden; position: relative; display: flex; flex-direction: column; }
+
+  /* ---------- Sidebar ---------- */
+  .brand {
+    padding: 16px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 10px;
+  }
+  .brand .logo {
+    width: 30px; height: 30px; border-radius: 8px;
+    background: linear-gradient(135deg, #2563eb, #7c3aed);
+    color: #fff; font-weight: 700; font-size: 14px;
+    display: grid; place-items: center; flex: none;
+  }
+  .brand h1 { font-size: 15px; margin: 0; font-weight: 700; letter-spacing: -.2px; }
+  .brand small { display:block; color: var(--text-mute); font-size: 11px; font-weight: 500; }
+
+  .side-actions { padding: 12px 14px; border-bottom: 1px solid var(--border); display:flex; flex-direction:column; gap:8px; }
+  .btn {
+    appearance: none; border: 1px solid var(--border-strong); background: var(--bg-elev);
+    color: var(--text); border-radius: 8px; padding: 8px 12px; font-size: 13px;
+    cursor: pointer; font-weight: 600; transition: .15s; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+    font-family: inherit;
+  }
+  .btn:hover { border-color: var(--accent); color: var(--accent-text); }
+  .btn:disabled { opacity: .5; cursor: not-allowed; }
+  .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn-primary:hover { filter: brightness(1.05); color:#fff; }
+  .btn-sm { padding: 5px 10px; font-size: 12px; }
+
+  .db-info {
+    padding: 10px 16px; border-bottom: 1px solid var(--border);
+    font-size: 12px; color: var(--text-soft);
+  }
+  .db-info .db-name { font-weight: 700; color: var(--text); word-break: break-all; }
+  .db-info .db-meta { color: var(--text-mute); margin-top: 2px; }
+  .ro-pill {
+    display: inline-flex; align-items: center; gap: 4px; margin-top: 6px;
+    font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 999px;
+    background: var(--accent-soft); color: var(--accent-text);
+  }
+
+  .search-box { padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .search-wrap { position: relative; }
+  .search-wrap input {
+    width: 100%; padding: 8px 10px 8px 30px; border: 1px solid var(--border-strong);
+    border-radius: 8px; background: var(--bg-elev); color: var(--text); font-size: 13px; font-family: inherit;
+  }
+  .search-wrap input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .search-wrap .s-ico { position:absolute; left:9px; top:50%; transform:translateY(-50%); color:var(--text-mute); font-size:13px; pointer-events:none; }
+
+  .side-scroll { flex: 1; overflow-y: auto; padding: 8px 8px 24px; }
+  .side-section-title {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .6px;
+    color: var(--text-mute); padding: 10px 10px 6px; display:flex; justify-content:space-between;
+  }
+
+  .tbl-item {
+    display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px;
+    cursor: pointer; font-size: 13px; color: var(--text-soft); transition: .12s;
+  }
+  .tbl-item:hover { background: var(--bg-soft); color: var(--text); }
+  .tbl-item.active { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  .tbl-item .ti-ico { flex:none; font-size: 13px; }
+  .tbl-item .ti-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex:1; font-family: var(--mono); font-size: 12.5px; }
+  .tbl-item .ti-count { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; flex:none; font-weight:700; background: var(--table-head); color: var(--text-mute); }
+  .tbl-item.active .ti-count { background: var(--bg-elev); color: var(--accent-text); }
+
+  /* ---------- Topbar ---------- */
+  .topbar {
+    flex: none; background: var(--bg);
+    border-bottom: 1px solid var(--border); padding: 9px 22px;
+    display: flex; align-items: center; gap: 12px;
+  }
+  .doc-title-wrap { flex: 1; min-width: 0; }
+  .doc-title-wrap .dt { font-size: 14px; font-weight: 700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .doc-title-wrap .dm { font-size: 11.5px; color: var(--text-mute); }
+  .icon-btn {
+    appearance:none; border:1px solid var(--border-strong); background:var(--bg-elev); color:var(--text);
+    width:34px; height:34px; border-radius:8px; cursor:pointer; font-size:15px; display:grid; place-items:center; flex:none; transition:.15s;
+  }
+  .icon-btn:hover { border-color:var(--accent); color:var(--accent-text); }
+  .menu-toggle { display: none; }
+
+  /* ---------- Tabs ---------- */
+  .tabs { flex:none; display:flex; gap:2px; padding: 0 22px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .tab {
+    appearance:none; border:none; background:none; color: var(--text-soft);
+    padding: 10px 14px; font-size: 13px; font-weight: 600; cursor: pointer;
+    border-bottom: 2px solid transparent; font-family: inherit; transition: .12s;
+  }
+  .tab:hover { color: var(--text); }
+  .tab.active { color: var(--accent-text); border-bottom-color: var(--accent); }
+
+  /* ---------- Content area ---------- */
+  .content { flex:1; overflow: auto; padding: 0; position: relative; }
+  .pane { display: none; height: 100%; flex-direction: column; }
+  .pane.active { display: flex; }
+
+  .pane-toolbar {
+    flex:none; display:flex; align-items:center; gap:10px; flex-wrap: wrap;
+    padding: 12px 22px; border-bottom: 1px solid var(--border); background: var(--bg-soft);
+  }
+  .pane-toolbar .grow { flex:1; }
+  .filter-input {
+    padding: 7px 10px; border:1px solid var(--border-strong); border-radius: 8px;
+    background: var(--bg-elev); color: var(--text); font-size: 13px; font-family: inherit; min-width: 200px;
+  }
+  .filter-input:focus { outline:none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+
+  .grid-scroll { flex:1; overflow: auto; }
+  table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.grid th, table.grid td {
+    border: 1px solid var(--border); padding: 6px 11px; text-align: left; vertical-align: top;
+    max-width: 360px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  table.grid th {
+    background: var(--table-head); font-weight: 700; position: sticky; top: 0; z-index: 1;
+    cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  table.grid th:hover { color: var(--accent-text); }
+  table.grid th .sort-ind { color: var(--accent); font-size: 11px; margin-left: 4px; }
+  table.grid th .col-type { font-size: 10px; color: var(--text-mute); font-weight: 500; margin-left: 5px; }
+  table.grid td { font-family: var(--mono); font-size: 12px; cursor: default; }
+  table.grid td.clickable { cursor: pointer; }
+  table.grid td.clickable:hover { background: var(--accent-soft); }
+  table.grid tbody tr:nth-child(even) { background: var(--table-stripe); }
+  table.grid tbody tr:hover { background: var(--accent-soft); }
+  .rownum { color: var(--text-mute); text-align: right; font-variant-numeric: tabular-nums; background: var(--bg-soft) !important; position: sticky; left: 0; }
+  .cell-null { color: var(--null-color); font-style: italic; }
+  .cell-blob { color: var(--blob-color); }
+
+  /* schema table */
+  table.schema { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.schema th, table.schema td { border: 1px solid var(--border); padding: 7px 12px; text-align: left; }
+  table.schema th { background: var(--table-head); font-weight: 700; }
+  table.schema td:first-child, table.schema td.col-nm { font-family: var(--mono); font-weight: 600; }
+  .flag { font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; display: inline-block; }
+  .flag-pk { background: #fef3c7; color: #92400e; }
+  .flag-nn { background: #e0e7ff; color: #3730a3; }
+  html[data-theme="dark"] .flag-pk { background:#3a2e08; color:#fcd34d; }
+  html[data-theme="dark"] .flag-nn { background:#1e1b4b; color:#a5b4fc; }
+
+  .schema-section { padding: 18px 22px; }
+  .schema-section h3 { margin: 0 0 4px; font-size: 14px; }
+  .schema-section .sub { color: var(--text-mute); font-size: 12px; margin-bottom: 12px; }
+  .ddl-box {
+    margin-top: 16px; background: var(--code-bg); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px; overflow-x: auto;
+    font-family: var(--mono); font-size: 12.5px; white-space: pre; color: var(--code-text); line-height: 1.55;
+  }
+
+  /* pagination */
+  .pager { flex:none; display:flex; align-items:center; gap:10px; padding: 10px 22px; border-top: 1px solid var(--border); background: var(--bg); flex-wrap: wrap; }
+  .pager .pg-info { font-size: 12.5px; color: var(--text-soft); }
+  .pager .grow { flex:1; }
+  .pager select, .pager input {
+    padding: 5px 8px; border:1px solid var(--border-strong); border-radius: 7px;
+    background: var(--bg-elev); color: var(--text); font-size: 12.5px; font-family: inherit;
+  }
+  .page-jump { width: 64px; text-align: center; }
+
+  /* SQL runner */
+  .sql-pane { padding: 16px 22px; gap: 12px; overflow: auto; }
+  .sql-editor {
+    width: 100%; min-height: 120px; resize: vertical; padding: 12px 14px;
+    border: 1px solid var(--border-strong); border-radius: 10px; background: var(--code-bg);
+    color: var(--code-text); font-family: var(--mono); font-size: 13px; line-height: 1.55;
+  }
+  .sql-editor:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  .sql-actions { display:flex; align-items:center; gap:10px; margin: 10px 0; flex-wrap: wrap; }
+  .hint { font-size: 12px; color: var(--text-mute); }
+  .sql-result-wrap { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .sql-result-head { padding: 8px 14px; background: var(--bg-soft); border-bottom: 1px solid var(--border); font-size: 12.5px; color: var(--text-soft); display:flex; align-items:center; gap:10px; }
+  .sql-result-scroll { max-height: 50vh; overflow: auto; }
+
+  /* notices */
+  .notice { padding: 10px 14px; border-radius: 9px; font-size: 13px; margin: 0; }
+  .notice-warn { background: var(--warn-bg); color: var(--warn-text); }
+  .notice-err { background: var(--err-bg); color: var(--err-text); }
+  .notice-info { background: var(--accent-soft); color: var(--accent-text); }
+
+  /* empty / loading */
+  .empty {
+    height: 100%; display:flex; flex-direction:column; align-items:center; justify-content:center;
+    text-align:center; color: var(--text-mute); gap: 16px; padding: 40px;
+  }
+  .empty .big { font-size: 54px; }
+  .empty h2 { color: var(--text); margin: 0; font-weight: 700; }
+  .empty p { margin: 0; font-size: 14px; max-width: 480px; }
+  .dropzone {
+    border: 2px dashed var(--border-strong); border-radius: 14px; padding: 32px 48px; cursor: pointer;
+    transition: .15s; background: var(--bg-soft);
+  }
+  .dropzone:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .net-note { font-size: 12.5px; max-width: 480px; }
+
+  body.dragging .main { outline: 3px dashed var(--accent); outline-offset: -10px; }
+  body.dragging .drop-overlay { display:flex; }
+  .drop-overlay {
+    display:none; position:fixed; inset:0; z-index:100; background:rgba(37,99,235,.10);
+    align-items:center; justify-content:center; pointer-events:none;
+  }
+  .drop-overlay div { background:var(--accent); color:#fff; padding:18px 30px; border-radius:12px; font-weight:700; font-size:16px; box-shadow:var(--shadow); }
+
+  .overlay {
+    position: absolute; inset: 0; z-index: 80; display: none;
+    align-items: center; justify-content: center; flex-direction: column; gap: 14px;
+    background: rgba(255,255,255,.72); color: var(--text); backdrop-filter: blur(2px);
+  }
+  html[data-theme="dark"] .overlay { background: rgba(13,17,23,.74); }
+  .overlay.show { display: flex; }
+  .spinner {
+    width: 38px; height: 38px; border: 4px solid var(--border-strong); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .overlay .ov-text { font-size: 14px; font-weight: 600; }
+
+  /* modal for full cell value */
+  .modal-back {
+    display: none; position: fixed; inset: 0; z-index: 200; background: rgba(15,23,42,.45);
+    align-items: center; justify-content: center; padding: 24px;
+  }
+  .modal-back.show { display: flex; }
+  .modal {
+    background: var(--bg-elev); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow); max-width: 760px; width: 100%; max-height: 80vh; display: flex; flex-direction: column; overflow: hidden;
+  }
+  .modal-head { padding: 12px 18px; border-bottom: 1px solid var(--border); display:flex; align-items:center; justify-content:space-between; }
+  .modal-head .mh-title { font-weight: 700; font-size: 14px; }
+  .modal-body { padding: 16px 18px; overflow: auto; font-family: var(--mono); font-size: 13px; white-space: pre-wrap; word-break: break-word; line-height: 1.6; }
+  .modal-foot { padding: 10px 18px; border-top: 1px solid var(--border); display:flex; justify-content:flex-end; gap: 8px; }
+
+  ::-webkit-scrollbar { width: 11px; height: 11px; }
+  ::-webkit-scrollbar-thumb { background: var(--border-strong); border-radius: 6px; border: 3px solid transparent; background-clip: content-box; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text-mute); background-clip: content-box; }
+
+  @media (max-width: 860px) {
+    .app { grid-template-columns: 1fr; }
+    .sidebar { position: fixed; inset: 0 auto 0 0; width: 300px; z-index: 50; transform: translateX(-100%); transition: transform .2s; box-shadow: var(--shadow); }
+    .sidebar.open { transform: none; }
+    .menu-toggle { display: grid !important; }
+    table.grid th, table.grid td { max-width: 220px; }
+  }
+</style>
+</head>
+<body>
+<div class="drop-overlay"><div>여기에 .db / .sqlite 파일을 놓으세요</div></div>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="brand">
+      <div class="logo">LIS</div>
+      <div>
+        <h1>SeeLIS SQLite 뷰어</h1>
+        <small>SQLite Database Viewer</small>
+      </div>
+    </div>
+    <div class="side-actions">
+      <button class="btn btn-primary" id="openBtn">📂 .db / .sqlite 파일 열기</button>
+      <input type="file" id="fileInput" accept=".db,.sqlite,.sqlite3,.db3" hidden>
+    </div>
+    <div class="db-info" id="dbInfo" style="display:none">
+      <div class="db-name" id="dbName">—</div>
+      <div class="db-meta" id="dbMeta"></div>
+      <span class="ro-pill">🔒 읽기 전용 · 원본 파일 미변경</span>
+    </div>
+    <div class="search-box" id="tblSearchBox" style="display:none">
+      <div class="search-wrap">
+        <span class="s-ico">🔍</span>
+        <input type="text" id="tblSearch" placeholder="테이블·뷰 이름 필터…" autocomplete="off">
+      </div>
+    </div>
+    <div class="side-scroll">
+      <div class="side-section-title" id="tblTitle" style="display:none"><span>테이블 · 뷰</span><span id="tblCount"></span></div>
+      <div id="tableList"></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main" id="main">
+    <div class="topbar">
+      <button class="icon-btn menu-toggle" id="menuToggle" title="메뉴">☰</button>
+      <div class="doc-title-wrap">
+        <div class="dt" id="topTitle">데이터베이스를 불러오세요</div>
+        <div class="dm" id="topMeta"></div>
+      </div>
+      <button class="icon-btn" id="themeToggle" title="테마 전환">🌙</button>
+    </div>
+
+    <div class="tabs" id="tabs" style="display:none">
+      <button class="tab active" data-tab="data">📋 데이터</button>
+      <button class="tab" data-tab="schema">🧩 스키마</button>
+      <button class="tab" data-tab="sql">⚡ SQL 실행</button>
+    </div>
+
+    <div class="content" id="content">
+      <!-- empty state -->
+      <div class="empty" id="emptyState">
+        <div class="big">🗄️</div>
+        <h2>SeeLIS SQLite 뷰어</h2>
+        <p><code>.db</code> / <code>.sqlite</code> 파일을 브라우저에서 바로 열어 테이블·스키마를 살펴보고 SQL을 실행합니다. 아래 영역을 클릭하거나 파일을 끌어다 놓으세요.</p>
+        <div class="dropzone" id="dropzone">📂 클릭하여 파일 선택 &nbsp;·&nbsp; 또는 드래그 앤 드롭</div>
+        <p class="net-note notice notice-warn">⚠️ 이 뷰어는 SQLite 엔진(<code>sql.js</code> · WebAssembly)을 CDN에서 불러옵니다. <b>처음 파일을 열 때 인터넷 연결이 필요</b>합니다. 한 번 로드되면 같은 세션에서는 다시 받지 않습니다. 데이터는 브라우저 메모리에서만 처리되며 원본 파일과 외부로 전송되지 않습니다.</p>
+      </div>
+
+      <!-- data pane -->
+      <div class="pane" id="pane-data">
+        <div class="pane-toolbar">
+          <input type="text" class="filter-input" id="dataFilter" placeholder="🔎 텍스트 컬럼 검색 (모든 텍스트 컬럼 LIKE)…">
+          <span class="grow"></span>
+          <button class="btn btn-sm" id="csvTableBtn">⬇️ CSV 내보내기</button>
+        </div>
+        <div class="grid-scroll" id="dataGridScroll"></div>
+        <div class="pager" id="dataPager"></div>
+      </div>
+
+      <!-- schema pane -->
+      <div class="pane" id="pane-schema">
+        <div class="schema-section" id="schemaContent"></div>
+      </div>
+
+      <!-- sql pane -->
+      <div class="pane sql-pane" id="pane-sql">
+        <div>
+          <textarea class="sql-editor" id="sqlEditor" spellcheck="false" placeholder="SELECT * FROM sqlite_master;&#10;&#10;Ctrl/Cmd + Enter 로 실행"></textarea>
+          <div class="sql-actions">
+            <button class="btn btn-primary btn-sm" id="runSqlBtn">▶ 실행 (Ctrl/Cmd+Enter)</button>
+            <button class="btn btn-sm" id="csvSqlBtn" disabled>⬇️ 결과 CSV</button>
+            <span class="hint">메모리 DB에서 실행되어 <b>원본 파일은 안전</b>합니다. SELECT 외 쿼리(UPDATE/DELETE 등)도 실행 가능하나 변경은 메모리에만 반영됩니다.</span>
+          </div>
+          <div id="sqlMsg"></div>
+        </div>
+        <div class="sql-result-wrap" id="sqlResultWrap" style="display:none">
+          <div class="sql-result-head" id="sqlResultHead"></div>
+          <div class="sql-result-scroll" id="sqlResultScroll"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="overlay" id="overlay">
+      <div class="spinner"></div>
+      <div class="ov-text" id="overlayText">로딩 중…</div>
+    </div>
+  </main>
+</div>
+
+<!-- modal -->
+<div class="modal-back" id="modalBack">
+  <div class="modal">
+    <div class="modal-head">
+      <div class="mh-title" id="modalTitle">셀 전체 값</div>
+      <button class="icon-btn" id="modalClose" title="닫기">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn btn-sm" id="modalCopy">복사</button>
+      <button class="btn btn-sm btn-primary" id="modalCloseBtn">닫기</button>
+    </div>
+  </div>
+</div>
+
+<script>
+"use strict";
+(function () {
+  /* ============================================================
+   *  sql.js CDN 후보 (첫 번째 실패 시 다음으로 폴백)
+   * ============================================================ */
+  var SQLJS_SOURCES = [
+    { js: "https://cdn.jsdelivr.net/npm/sql.js@1.14.1/dist/sql-wasm.js", base: "https://cdn.jsdelivr.net/npm/sql.js@1.14.1/dist/" },
+    { js: "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/sql-wasm.js", base: "https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.13.0/" },
+    { js: "https://unpkg.com/sql.js@1.14.1/dist/sql-wasm.js", base: "https://unpkg.com/sql.js@1.14.1/dist/" }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var esc = function (s) {
+    return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  };
+
+  /* ---------- 상태 ---------- */
+  var SQL = null;           // initSqlJs 결과
+  var db = null;            // 현재 DB
+  var objects = [];         // {name, type, count}
+  var current = null;       // 선택된 테이블/뷰 이름
+  var currentType = null;   // 'table' | 'view'
+  var currentColumns = [];  // [{name, type, pk, notnull}]
+  var pageSize = 50;
+  var page = 0;             // 0-based
+  var totalRows = 0;
+  var sortCol = null;       // 정렬 컬럼명
+  var sortDir = "ASC";
+  var dataFilterText = "";
+  var lastSqlResult = null; // {columns, values}
+
+  /* ============================================================
+   *  테마
+   * ============================================================ */
+  function applyTheme(t) {
+    document.documentElement.setAttribute("data-theme", t);
+    $("themeToggle").textContent = t === "dark" ? "☀️" : "🌙";
+    try { localStorage.setItem("sqlite-viewer-theme", t); } catch (e) {}
+  }
+  (function initTheme() {
+    var saved = null;
+    try { saved = localStorage.getItem("sqlite-viewer-theme"); } catch (e) {}
+    if (!saved) saved = (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light";
+    applyTheme(saved);
+  })();
+  $("themeToggle").addEventListener("click", function () {
+    var cur = document.documentElement.getAttribute("data-theme");
+    applyTheme(cur === "dark" ? "light" : "dark");
+  });
+
+  /* ============================================================
+   *  오버레이 / 알림
+   * ============================================================ */
+  function showOverlay(text) { $("overlayText").textContent = text || "로딩 중…"; $("overlay").classList.add("show"); }
+  function hideOverlay() { $("overlay").classList.remove("show"); }
+
+  /* ============================================================
+   *  sql.js 로드 (폴백 체인)
+   * ============================================================ */
+  function loadScript(url) {
+    return new Promise(function (resolve, reject) {
+      var s = document.createElement("script");
+      s.src = url;
+      s.async = true;
+      s.onload = function () { resolve(); };
+      s.onerror = function () { s.parentNode && s.parentNode.removeChild(s); reject(new Error("스크립트 로드 실패: " + url)); };
+      document.head.appendChild(s);
+    });
+  }
+
+  function ensureSqlJs() {
+    if (SQL) return Promise.resolve(SQL);
+    showOverlay("SQLite 엔진(sql.js)을 불러오는 중… (최초 1회, 인터넷 필요)");
+    var chain = Promise.reject();
+    SQLJS_SOURCES.forEach(function (src) {
+      chain = chain.catch(function () {
+        return loadScript(src.js).then(function () {
+          if (typeof window.initSqlJs !== "function") throw new Error("initSqlJs 미정의");
+          return window.initSqlJs({ locateFile: function (file) { return src.base + file; } });
+        });
+      });
+    });
+    return chain.then(function (sqlModule) {
+      SQL = sqlModule;
+      return SQL;
+    });
+  }
+
+  function showLoadError(err) {
+    hideOverlay();
+    showEmptyWithError(
+      "SQLite 엔진을 불러오지 못했습니다",
+      "CDN(sql.js · WebAssembly) 로드에 실패했습니다. 인터넷 연결을 확인한 뒤 새로고침해 다시 시도하세요.",
+      "<b>대안:</b> 오프라인이거나 사내망에서 CDN 접근이 막혀 있다면 데스크톱 도구 <b>DB Browser for SQLite</b>(sqlitebrowser.org) 또는 VS Code의 <b>SQLite Viewer</b> 확장, 명령행 <code>sqlite3</code> 를 사용하세요." +
+      (err && err.message ? "<br><span style='opacity:.7'>오류: " + esc(err.message) + "</span>" : "")
+    );
+  }
+
+  function showEmptyWithError(title, msg, extraHtml) {
+    var es = $("emptyState");
+    es.innerHTML =
+      '<div class="big">📡</div>' +
+      '<h2>' + esc(title) + '</h2>' +
+      '<p>' + esc(msg) + '</p>' +
+      '<div class="dropzone" id="dropzone">📂 다시 파일 선택 · 드래그 앤 드롭</div>' +
+      '<p class="net-note notice notice-err">' + (extraHtml || "") + '</p>';
+    es.style.display = "flex";
+    $("dropzone").addEventListener("click", function () { $("fileInput").click(); });
+    showPane(null);
+  }
+
+  /* ============================================================
+   *  파일 처리
+   * ============================================================ */
+  $("openBtn").addEventListener("click", function () { $("fileInput").click(); });
+  $("dropzone").addEventListener("click", function () { $("fileInput").click(); });
+  $("fileInput").addEventListener("change", function (e) {
+    if (e.target.files && e.target.files[0]) openFile(e.target.files[0]);
+    e.target.value = "";
+  });
+
+  function isDbFile(name) { return /\.(db|sqlite|sqlite3|db3)$/i.test(name); }
+
+  function openFile(file) {
+    if (!isDbFile(file.name)) {
+      if (!confirm("\"" + file.name + "\" 은(는) 일반적인 SQLite 확장자가 아닙니다. 그래도 열어볼까요?")) return;
+    }
+    ensureSqlJs().then(function () {
+      showOverlay("\"" + file.name + "\" 읽는 중…");
+      var reader = new FileReader();
+      reader.onload = function (ev) {
+        try {
+          var bytes = new Uint8Array(ev.target.result);
+          if (!looksLikeSqlite(bytes)) {
+            hideOverlay();
+            alert("이 파일은 SQLite 형식이 아닌 것 같습니다 (헤더 'SQLite format 3' 미검출).");
+            return;
+          }
+          if (db) { try { db.close(); } catch (e) {} db = null; }
+          db = new SQL.Database(bytes);
+          loadDatabase(file);
+        } catch (e) {
+          hideOverlay();
+          alert("데이터베이스를 여는 중 오류가 발생했습니다:\n" + (e && e.message ? e.message : e));
+        }
+      };
+      reader.onerror = function () { hideOverlay(); alert("파일을 읽지 못했습니다."); };
+      reader.readAsArrayBuffer(file);
+    }).catch(showLoadError);
+  }
+
+  function looksLikeSqlite(bytes) {
+    var magic = "SQLite format 3\u0000";
+    if (bytes.length < magic.length) return false;
+    for (var i = 0; i < magic.length; i++) {
+      if (bytes[i] !== magic.charCodeAt(i)) return false;
+    }
+    return true;
+  }
+
+  function fmtBytes(n) {
+    if (n < 1024) return n + " B";
+    if (n < 1024 * 1024) return (n / 1024).toFixed(1) + " KB";
+    return (n / 1024 / 1024).toFixed(1) + " MB";
+  }
+
+  /* ============================================================
+   *  DB 로드 후 메타데이터 수집
+   * ============================================================ */
+  function loadDatabase(file) {
+    try {
+      objects = collectObjects();
+    } catch (e) {
+      hideOverlay();
+      alert("스키마를 읽지 못했습니다: " + (e && e.message ? e.message : e));
+      return;
+    }
+
+    $("dbInfo").style.display = "";
+    $("dbName").textContent = file.name;
+    $("dbMeta").textContent = fmtBytes(file.size) + " · 테이블/뷰 " + objects.length + "개";
+    $("tblSearchBox").style.display = "";
+    $("tblTitle").style.display = "";
+    $("tabs").style.display = "";
+    $("emptyState").style.display = "none";
+    $("topTitle").textContent = file.name;
+    $("topMeta").textContent = "SQLite 데이터베이스 · 읽기 전용";
+
+    renderTableList();
+
+    // 첫 테이블 자동 선택 (테이블 우선, 없으면 뷰)
+    var first = objects.find(function (o) { return o.type === "table"; }) || objects[0];
+    if (first) selectObject(first.name); else { showPane("data"); $("dataGridScroll").innerHTML = '<div class="schema-section"><p class="notice notice-info">이 데이터베이스에는 테이블이나 뷰가 없습니다.</p></div>'; }
+
+    hideOverlay();
+  }
+
+  function collectObjects() {
+    var out = [];
+    var res = db.exec(
+      "SELECT name, type FROM sqlite_master " +
+      "WHERE type IN ('table','view') AND name NOT LIKE 'sqlite_%' " +
+      "ORDER BY type='view', name COLLATE NOCASE"
+    );
+    if (!res.length) return out;
+    var rows = res[0].values;
+    rows.forEach(function (r) {
+      var name = r[0], type = r[1];
+      var count = null;
+      try {
+        var c = db.exec("SELECT COUNT(*) FROM " + quoteId(name));
+        count = c.length ? c[0].values[0][0] : null;
+      } catch (e) { count = null; }
+      out.push({ name: name, type: type, count: count });
+    });
+    return out;
+  }
+
+  function quoteId(id) { return '"' + String(id).replace(/"/g, '""') + '"'; }
+  function quoteStr(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
+
+  /* ============================================================
+   *  사이드바: 테이블 목록
+   * ============================================================ */
+  function renderTableList() {
+    var filter = ($("tblSearch").value || "").toLowerCase();
+    var listEl = $("tableList");
+    listEl.innerHTML = "";
+    var shown = 0;
+    objects.forEach(function (o) {
+      if (filter && o.name.toLowerCase().indexOf(filter) === -1) return;
+      shown++;
+      var item = document.createElement("div");
+      item.className = "tbl-item" + (o.name === current ? " active" : "");
+      var ico = o.type === "view" ? "👁️" : "🗂️";
+      var cnt = o.count == null ? "?" : o.count.toLocaleString();
+      item.innerHTML =
+        '<span class="ti-ico">' + ico + '</span>' +
+        '<span class="ti-name" title="' + esc(o.name) + (o.type === "view" ? " (뷰)" : "") + '">' + esc(o.name) + '</span>' +
+        '<span class="ti-count" title="행 수">' + cnt + '</span>';
+      item.addEventListener("click", function () { selectObject(o.name); closeSidebarMobile(); });
+      listEl.appendChild(item);
+    });
+    $("tblCount").textContent = shown + (shown !== objects.length ? "/" + objects.length : "");
+  }
+  $("tblSearch").addEventListener("input", renderTableList);
+
+  /* ============================================================
+   *  객체 선택
+   * ============================================================ */
+  function selectObject(name) {
+    var obj = objects.find(function (o) { return o.name === name; });
+    if (!obj) return;
+    current = name;
+    currentType = obj.type;
+    sortCol = null; sortDir = "ASC"; page = 0; dataFilterText = "";
+    $("dataFilter").value = "";
+
+    try {
+      currentColumns = getColumns(name);
+    } catch (e) { currentColumns = []; }
+
+    renderTableList();
+    $("topTitle").textContent = name;
+    $("topMeta").textContent = (obj.type === "view" ? "뷰" : "테이블") + " · 컬럼 " + currentColumns.length + "개 · 행 " + (obj.count == null ? "?" : obj.count.toLocaleString()) + "개";
+
+    renderSchema(obj);
+    loadDataPage();
+    showPane(activeTab());
+  }
+
+  function getColumns(name) {
+    var res = db.exec("PRAGMA table_info(" + quoteId(name) + ")");
+    if (!res.length) return [];
+    // table_info cols: cid, name, type, notnull, dflt_value, pk
+    return res[0].values.map(function (r) {
+      return { name: r[1], type: r[2] || "", notnull: !!r[3], dflt: r[4], pk: r[5] ? Number(r[5]) : 0 };
+    });
+  }
+
+  /* ============================================================
+   *  스키마 렌더
+   * ============================================================ */
+  function renderSchema(obj) {
+    var el = $("schemaContent");
+    var html = "";
+    html += '<h3>' + (obj.type === "view" ? "👁️ " : "🧩 ") + esc(obj.name) + '</h3>';
+    html += '<div class="sub">' + (obj.type === "view" ? "뷰" : "테이블") + ' · 컬럼 ' + currentColumns.length + '개 · 행 ' + (obj.count == null ? "?" : obj.count.toLocaleString()) + '개</div>';
+
+    html += '<table class="schema"><thead><tr>' +
+      '<th>#</th><th>컬럼명</th><th>타입</th><th>제약</th><th>기본값</th></tr></thead><tbody>';
+    currentColumns.forEach(function (c, i) {
+      var flags = "";
+      if (c.pk) flags += '<span class="flag flag-pk">PK' + (c.pk > 1 ? " " + c.pk : "") + '</span> ';
+      if (c.notnull) flags += '<span class="flag flag-nn">NOT NULL</span>';
+      html += '<tr><td>' + (i + 1) + '</td><td class="col-nm">' + esc(c.name) + '</td>' +
+        '<td>' + esc(c.type || "—") + '</td>' +
+        '<td>' + (flags || '<span style="color:var(--text-mute)">—</span>') + '</td>' +
+        '<td>' + (c.dflt == null ? '<span style="color:var(--text-mute)">—</span>' : esc(String(c.dflt))) + '</td></tr>';
+    });
+    html += '</tbody></table>';
+
+    // DDL
+    try {
+      var ddl = db.exec("SELECT sql FROM sqlite_master WHERE name=" + quoteStr(obj.name));
+      if (ddl.length && ddl[0].values[0][0]) {
+        html += '<h3 style="margin-top:20px">DDL</h3>';
+        html += '<div class="ddl-box">' + esc(ddl[0].values[0][0]) + '</div>';
+      }
+    } catch (e) {}
+
+    // indexes
+    try {
+      var idx = db.exec("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name=" + quoteStr(obj.name) + " ORDER BY name");
+      if (idx.length && idx[0].values.length) {
+        html += '<h3 style="margin-top:20px">인덱스</h3>';
+        html += '<table class="schema"><thead><tr><th>이름</th><th>정의</th></tr></thead><tbody>';
+        idx[0].values.forEach(function (r) {
+          html += '<tr><td class="col-nm">' + esc(r[0]) + '</td><td>' + (r[1] ? esc(r[1]) : '<span style="color:var(--text-mute)">자동 인덱스</span>') + '</td></tr>';
+        });
+        html += '</tbody></table>';
+      }
+    } catch (e) {}
+
+    el.innerHTML = html;
+  }
+
+  /* ============================================================
+   *  데이터 페이지 로드
+   * ============================================================ */
+  function textColumns() {
+    // 텍스트/미지정 타입 컬럼 (LIKE 검색 대상)
+    return currentColumns.filter(function (c) {
+      var t = (c.type || "").toUpperCase();
+      return t === "" || t.indexOf("CHAR") !== -1 || t.indexOf("CLOB") !== -1 || t.indexOf("TEXT") !== -1;
+    });
+  }
+
+  function buildWhere() {
+    if (!dataFilterText) return "";
+    var cols = textColumns();
+    if (!cols.length) return "";
+    var like = "%" + dataFilterText.replace(/'/g, "''") + "%";
+    var parts = cols.map(function (c) { return "CAST(" + quoteId(c.name) + " AS TEXT) LIKE '" + like + "' ESCAPE '\\'"; });
+    return " WHERE " + parts.join(" OR ");
+  }
+
+  function loadDataPage() {
+    if (!current) return;
+    var where = buildWhere();
+    // 총 행수
+    try {
+      var cres = db.exec("SELECT COUNT(*) FROM " + quoteId(current) + where);
+      totalRows = cres.length ? Number(cres[0].values[0][0]) : 0;
+    } catch (e) { totalRows = 0; }
+
+    var totalPages = Math.max(1, Math.ceil(totalRows / pageSize));
+    if (page >= totalPages) page = totalPages - 1;
+    if (page < 0) page = 0;
+    var offset = page * pageSize;
+
+    var order = "";
+    if (sortCol) order = " ORDER BY " + quoteId(sortCol) + " " + (sortDir === "DESC" ? "DESC" : "ASC");
+
+    var sql = "SELECT * FROM " + quoteId(current) + where + order + " LIMIT " + pageSize + " OFFSET " + offset;
+    var res;
+    try {
+      res = db.exec(sql);
+    } catch (e) {
+      $("dataGridScroll").innerHTML = '<div class="schema-section"><p class="notice notice-err">조회 오류: ' + esc(e.message || String(e)) + '</p></div>';
+      $("dataPager").innerHTML = "";
+      return;
+    }
+
+    var columns = res.length ? res[0].columns : currentColumns.map(function (c) { return c.name; });
+    var values = res.length ? res[0].values : [];
+    renderGrid($("dataGridScroll"), columns, values, offset, true);
+    renderPager(totalPages);
+  }
+
+  function renderPager(totalPages) {
+    var el = $("dataPager");
+    var start = totalRows === 0 ? 0 : page * pageSize + 1;
+    var end = Math.min((page + 1) * pageSize, totalRows);
+    el.innerHTML =
+      '<button class="btn btn-sm" id="firstBtn" ' + (page === 0 ? "disabled" : "") + '>« 처음</button>' +
+      '<button class="btn btn-sm" id="prevBtn" ' + (page === 0 ? "disabled" : "") + '>‹ 이전</button>' +
+      '<span class="pg-info">' + start.toLocaleString() + '–' + end.toLocaleString() + ' / 총 ' + totalRows.toLocaleString() + '행</span>' +
+      '<button class="btn btn-sm" id="nextBtn" ' + (page >= totalPages - 1 ? "disabled" : "") + '>다음 ›</button>' +
+      '<button class="btn btn-sm" id="lastBtn" ' + (page >= totalPages - 1 ? "disabled" : "") + '>끝 »</button>' +
+      '<span class="pg-info">페이지 <input type="number" class="page-jump" id="pageJump" min="1" max="' + totalPages + '" value="' + (page + 1) + '"> / ' + totalPages + '</span>' +
+      '<span class="grow"></span>' +
+      '<span class="pg-info">페이지당</span>' +
+      '<select id="pageSizeSel">' +
+        [25, 50, 100, 200, 500].map(function (n) { return '<option value="' + n + '"' + (n === pageSize ? " selected" : "") + '>' + n + '</option>'; }).join("") +
+      '</select>';
+
+    $("firstBtn").addEventListener("click", function () { page = 0; loadDataPage(); });
+    $("prevBtn").addEventListener("click", function () { if (page > 0) { page--; loadDataPage(); } });
+    $("nextBtn").addEventListener("click", function () { if (page < totalPages - 1) { page++; loadDataPage(); } });
+    $("lastBtn").addEventListener("click", function () { page = totalPages - 1; loadDataPage(); });
+    $("pageJump").addEventListener("change", function () {
+      var v = parseInt(this.value, 10);
+      if (!isNaN(v)) { page = Math.min(Math.max(1, v), totalPages) - 1; loadDataPage(); }
+    });
+    $("pageSizeSel").addEventListener("change", function () { pageSize = parseInt(this.value, 10) || 50; page = 0; loadDataPage(); });
+  }
+
+  /* ---------- 데이터 필터 (디바운스) ---------- */
+  var filterTimer = null;
+  $("dataFilter").addEventListener("input", function () {
+    var v = this.value;
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(function () {
+      dataFilterText = v.trim();
+      page = 0;
+      loadDataPage();
+    }, 250);
+  });
+
+  /* ============================================================
+   *  그리드 렌더 (공용: 데이터 탭 + SQL 결과)
+   * ============================================================ */
+  function renderGrid(container, columns, values, offsetBase, sortable) {
+    if (!columns || !columns.length) {
+      container.innerHTML = '<div class="schema-section"><p class="notice notice-info">표시할 컬럼이 없습니다.</p></div>';
+      return;
+    }
+    var colMeta = {};
+    currentColumns.forEach(function (c) { colMeta[c.name] = c; });
+
+    var html = '<table class="grid"><thead><tr><th class="rownum">#</th>';
+    columns.forEach(function (col) {
+      var meta = sortable ? colMeta[col] : null;
+      var typeLabel = meta && meta.type ? '<span class="col-type">' + esc(meta.type) + '</span>' : "";
+      var ind = "";
+      if (sortable && sortCol === col) ind = '<span class="sort-ind">' + (sortDir === "DESC" ? "▼" : "▲") + '</span>';
+      html += '<th data-col="' + esc(col) + '"' + (sortable ? ' class="sortable"' : "") + '>' + esc(col) + typeLabel + ind + '</th>';
+    });
+    html += '</tr></thead><tbody>';
+
+    if (!values.length) {
+      html += '<tr><td class="rownum"></td><td colspan="' + columns.length + '" style="text-align:center;color:var(--text-mute);padding:18px">데이터가 없습니다.</td></tr>';
+    } else {
+      values.forEach(function (row, ri) {
+        html += '<tr><td class="rownum">' + ((offsetBase || 0) + ri + 1).toLocaleString() + '</td>';
+        row.forEach(function (val, ci) {
+          html += renderCell(val, columns[ci]);
+        });
+        html += '</tr>';
+      });
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+
+    // 정렬 핸들러
+    if (sortable) {
+      container.querySelectorAll("th.sortable").forEach(function (th) {
+        th.addEventListener("click", function () {
+          var col = th.getAttribute("data-col");
+          if (sortCol === col) sortDir = (sortDir === "ASC" ? "DESC" : "ASC");
+          else { sortCol = col; sortDir = "ASC"; }
+          page = 0;
+          loadDataPage();
+        });
+      });
+    }
+
+    // 셀 전체보기
+    container.querySelectorAll("td.clickable").forEach(function (td) {
+      td.addEventListener("click", function () {
+        openModal(td.getAttribute("data-full") || td.textContent, td.getAttribute("data-col") || "셀 값");
+      });
+    });
+  }
+
+  /* ============================================================
+   *  일시 컬럼 → 한국 시간(KST, Asia/Seoul) 변환
+   * ============================================================ */
+  // 컬럼명이 일시류인지 판별 (대소문자/구분자/카멜케이스 무시, 'update' 부분일치 오탐 회피)
+  function isDateTimeColumn(name) {
+    if (!name) return false;
+    // 카멜케이스를 구분자로 분리: createdAt -> created_At
+    var spaced = String(name).replace(/([a-z0-9])([A-Z])/g, "$1_$2").toLowerCase();
+    var tokens = spaced.split(/[^a-z0-9]+/).filter(Boolean);
+    var tokenSet = {};
+    tokens.forEach(function (t) { tokenSet[t] = true; });
+    // created_at / updated_at / ..._at  (단독 'at' 단어가 있고 접두 토큰이 있을 때)
+    if (tokenSet["at"] && tokens.length >= 2) return true;
+    // 토큰 단위 키워드 매칭 ('update'는 'date'로 잡히지 않음)
+    var kw = ["timestamp", "datetime", "date", "time", "dt"];
+    for (var i = 0; i < tokens.length; i++) {
+      if (kw.indexOf(tokens[i]) !== -1) return true;
+    }
+    // 붙여 쓴 이름(구분자 없음) 대비 정규화 부분일치 폴백
+    var norm = spaced.replace(/[^a-z0-9]/g, "");
+    var globs = ["timestamp", "datetime", "createdat", "updatedat", "modifiedat",
+      "deletedat", "insertedat", "createddate", "updateddate", "regdate", "regdt"];
+    for (var j = 0; j < globs.length; j++) {
+      if (norm.indexOf(globs[j]) !== -1) return true;
+    }
+    return false;
+  }
+
+  // 합리적 범위(2000~2100년)인지 확인 — 단위 추정의 정답 판별에 사용
+  function inReasonableRange(d) {
+    if (!d || isNaN(d.getTime())) return false;
+    var y = d.getUTCFullYear();
+    return y >= 2000 && y <= 2100;
+  }
+
+  // epoch 숫자 → Date. 자릿수로 단위 추정(초/밀리초/마이크로초/나노초), 범위로 검증
+  function epochToDate(n) {
+    if (!isFinite(n)) return null;
+    var digits = Math.floor(Math.abs(n)).toString().length;
+    var ordered;
+    if (digits <= 11) ordered = [n * 1000, n, n / 1000, n / 1e6];        // 초(10) 우선
+    else if (digits <= 14) ordered = [n, n * 1000, n / 1000, n / 1e6];   // 밀리초(13) 우선
+    else if (digits <= 17) ordered = [n / 1000, n, n / 1e6, n * 1000];   // 마이크로초(16) 우선
+    else ordered = [n / 1e6, n / 1000, n, n * 1000];                     // 나노초(19) 우선
+    for (var i = 0; i < ordered.length; i++) {
+      var d = new Date(ordered[i]);
+      if (inReasonableRange(d)) return d;
+    }
+    return null;
+  }
+
+  // 값 → Date (정수 epoch / ISO·날짜 문자열 자동 판별). 실패 시 null
+  function parseDateTimeValue(val) {
+    if (val === null || typeof val === "undefined") return null;
+    // 정수 또는 정수 문자열 → epoch
+    if (typeof val === "number") {
+      if (!isFinite(val)) return null;
+      return epochToDate(val);
+    }
+    if (typeof val === "string") {
+      var s = val.trim();
+      if (!s) return null;
+      if (/^[+-]?\d{9,21}$/.test(s)) {
+        var n = Number(s);
+        if (isFinite(n)) return epochToDate(n);
+      }
+      // ISO / 일반 날짜 문자열 (YYYY-MM-DD[ T]HH:mm[:ss[.fff]][Z|±hh:mm])
+      if (/^\d{4}-\d{1,2}-\d{1,2}([ T]\d{1,2}:\d{2}(:\d{2}(\.\d+)?)?)?\s*([zZ]|[+-]\d{2}:?\d{2})?$/.test(s)) {
+        var hasTz = /([zZ]|[+-]\d{2}:?\d{2})\s*$/.test(s);
+        var iso = s.replace(" ", "T");
+        // 타임존이 없으면 SQLite 관례에 따라 UTC로 간주
+        if (!hasTz) iso += "Z";
+        var d = new Date(iso);
+        if (inReasonableRange(d)) return d;
+        var d2 = new Date(s);
+        if (inReasonableRange(d2)) return d2;
+      }
+      return null;
+    }
+    return null;
+  }
+
+  // Date → 'YYYY-MM-DD HH:mm:ss' (Asia/Seoul, 24시간제)
+  var _kstFmt = null;
+  function formatDateKst(d) {
+    try {
+      if (!_kstFmt) {
+        _kstFmt = new Intl.DateTimeFormat("sv-SE", {
+          timeZone: "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit",
+          hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false
+        });
+      }
+      return _kstFmt.format(d).replace(",", "");
+    } catch (e) {
+      var t = new Date(d.getTime() + 9 * 3600 * 1000);
+      var p = function (x) { return (x < 10 ? "0" : "") + x; };
+      return t.getUTCFullYear() + "-" + p(t.getUTCMonth() + 1) + "-" + p(t.getUTCDate()) +
+        " " + p(t.getUTCHours()) + ":" + p(t.getUTCMinutes()) + ":" + p(t.getUTCSeconds());
+    }
+  }
+
+  // 일시 컬럼이고 변환 가능하면 'YYYY-MM-DD HH:mm:ss (KST)' 반환, 아니면 null
+  function kstDisplayFor(colName, val) {
+    if (!isDateTimeColumn(colName)) return null;
+    if (val === null || typeof val === "undefined") return null;
+    if (typeof val === "object") return null; // BLOB 등 제외
+    var d = parseDateTimeValue(val);
+    if (!d) return null;
+    return formatDateKst(d) + " (KST)";
+  }
+
+  function renderCell(val, colName) {
+    if (val === null || typeof val === "undefined") {
+      return '<td><span class="cell-null">NULL</span></td>';
+    }
+    if (val instanceof Uint8Array || (typeof val === "object" && val && typeof val.byteLength === "number")) {
+      var len = val.byteLength != null ? val.byteLength : (val.length || 0);
+      return '<td><span class="cell-blob">[BLOB ' + len + ' bytes]</span></td>';
+    }
+    var s = String(val);
+    // 일시 컬럼이면 KST로 변환 표시 (원본은 title/모달에서 확인)
+    var kst = colName ? kstDisplayFor(colName, val) : null;
+    if (kst !== null) {
+      var full = "표시 (KST): " + kst + "\n원본 값: " + s;
+      return '<td class="clickable" data-col="' + esc(colName) + '" data-full="' + esc(full) +
+        '" title="원본: ' + esc(s) + ' (클릭 시 전체 보기)">' + esc(kst) + '</td>';
+    }
+    var safe = esc(s);
+    if (s.length > 80) {
+      var preview = esc(s.slice(0, 80)) + "…";
+      return '<td class="clickable" data-full="' + safe + '" title="클릭하여 전체 보기">' + preview + '</td>';
+    }
+    return '<td title="' + safe + '">' + safe + '</td>';
+  }
+
+  /* ============================================================
+   *  모달 (셀 전체 값)
+   * ============================================================ */
+  function openModal(text, title) {
+    $("modalTitle").textContent = title || "셀 전체 값";
+    $("modalBody").textContent = text;
+    $("modalBack").classList.add("show");
+  }
+  function closeModal() { $("modalBack").classList.remove("show"); }
+  $("modalClose").addEventListener("click", closeModal);
+  $("modalCloseBtn").addEventListener("click", closeModal);
+  $("modalBack").addEventListener("click", function (e) { if (e.target === $("modalBack")) closeModal(); });
+  $("modalCopy").addEventListener("click", function () {
+    var text = $("modalBody").textContent;
+    copyText(text, $("modalCopy"));
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeModal(); });
+
+  function copyText(text, btn) {
+    var done = function () { var o = btn.textContent; btn.textContent = "복사됨!"; setTimeout(function () { btn.textContent = o; }, 1200); };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+    } else { fallbackCopy(text); done(); }
+  }
+  function fallbackCopy(text) {
+    var ta = document.createElement("textarea");
+    ta.value = text; ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try { document.execCommand("copy"); } catch (e) {}
+    document.body.removeChild(ta);
+  }
+
+  /* ============================================================
+   *  탭 전환
+   * ============================================================ */
+  function activeTab() {
+    var t = document.querySelector(".tab.active");
+    return t ? t.getAttribute("data-tab") : "data";
+  }
+  function showPane(tab) {
+    document.querySelectorAll(".pane").forEach(function (p) { p.classList.remove("active"); });
+    if (!tab) { $("emptyState").style.display = "flex"; return; }
+    $("emptyState").style.display = "none";
+    var pane = $("pane-" + tab);
+    if (pane) pane.classList.add("active");
+  }
+  document.querySelectorAll(".tab").forEach(function (tab) {
+    tab.addEventListener("click", function () {
+      document.querySelectorAll(".tab").forEach(function (t) { t.classList.remove("active"); });
+      tab.classList.add("active");
+      showPane(tab.getAttribute("data-tab"));
+    });
+  });
+
+  /* ============================================================
+   *  SQL 실행기
+   * ============================================================ */
+  $("runSqlBtn").addEventListener("click", runSql);
+  $("sqlEditor").addEventListener("keydown", function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runSql(); }
+  });
+
+  function runSql() {
+    if (!db) { setSqlMsg("먼저 데이터베이스 파일을 여세요.", "err"); return; }
+    var sql = $("sqlEditor").value.trim();
+    if (!sql) { setSqlMsg("실행할 SQL을 입력하세요.", "info"); return; }
+    lastSqlResult = null;
+    $("csvSqlBtn").disabled = true;
+    try {
+      var t0 = performance.now();
+      var res = db.exec(sql);
+      var dt = (performance.now() - t0).toFixed(1);
+      if (!res.length) {
+        var changes = 0;
+        try { changes = db.getRowsModified(); } catch (e) {}
+        setSqlMsg("실행 완료 (" + dt + "ms). 반환된 결과 행 없음" + (changes ? " · 변경된 행 " + changes + "개 (메모리 한정, 원본 미변경)" : "") + ".", "info");
+        $("sqlResultWrap").style.display = "none";
+        // 스키마 변경 가능성 → 객체 목록 갱신
+        refreshObjectsSilently();
+        return;
+      }
+      var last = res[res.length - 1];
+      lastSqlResult = { columns: last.columns, values: last.values };
+      $("sqlResultWrap").style.display = "";
+      $("sqlResultHead").textContent = "결과: " + last.values.length + "행 × " + last.columns.length + "열" + (res.length > 1 ? " (마지막 구문 기준, 총 " + res.length + "개 구문)" : "") + " · " + dt + "ms";
+      renderSqlResultGrid(last.columns, last.values);
+      $("csvSqlBtn").disabled = last.values.length === 0;
+      setSqlMsg("", "");
+      refreshObjectsSilently();
+    } catch (e) {
+      setSqlMsg("SQL 오류: " + (e && e.message ? e.message : String(e)), "err");
+      $("sqlResultWrap").style.display = "none";
+    }
+  }
+
+  function renderSqlResultGrid(columns, values) {
+    // SQL 결과는 정렬/메타 없이 렌더 (sortable=false)
+    var container = $("sqlResultScroll");
+    var html = '<table class="grid"><thead><tr><th class="rownum">#</th>';
+    columns.forEach(function (col) { html += '<th>' + esc(col) + '</th>'; });
+    html += '</tr></thead><tbody>';
+    if (!values.length) {
+      html += '<tr><td class="rownum"></td><td colspan="' + columns.length + '" style="text-align:center;color:var(--text-mute);padding:18px">데이터가 없습니다.</td></tr>';
+    } else {
+      values.forEach(function (row, ri) {
+        html += '<tr><td class="rownum">' + (ri + 1).toLocaleString() + '</td>';
+        row.forEach(function (val, ci) { html += renderCell(val, columns[ci]); });
+        html += '</tr>';
+      });
+    }
+    html += '</tbody></table>';
+    container.innerHTML = html;
+    container.querySelectorAll("td.clickable").forEach(function (td) {
+      td.addEventListener("click", function () { openModal(td.getAttribute("data-full") || td.textContent, "셀 값"); });
+    });
+  }
+
+  function setSqlMsg(msg, kind) {
+    var el = $("sqlMsg");
+    if (!msg) { el.innerHTML = ""; return; }
+    var cls = kind === "err" ? "notice-err" : (kind === "info" ? "notice-info" : "notice-warn");
+    el.innerHTML = '<p class="notice ' + cls + '">' + esc(msg) + '</p>';
+  }
+
+  function refreshObjectsSilently() {
+    try {
+      var prevCurrent = current;
+      objects = collectObjects();
+      renderTableList();
+      $("dbMeta") && ($("dbMeta").textContent = ($("dbMeta").textContent.split(" · ")[0]) + " · 테이블/뷰 " + objects.length + "개");
+      // 현재 선택이 사라졌으면 무시
+      if (prevCurrent && !objects.find(function (o) { return o.name === prevCurrent; })) current = null;
+    } catch (e) {}
+  }
+
+  /* ============================================================
+   *  CSV 내보내기
+   * ============================================================ */
+  function toCsv(columns, values) {
+    var BOM = "\uFEFF";
+    var lines = [];
+    lines.push(columns.map(csvCell).join(","));
+    values.forEach(function (row) {
+      lines.push(row.map(function (v, ci) {
+        if (v === null || typeof v === "undefined") return "";
+        if (v instanceof Uint8Array || (typeof v === "object" && v && typeof v.byteLength === "number")) {
+          return csvCell("[BLOB " + (v.byteLength != null ? v.byteLength : (v.length || 0)) + " bytes]");
+        }
+        // 그리드와 동일하게 일시 컬럼은 KST 변환값으로 내보냄
+        var kst = kstDisplayFor(columns[ci], v);
+        if (kst !== null) return csvCell(kst);
+        return csvCell(String(v));
+      }).join(","));
+    });
+    return BOM + lines.join("\r\n");
+  }
+  function csvCell(s) {
+    s = String(s);
+    if (/[",\r\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  }
+  function downloadCsv(text, filename) {
+    var blob = new Blob([text], { type: "text/csv;charset=utf-8;" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+  }
+
+  // 현재 테이블 전체 CSV (필터/정렬 반영, 전체 행)
+  $("csvTableBtn").addEventListener("click", function () {
+    if (!current) return;
+    var where = buildWhere();
+    var order = sortCol ? " ORDER BY " + quoteId(sortCol) + " " + (sortDir === "DESC" ? "DESC" : "ASC") : "";
+    if (totalRows > 100000) {
+      if (!confirm("총 " + totalRows.toLocaleString() + "행을 내보냅니다. 시간이 걸릴 수 있습니다. 계속할까요?")) return;
+    }
+    showOverlay("CSV 생성 중…");
+    setTimeout(function () {
+      try {
+        var res = db.exec("SELECT * FROM " + quoteId(current) + where + order);
+        var cols = res.length ? res[0].columns : [];
+        var vals = res.length ? res[0].values : [];
+        downloadCsv(toCsv(cols, vals), current + ".csv");
+      } catch (e) {
+        alert("CSV 생성 오류: " + (e.message || e));
+      }
+      hideOverlay();
+    }, 30);
+  });
+
+  // SQL 결과 CSV
+  $("csvSqlBtn").addEventListener("click", function () {
+    if (!lastSqlResult) return;
+    downloadCsv(toCsv(lastSqlResult.columns, lastSqlResult.values), "query_result.csv");
+  });
+
+  /* ============================================================
+   *  드래그 앤 드롭
+   * ============================================================ */
+  var dragDepth = 0;
+  window.addEventListener("dragenter", function (e) { e.preventDefault(); dragDepth++; document.body.classList.add("dragging"); });
+  window.addEventListener("dragover", function (e) { e.preventDefault(); });
+  window.addEventListener("dragleave", function (e) { e.preventDefault(); dragDepth--; if (dragDepth <= 0) { dragDepth = 0; document.body.classList.remove("dragging"); } });
+  window.addEventListener("drop", function (e) {
+    e.preventDefault(); dragDepth = 0; document.body.classList.remove("dragging");
+    if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) openFile(e.dataTransfer.files[0]);
+  });
+
+  /* ============================================================
+   *  모바일 사이드바
+   * ============================================================ */
+  $("menuToggle").addEventListener("click", function () { $("sidebar").classList.toggle("open"); });
+  function closeSidebarMobile() { if (window.innerWidth <= 860) $("sidebar").classList.remove("open"); }
+})();
+</script>
+</body>
+</html>
