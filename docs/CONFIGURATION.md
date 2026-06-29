@@ -25,6 +25,7 @@
 | `docs/INITIAL_DATABASE_SETUP.md` | 추적 | SQL Editor 실행 순서와 PowerShell 자동 설치 방법 |
 | `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 추적 | 다른 Supabase 프로젝트에서 새로 시작하는 설치 절차 |
 | `docs/TASK-057_code_master.sql` | 추적 | `code_groups`/`code_items` 코드 마스터와 코드 컬럼 검증 트리거 |
+| `docs/TASK-058_product_category_policy.sql` | 추적 | 60등급 이상 상품 관리자의 `products.category` 코드 항목 추가 RLS 정책 |
 | `docs/TASK-041_app_config.sql` | 추적 | Supabase `app_config` 테이블, RLS, 공개 설정 RPC, 초기 데이터 |
 | `docs/edge-function-slack-notify.ts` | 추적 | Slack 알림 Edge Function 배포용 소스 |
 | `docs/SLACK_NOTIFICATION_RULES.md` | 추적 | Slack 알림 type, 라우팅, Secret 기준 |
@@ -39,7 +40,7 @@
 - Kakao JavaScript key
 - GitHub 저장소 owner/repo/branch 같은 비밀이 아닌 메타데이터
 
-`TARGET_ENV` 값으로 `PROD` 또는 `DEV` 설정을 선택한다. 이 값은 Supabase `app_config.env`와 같아야 한다. 현재 `PROD` 부트스트랩 설정은 `https://rabakjtjtkelpskptnvi.supabase.co` 프로젝트를 바라본다.
+`TARGET_ENV` 값으로 `PROD` 또는 `DEV` 설정을 선택한다. 이 값은 Supabase `app_config.env`와 같아야 한다. 현재 `PROD` 부트스트랩 설정은 `https://rabakjtjtkelpskptnvi.supabase.co` 프로젝트를 바라본다. Kakao Maps JavaScript 키도 같은 `TARGET_ENV` 기준으로 선택하며, DEV는 `f880c1746c4cd81e2fa54df45ebea41d`, PROD는 `0ef8925b28135eeac474bc411c456170`을 사용한다.
 
 Supabase 접속 이후에는 `app_config` 테이블의 공개 설정을 `get_public_app_config()` RPC로 조회한다. 브라우저는 테이블을 직접 조회하지 않고 RPC 결과만 사용한다.
 
@@ -88,11 +89,11 @@ Supabase `app_config` 테이블에는 비밀 원문을 넣지 않는다. 대신 
 
 ## 5. Supabase app_config 적용
 
-새 Supabase Database를 완전히 비어 있는 상태에서 구성할 때는 먼저 `docs/INITIAL_DATABASE_SETUP.sql`을 Supabase SQL Editor에서 실행한 뒤 `docs/TASK-057_code_master.sql`을 이어서 실행한다. 기본 설치 SQL은 테이블, 함수/RPC, RLS 정책, Storage 버킷, 기본 권한 데이터를 포함하고, `TASK-057`은 권한/유형/상태/카테고리/로그 액션 코드 마스터를 추가한다.
+새 Supabase Database를 완전히 비어 있는 상태에서 구성할 때는 먼저 `docs/INITIAL_DATABASE_SETUP.sql`을 Supabase SQL Editor에서 실행한 뒤 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`을 이어서 실행한다. 기본 설치 SQL은 테이블, 함수/RPC, RLS 정책, Storage 버킷, 기본 권한 데이터를 포함하고, `TASK-057`은 권한/유형/상태/카테고리/로그 액션 코드 마스터를 추가하며 `TASK-058`은 상품 등록 모달의 카테고리 추가 권한을 보강한다.
 
 공개 설정만 기존 DB에 보강하거나 점검할 때는 Supabase SQL Editor 또는 Management API에서 `docs/TASK-041_app_config.sql`을 실행한다.
 
-로컬에서 DB 접속 문자열을 사용할 수 있으면 `scripts/install-supabase-database.ps1` 또는 `scripts/install-supabase-database.sh`로 설치 SQL 생성 또는 실행을 자동화할 수 있다. 이 스크립트들은 기본으로 `docs/TASK-057_code_master.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 검증한다. 새 프로젝트 전체 설치 절차는 `docs/SUPABASE_NEW_PROJECT_SETUP.md`를 함께 확인한다.
+로컬에서 DB 접속 문자열을 사용할 수 있으면 `scripts/install-supabase-database.ps1` 또는 `scripts/install-supabase-database.sh`로 설치 SQL 생성 또는 실행을 자동화할 수 있다. 이 스크립트들은 기본으로 `docs/TASK-057_code_master.sql`과 `docs/TASK-058_product_category_policy.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 검증한다. 새 프로젝트 전체 설치 절차는 `docs/SUPABASE_NEW_PROJECT_SETUP.md`를 함께 확인한다.
 
 적용 후 브라우저에서는 아래 흐름으로 설정을 읽는다.
 
