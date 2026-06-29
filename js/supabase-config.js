@@ -32,7 +32,8 @@ function getNestedConfigValue(source, path, fallback) {
 let SUPABASE_URL = getNestedConfigValue(CHO_TALENTS_CONFIG, ['supabase', 'url'], DEFAULT_PUBLIC_CONFIG.supabase.url);
 let SUPABASE_ANON_KEY = getNestedConfigValue(CHO_TALENTS_CONFIG, ['supabase', 'anonKey'], DEFAULT_PUBLIC_CONFIG.supabase.anonKey);
 let AUTH_EMAIL_DOMAIN = getNestedConfigValue(CHO_TALENTS_CONFIG, ['supabase', 'authEmailDomain'], DEFAULT_PUBLIC_CONFIG.supabase.authEmailDomain);
-let KAKAO_MAP_KEY = getNestedConfigValue(CHO_TALENTS_CONFIG, ['kakao', 'mapKey'], DEFAULT_PUBLIC_CONFIG.kakao.mapKey);
+const BOOTSTRAP_KAKAO_MAP_KEY = getNestedConfigValue(CHO_TALENTS_CONFIG, ['kakao', 'mapKey'], null);
+let KAKAO_MAP_KEY = BOOTSTRAP_KAKAO_MAP_KEY || DEFAULT_PUBLIC_CONFIG.kakao.mapKey;
 
 var _sb = null;
 var _remotePublicConfigPromise = null;
@@ -76,8 +77,10 @@ function applyRemotePublicConfig(rows) {
   if (remoteConfig.SUPABASE_AUTH_EMAIL_DOMAIN) {
     AUTH_EMAIL_DOMAIN = remoteConfig.SUPABASE_AUTH_EMAIL_DOMAIN;
   }
-  if (remoteConfig.KAKAO_MAP_KEY) {
+  if (remoteConfig.KAKAO_MAP_KEY && !BOOTSTRAP_KAKAO_MAP_KEY) {
     KAKAO_MAP_KEY = remoteConfig.KAKAO_MAP_KEY;
+  } else if (remoteConfig.KAKAO_MAP_KEY && remoteConfig.KAKAO_MAP_KEY !== BOOTSTRAP_KAKAO_MAP_KEY) {
+    console.warn('[Config] Ignoring remote KAKAO_MAP_KEY because public-config.js provides the environment key.');
   }
 
   return remoteConfig;
@@ -105,11 +108,6 @@ async function loadRemotePublicConfig(env = APP_CONFIG_ENV) {
 }
 
 function getPublicConfigValue(keyName, fallback = null) {
-  const remoteConfig = window.CHO_TALENTS_REMOTE_CONFIG || {};
-  if (Object.prototype.hasOwnProperty.call(remoteConfig, keyName)) {
-    return remoteConfig[keyName];
-  }
-
   const bootstrapConfig = {
     SUPABASE_URL,
     SUPABASE_ANON_KEY,
@@ -119,6 +117,15 @@ function getPublicConfigValue(keyName, fallback = null) {
     GITHUB_REPO: getNestedConfigValue(CHO_TALENTS_CONFIG, ['github', 'repo'], DEFAULT_PUBLIC_CONFIG.github.repo),
     GITHUB_BRANCH: getNestedConfigValue(CHO_TALENTS_CONFIG, ['github', 'defaultBranch'], DEFAULT_PUBLIC_CONFIG.github.defaultBranch)
   };
+
+  if (keyName === 'KAKAO_MAP_KEY' && BOOTSTRAP_KAKAO_MAP_KEY) {
+    return bootstrapConfig.KAKAO_MAP_KEY;
+  }
+
+  const remoteConfig = window.CHO_TALENTS_REMOTE_CONFIG || {};
+  if (Object.prototype.hasOwnProperty.call(remoteConfig, keyName)) {
+    return remoteConfig[keyName];
+  }
 
   return Object.prototype.hasOwnProperty.call(bootstrapConfig, keyName) ? bootstrapConfig[keyName] : fallback;
 }
