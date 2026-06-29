@@ -5,7 +5,7 @@
  * Supabase access tokens, service-role keys, or database passwords here.
  */
 (() => {
-  const TARGET_ENV = 'PROD'; // 'PROD' 또는 'DEV'
+  const TARGET_ENV = 'DEV'; // 'PROD' 또는 'DEV'
 
   let supabaseConfig;
   let kakaoConfig;
