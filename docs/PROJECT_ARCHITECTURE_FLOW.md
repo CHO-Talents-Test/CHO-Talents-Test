@@ -1,12 +1,12 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-06-29 KST 현재 코드 기준 (v3.55.0)
+작성 기준: 2026-06-29 KST 현재 코드 기준 (v3.57.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
 ## 1. 프로젝트 목적
 
-CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시스템이다. 학생과 교사는 본인의 달란트 잔액, 구매 내역, Q&A, 상점 상품을 확인하고 구매 신청을 하며, 부서 담당 교사 이상 운영자는 사용자, 부서, 상품, 구매, 달란트 지급/사용/반환, 질문, 보고서, 로그를 관리한다.
+CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시스템이다. 학생과 교사는 본인의 달란트 잔액, 구매 내역, Q&A, 상점 상품을 확인하고 구매 신청을 하며, 부서 담당 교사 이상 운영자는 사용자, 부서, 상품, 구매, 달란트 지급/사용/반환, 질문, 공지, 보고서, 로그를 관리한다.
 
 | 목적 | 설명 |
 |---|---|
@@ -17,6 +17,7 @@ CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시
 | 부서 이동 관리 | 부서 변경은 요청→승인 흐름으로 처리한다 (90등급 이상은 즉시 이동). |
 | 운영 추적 | 로그인, 인증/권한 리디렉트, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
 | Slack 알림 | 부서별/유형별 채널로 구매/가입/부서이동/WARN+ 로그/Q&A 등 운영 이벤트를 Edge Function 경유 분리 전송한다. |
+| 공지 관리 | 전도사님(90+) 이상이 공지를 등록/수정/활성화하고, 활성 공지는 로그인 후 메인 화면 팝업으로 표시한다. |
 | 코드 마스터 | 권한/유형/상태/카테고리/로그 액션 같은 구분값을 `code_groups`, `code_items`, `js/codes.js`로 통합 관리한다. |
 | 에러 한글화 | 영문 DB/RPC 에러를 `tErr()` 함수로 한글 변환하여 사용자에게 표시한다. |
 | 보안 강화 | Supabase Auth, RLS, SECURITY DEFINER RPC로 민감 데이터 접근을 제한한다. |
@@ -63,6 +64,7 @@ flowchart LR
   DB --> Reports["reports"]
   DB --> Logs["activity_logs"]
   DB --> RoleAccess["role_page_access"]
+  DB --> Announcements["announcements / announcement_dismissals"]
   DB --> QnA["qna"]
   DB --> QnAComments["qna_comments"]
   DB --> RoleFeatures["role_page_features"]
@@ -76,7 +78,7 @@ flowchart LR
 
 | 경로 | 역할 |
 |---|---|
-| `index.html` | 메인 진입 화면. 학생 가이드, Q&A, 상점, 로그인, 적립 안내, 내 달란트로 이동. 동적 로그인/로그아웃 버튼. 로그인 사용자는 `⭐ 즐겨찾기 설정`으로 바로가기 카드 커스터마이징 (`user_preferences` DB 저장, 비로그인은 localStorage 폴백). 모바일/PC 모두 최대 10개, 권한에 맞는 메뉴만 표시 |
+| `index.html` | 메인 진입 화면. 학생 가이드, Q&A, 상점, 로그인, 적립 안내, 내 달란트로 이동. 동적 로그인/로그아웃 버튼. 로그인 사용자는 `⭐ 즐겨찾기 설정`으로 바로가기 카드 커스터마이징 (`user_preferences` DB 저장, 비로그인은 localStorage 폴백). 모바일/PC 모두 최대 10개, 권한에 맞는 메뉴만 표시. 활성 공지는 로그인 후 팝업 표시, 계정별 다시 열지 않음 저장 |
 | `login.html` | 통합 로그인. 성공/실패 로그 기록. 승인 대기/거부 계정 구분 안내 |
 | `register.html` | 계정 등록 신청. 영문/숫자/`_`/`-` 아이디 중복확인 후 승인 대기 등록 |
 | `guide.html` | 학생 가이드. 사이트 이용 흐름을 카드/스텝 중심으로 안내. 소개 메뉴의 단일 `가이드` 항목은 비로그인/학생에게 이 페이지로 연결 |
@@ -103,6 +105,7 @@ flowchart LR
 | `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 상품 등록/수정 모달에서 `products.category` 새 카테고리 추가 가능. 관리 드롭다운(수정/삭제). 삭제는 소프트 삭제 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
 | `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
+| `admin/notices.html` | 90등급 이상 공지 관리. 공지 제목/내용 등록, 기존 공지 조회/수정, 공지 컬럼 활성 토글, 공통 페이지당 항목 수 설정. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
 | `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`). 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
 | `admin/versions.html` | 80등급 이상 버전 이력 확인 |
@@ -129,7 +132,7 @@ flowchart LR
 |---|---|---:|---|---|
 | 최고 관리자 | `admin` + `is_super_admin` | 110 | `index.html` | 관리자 포함 전체 사용자 관리, 시스템 설정, 보고서 초기화 |
 | 관리자 | `admin` | 100 | `index.html` | 전체 운영 관리, 페이지 접근/기능/감사/로그 관리 |
-| 전도사님 | `evangelist` | 90 | `index.html` | 달란트 항목/상품 삭제, 부서 즉시 이동, 전체 구매 처리 |
+| 전도사님 | `evangelist` | 90 | `index.html` | 달란트 항목/QR/공지 관리, 상품 삭제, 부서 즉시 이동, 전체 구매 처리 |
 | 부장 교사 | `chief` | 80 | `index.html` | 대시보드, 부서, 관리자, 보고서, 버전, 달란트 반환 — txnId 기반 1회 제한 (사용자/관리자 관리 조회 전용) |
 | 구매 담당 교사 | `purchase_teacher` | 70 | `index.html` | 부서 담당 교사와 동일, 구매 관리에서 전체 부서 주문 처리 |
 | 부서 담당 교사 | `dept_teacher` | 60 | `index.html` | 담당 부서 사용자/달란트/상품/구매/Q&A 관리 |
@@ -220,6 +223,7 @@ flowchart TD
   Home --> AdminShop["admin/shop.html<br/>60+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
   Home --> Reports["admin/reports.html<br/>80+"]
+  Home --> Notices["admin/notices.html<br/>90+"]
   Home --> Versions["admin/versions.html<br/>80+"]
   Home --> PageAccess["admin/page-access.html<br/>100+"]
   Home --> PageFeatures["admin/page-features.html<br/>100+"]
@@ -258,6 +262,8 @@ flowchart TD
 8. `startSessionTimer()` 호출 — 24시간 유휴 세션 타임아웃 시작 (v3.48.0)
 
 `AUTH_REDIRECT` details에는 요청 페이지, `detectCurrentPageId()` 결과, 이동 대상, 사용자, 권한, 권한등급, 필요권한등급/허용권한, 세션 실패 상세가 들어간다. 로그인 필수 페이지가 간헐적으로 `index.html`로 보이는 경우는 대부분 `initPage()`의 권한 미달/허용 권한 불일치/DB 페이지 접근 차단에서 `getRedirectUrl()`이 권한별 기본 화면(`index.html`)을 반환했기 때문이다. 세션 없음/만료는 `login.html` 이동과 `AUTH_SESSION_MISSING` 로그로 구분한다.
+
+로그인 후 `index.html`은 활성 공지를 조회한다. `announcements.is_active = true`인 공지 중 현재 사용자가 `announcement_dismissals`에 저장하지 않은 항목만 팝업으로 표시하며, `다시 열지 않음`을 누르면 `(announcement_id, user_id)` 기준으로 숨김 상태를 저장한다.
 
 ### 24시간 세션 타임아웃 (v3.48.0)
 
@@ -318,6 +324,28 @@ flowchart TD
 - 비로그인: `localStorage`만 사용 (폴백)
 - 최초 로그인 시: DB에 설정이 없고 `localStorage`에 기존 데이터가 있으면 자동 마이그레이션
 - 즐겨찾기 후보와 실제 렌더링은 네비게이션 권한 규칙과 동일하게 필터링되며, 권한 밖 항목은 자동 제외된다
+
+## 6-1. 공지 관리 및 팝업 흐름
+
+```mermaid
+flowchart TD
+  Operator["전도사님 이상(90+)"] --> NoticePage["admin/notices.html"]
+  NoticePage --> CreateEdit["제목/내용 등록 또는 수정"]
+  NoticePage --> Toggle["공지 컬럼 활성 토글"]
+  CreateEdit --> Announcements["announcements 저장"]
+  Toggle --> Announcements
+  Announcements --> Active["is_active = true"]
+  LoginHome["로그인 후 index.html"] --> Active
+  Active --> DismissCheck["announcement_dismissals 조회"]
+  DismissCheck -->|숨김 없음| Popup["공지 팝업 표시"]
+  Popup --> Dismiss["다시 열지 않음"]
+  Dismiss --> Store["announcement_dismissals UPSERT"]
+  Popup --> Close["닫기: 이번 접속에서만 닫기"]
+```
+
+- 공지 관리 페이지 진입은 `initPage(90, '../login.html')`로 제한한다.
+- 활성 공지는 모든 로그인 사용자가 조회할 수 있고, 비활성 공지 조회/등록/수정은 90등급 이상 RLS 정책으로 제한한다.
+- 공지 등록, 수정, 활성 토글은 `ANNOUNCEMENT_CREATE`, `ANNOUNCEMENT_UPDATE`, `ANNOUNCEMENT_TOGGLE` 로그로 남아 작업 이력에서 확인할 수 있다.
 
 ## 7. 신규 계정 신청 흐름
 
@@ -652,6 +680,8 @@ flowchart TD
 | `reports` | 작업 보고서 |
 | `talent_qr_codes` | QR 코드 생성/관리. `target_type`(학생/교사), `valid_from`/`valid_until` 기간 또는 지정일 시간 범위, `max_uses` (0=무제한, N=선착순), `location_*` 위치 제한(100m~5km, 기본 500m), `repeat_type`(none/daily/weekday/week_weekday), `repeat_days` INT[], `repeat_weeks` INT[] |
 | `talent_qr_scans` | QR 코드 스캔 이력. 반복 수령 시 오늘 기준 중복 체크 |
+| `announcements` | 공지 제목/내용, 활성 여부, 작성자/수정자와 시각. 활성 공지는 로그인 사용자 조회 가능, 관리 작업은 90등급 이상 |
+| `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. `(announcement_id, user_id)` 기본키로 중복 저장 방지 |
 | `activity_logs` | 활동/오류 로그. `is_deleted`/`deleted_at` 소프트 삭제, `user_name` 기록, `action` 코드 라벨과 `details._actionLabel` 한글 라벨. 작업 이력도 이 테이블을 필터링해 표시 |
 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
 | `role_page_features` | 권한 등급별 페이지 기능 설정값 |
@@ -688,15 +718,16 @@ flowchart TD
 2. 승인 대기 계정 로그인 시 "승인 대기 중" 안내가 구분 표시되는지 확인한다.
 3. 최초 로그인 사용자가 `admin/change-password.html`로 강제 이동하는지 확인한다.
 4. 일반 로그인 성공 후 `index.html`로 이동하고 권한별 메뉴만 표시되는지 확인한다.
-5. 비로그인 상태에서 `my-talents.html`이 로그인으로 이동하는지 확인한다.
-6. 비로그인 `shop.html`에서 학생용 상품만 조회되는지 확인한다.
-7. 교사 로그인 후 `shop.html`에서 교사용 탭이 기본 선택되는지 확인한다.
-8. 40등급 이상 대리 구매 대상자 목록이 권한 범위 안에서만 표시되는지 확인한다.
-9. 상품 구매 신청 시 `pending_talent`이 증가하고 달란트가 즉시 차감되지 않는지 확인한다.
-10. `my-orders.html`에서 본인 구매 신청 상태만 조회되는지 확인한다.
-11. `admin/purchases.html`에서 4단계 구매 흐름이 정상 작동하는지 확인한다.
-12. 40등급 이상이 `admin/talents.html`에서 체크박스 일괄 지급이 되는지 확인한다.
-13. 80등급 이상만 달란트 반환이 가능한지 확인한다.
+5. 활성 공지가 있는 경우 메인 화면에 공지 팝업이 뜨고, `다시 열지 않음` 후 같은 계정에 재표시되지 않는지 확인한다.
+6. 비로그인 상태에서 `my-talents.html`이 로그인으로 이동하는지 확인한다.
+7. 비로그인 `shop.html`에서 학생용 상품만 조회되는지 확인한다.
+8. 교사 로그인 후 `shop.html`에서 교사용 탭이 기본 선택되는지 확인한다.
+9. 40등급 이상 대리 구매 대상자 목록이 권한 범위 안에서만 표시되는지 확인한다.
+10. 상품 구매 신청 시 `pending_talent`이 증가하고 달란트가 즉시 차감되지 않는지 확인한다.
+11. `my-orders.html`에서 본인 구매 신청 상태만 조회되는지 확인한다.
+12. `admin/purchases.html`에서 4단계 구매 흐름이 정상 작동하는지 확인한다.
+13. 40등급 이상이 `admin/talents.html`에서 체크박스 일괄 지급이 되는지 확인한다.
+14. 80등급 이상만 달란트 반환이 가능한지 확인한다.
 14. 부서 이동이 수정 모달이 아닌 부서 이동 버튼으로만 되는지 확인한다.
 15. 60등급 이상이 `admin/users.html`, `admin/shop.html`, `admin/purchases.html`을 사용할 수 있는지 확인한다.
 16. 60등급 이상이 대시보드를, 80등급 이상이 관리자, 보고서, 버전 화면을 사용할 수 있는지 확인한다.
@@ -737,7 +768,8 @@ flowchart TD
 | 17 | `docs/TASK-041_page_sizes.sql` | v3.40.0: user_preferences.page_sizes JSONB 컬럼 |
 | 18 | `docs/TASK-052_super_admin_update_fix.sql` | v3.45.0: admin_update_user RPC에서 is_super_admin 호출자 rank 110 처리 |
 | 19 | `docs/TASK-057_code_master.sql` | v3.50.0: `code_groups`/`code_items`, 코드 컬럼 검증 트리거, `get_permission_rank()` 코드화 |
-| 20 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 20 | `docs/TASK-059_announcements.sql` | v3.57.0: 공지 관리 `announcements`, `announcement_dismissals` 테이블/RLS 및 공지 로그 액션 코드 |
+| 21 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
 
 ## 19. 개발 주의사항
 

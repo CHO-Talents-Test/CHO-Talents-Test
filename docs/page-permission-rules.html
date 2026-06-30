@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CHO-Talents 페이지별 권한 설정 정리</title>
-<link rel="stylesheet" href="../css/themes.css?v=3.55.0">
-<link rel="stylesheet" href="../css/admin.css?v=3.55.0">
+<link rel="stylesheet" href="../css/themes.css?v=3.57.0">
+<link rel="stylesheet" href="../css/admin.css?v=3.57.0">
 <style>
   body.permission-rules-body { padding-top:54px; }
   .container { max-width:1080px; margin:0 auto; padding:2rem 1.5rem 4rem; }
@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.55.0 / 2026-06-29. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.57.0 / 2026-06-29. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -90,6 +90,7 @@
         <tr><td>관리</td><td>대시보드, 사용자 관리, 부서 관리</td><td><span class="badge b-60">60</span></td></tr>
         <tr><td>관리</td><td>학생 일괄 등록, 관리자 관리</td><td><span class="badge b-80">80</span></td></tr>
         <tr><td>운영</td><td>페이지 권한 룰, 로그 작성 룰, Slack 알림 룰, 작업 이력 작성 룰, 버전, 보고서</td><td><span class="badge b-80">80</span></td></tr>
+        <tr><td>운영</td><td>공지 관리</td><td><span class="badge b-90">90</span></td></tr>
         <tr><td>운영</td><td>페이지 접근, 페이지 기능, 작업 이력, 로그</td><td><span class="badge b-100">100</span></td></tr>
       </tbody>
     </table>
@@ -114,6 +115,7 @@
         <tr><td><code>admin/versions.html</code></td><td>버전</td><td><span class="badge b-80">80</span></td><td>읽기 전용 버전 이력</td></tr>
         <tr><td><code>admin/slack-rules.html</code></td><td>Slack 알림 룰</td><td><span class="badge b-80">80</span></td><td>알림 라우팅 문서 열람</td></tr>
         <tr><td><code>admin/talent-qr.html</code></td><td>달란트 QR 관리</td><td><span class="badge b-90">90</span></td><td>QR 생성/수정/비활성화. v3.51.0: 지정일 유효 시간, 위치 반경 100m~5km(기본 500m), QR 목록/수령자 팝업 페이징·페이지당 항목 수 콤보 지원</td></tr>
+        <tr><td><code>admin/notices.html</code></td><td>공지 관리</td><td><span class="badge b-90">90</span></td><td><code>admin-notices</code> page_id. 공지 등록/조회/수정과 활성 토글. 활성 공지는 로그인 후 메인 화면에 표시</td></tr>
         <tr><td><code>admin/page-access.html</code></td><td>페이지 접근</td><td><span class="badge b-100">100</span></td><td>role_page_access 관리</td></tr>
         <tr><td><code>admin/page-features.html</code></td><td>페이지 기능</td><td><span class="badge b-100">100</span></td><td>role_page_features 관리</td></tr>
         <tr><td><code>admin/audit.html</code></td><td>작업 이력</td><td><span class="badge b-100">100</span></td><td>activity_logs 중 감사 액션 조회</td></tr>
@@ -150,7 +152,7 @@
     </table>
   </div>
 
-  <h2>8. v3.51.0 변경 요약</h2>
+  <h2>8. v3.57.0 변경 요약</h2>
   <div class="rule-card">
     <table>
       <thead><tr><th>대상</th><th>변경 내용</th></tr></thead>
@@ -162,21 +164,22 @@
         <tr><td><code>js/nav.js</code></td><td>소개 드롭다운의 역할별 가이드를 <strong>가이드</strong> 단일 항목으로 통합하고 세션 권한별 가이드 페이지로 자동 이동</td></tr>
         <tr><td><code>admin/talent-qr.html</code></td><td>지정일 QR 유효 시간과 100m~5km 위치 반경 선택 추가, QR 목록 페이지당 항목 수 선택 추가</td></tr>
         <tr><td><code>admin/talent-stats.html</code>, <code>admin/purchase-stats.html</code></td><td>반환 달란트 제외 집계, 통계별 기본 정렬, 구매 통계 페이지당 항목 수 선택 반영</td></tr>
+        <tr><td><code>admin/notices.html</code></td><td>전도사님(90+) 이상 공지 관리 추가. <code>js/auth.js</code>의 page_id는 <code>admin-notices</code>, <code>role_page_access</code> 설정 목록에도 포함</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.55.0 · 실제 소스 코드 기준 권한 설정 · 2026-06-29 작성</p>
+  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.57.0 · 실제 소스 코드 기준 권한 설정 · 2026-06-29 작성</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../config/public-config.js?v=3.55.0"></script>
-<script src="../js/supabase-config.js?v=3.55.0"></script>
-<script src="../js/activity-log.js?v=3.55.0"></script>
-  <script src="../js/codes.js?v=3.55.0"></script>
-<script src="../js/auth.js?v=3.55.0"></script>
-<script src="../js/theme.js?v=3.55.0"></script>
-<script src="../js/nav.js?v=3.55.0"></script>
+<script src="../config/public-config.js?v=3.57.0"></script>
+<script src="../js/supabase-config.js?v=3.57.0"></script>
+<script src="../js/activity-log.js?v=3.57.0"></script>
+  <script src="../js/codes.js?v=3.57.0"></script>
+<script src="../js/auth.js?v=3.57.0"></script>
+<script src="../js/theme.js?v=3.57.0"></script>
+<script src="../js/nav.js?v=3.57.0"></script>
 <script>
 initSupabase();
 (async () => {
@@ -188,6 +191,6 @@ initSupabase();
   autoLogPageView();
 })();
 </script>
-<script src="../js/version.js?v=3.55.0"></script>
+<script src="../js/version.js?v=3.57.0"></script>
 </body>
 </html>

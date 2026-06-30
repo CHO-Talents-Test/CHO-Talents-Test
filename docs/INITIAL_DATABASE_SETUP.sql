@@ -259,6 +259,26 @@ CREATE TABLE IF NOT EXISTS public.user_preferences (
   updated_at timestamptz DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.announcements (
+  id uuid PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
+  title text NOT NULL CHECK (char_length(trim(title)) > 0 AND char_length(title) <= 200),
+  content text NOT NULL CHECK (char_length(trim(content)) > 0),
+  is_active boolean NOT NULL DEFAULT false,
+  created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  created_by_name text,
+  updated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
+  updated_by_name text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.announcement_dismissals (
+  announcement_id uuid NOT NULL REFERENCES public.announcements(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.profiles(id) ON DELETE CASCADE,
+  dismissed_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (announcement_id, user_id)
+);
+
 CREATE TABLE IF NOT EXISTS public.talent_qr_codes (
   id uuid PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   talent_item_id uuid REFERENCES public.talent_items(id) ON DELETE CASCADE,
@@ -349,6 +369,10 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_qr_codes_code_unique
 CREATE INDEX IF NOT EXISTS idx_qr_scans_qr_code ON public.talent_qr_scans(qr_code_id);
 CREATE INDEX IF NOT EXISTS idx_qr_scans_user ON public.talent_qr_scans(user_id);
 CREATE INDEX IF NOT EXISTS idx_user_preferences_user_id ON public.user_preferences(user_id);
+CREATE INDEX IF NOT EXISTS idx_announcements_active_created
+  ON public.announcements(is_active, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcement_dismissals_user
+  ON public.announcement_dismissals(user_id, announcement_id);
 CREATE INDEX IF NOT EXISTS idx_app_config_env_use ON public.app_config(env, use_yn);
 CREATE INDEX IF NOT EXISTS idx_app_config_public ON public.app_config(env, key_name)
   WHERE is_secret = false AND use_yn = true;
@@ -415,6 +439,11 @@ CREATE TRIGGER trg_profiles_updated_at
 DROP TRIGGER IF EXISTS trg_app_config_updated_at ON public.app_config;
 CREATE TRIGGER trg_app_config_updated_at
   BEFORE UPDATE ON public.app_config
+  FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
+
+DROP TRIGGER IF EXISTS trg_announcements_updated_at ON public.announcements;
+CREATE TRIGGER trg_announcements_updated_at
+  BEFORE UPDATE ON public.announcements
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
 -- ============================================================
@@ -1432,6 +1461,8 @@ ALTER TABLE public.page_permissions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_page_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.role_page_features ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_preferences ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcements ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.announcement_dismissals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.talent_qr_codes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.talent_qr_scans ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.app_config ENABLE ROW LEVEL SECURITY;
@@ -1622,6 +1653,34 @@ CREATE POLICY user_preferences_update_own ON public.user_preferences FOR UPDATE 
   WITH CHECK (auth.uid() = user_id);
 DROP POLICY IF EXISTS user_preferences_delete_own ON public.user_preferences;
 CREATE POLICY user_preferences_delete_own ON public.user_preferences FOR DELETE TO authenticated
+  USING (auth.uid() = user_id);
+
+-- announcements
+GRANT SELECT, INSERT, UPDATE, DELETE ON public.announcements TO authenticated;
+GRANT SELECT, INSERT, DELETE ON public.announcement_dismissals TO authenticated;
+
+DROP POLICY IF EXISTS announcements_select ON public.announcements;
+CREATE POLICY announcements_select ON public.announcements FOR SELECT TO authenticated
+  USING (is_active = true OR public.get_permission_rank(auth.uid()) >= 90);
+DROP POLICY IF EXISTS announcements_insert ON public.announcements;
+CREATE POLICY announcements_insert ON public.announcements FOR INSERT TO authenticated
+  WITH CHECK (public.get_permission_rank(auth.uid()) >= 90);
+DROP POLICY IF EXISTS announcements_update ON public.announcements;
+CREATE POLICY announcements_update ON public.announcements FOR UPDATE TO authenticated
+  USING (public.get_permission_rank(auth.uid()) >= 90)
+  WITH CHECK (public.get_permission_rank(auth.uid()) >= 90);
+DROP POLICY IF EXISTS announcements_delete ON public.announcements;
+CREATE POLICY announcements_delete ON public.announcements FOR DELETE TO authenticated
+  USING (public.get_permission_rank(auth.uid()) >= 100);
+
+DROP POLICY IF EXISTS announcement_dismissals_select_own ON public.announcement_dismissals;
+CREATE POLICY announcement_dismissals_select_own ON public.announcement_dismissals FOR SELECT TO authenticated
+  USING (auth.uid() = user_id);
+DROP POLICY IF EXISTS announcement_dismissals_insert_own ON public.announcement_dismissals;
+CREATE POLICY announcement_dismissals_insert_own ON public.announcement_dismissals FOR INSERT TO authenticated
+  WITH CHECK (auth.uid() = user_id);
+DROP POLICY IF EXISTS announcement_dismissals_delete_own ON public.announcement_dismissals;
+CREATE POLICY announcement_dismissals_delete_own ON public.announcement_dismissals FOR DELETE TO authenticated
   USING (auth.uid() = user_id);
 
 -- QR

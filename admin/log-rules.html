@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>로그 작성 룰 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>" />
-  <link rel="stylesheet" href="../css/themes.css?v=3.55.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.55.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.57.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.57.0" />
   <style>
     .rule-section { background: var(--admin-card); border-radius: var(--admin-radius); box-shadow: var(--admin-shadow); padding: 1.5rem; margin-bottom: 1.5rem; overflow-x: auto; }
     .rule-section h2 { font-size: 1.1rem; font-weight: 700; color: var(--admin-primary); margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.55.0 기준 인증/권한 리디렉트 원인, QR 위치 권한 차단, 상품 카테고리 추가도 로그로 구분합니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.57.0 기준 인증/권한 리디렉트 원인, QR 위치 권한 차단, 상품 카테고리 추가, 공지 관리도 로그로 구분합니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -274,6 +274,18 @@
         </tbody>
       </table>
 
+      <h3>공지 (ANNOUNCEMENT)</h3>
+      <table class="rule-table">
+        <thead><tr><th>액션</th><th>레벨</th><th>발생 시점</th></tr></thead>
+        <tbody>
+          <tr><td>ANNOUNCEMENT_VIEW</td><td><span class="level-tag info">INFO</span></td><td>공지 관리에서 기존 공지 보기</td></tr>
+          <tr><td>ANNOUNCEMENT_CREATE / ANNOUNCEMENT_UPDATE</td><td><span class="level-tag info">INFO</span></td><td>공지 등록/수정 성공</td></tr>
+          <tr><td>ANNOUNCEMENT_TOGGLE</td><td><span class="level-tag info">INFO</span></td><td>공지 활성/비활성 토글 성공</td></tr>
+          <tr><td>ANNOUNCEMENT_DISMISS</td><td><span class="level-tag info">INFO</span></td><td>사용자가 로그인 공지 팝업에서 다시 열지 않음 선택</td></tr>
+          <tr><td>ANNOUNCEMENT_LOAD_FAIL / ANNOUNCEMENT_CREATE_FAIL / ANNOUNCEMENT_UPDATE_FAIL / ANNOUNCEMENT_TOGGLE_FAIL / ANNOUNCEMENT_DISMISS_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>공지 조회, 저장, 토글, 숨김 처리 실패</td></tr>
+        </tbody>
+      </table>
+
       <h3>부서 (DEPT)</h3>
       <table class="rule-table">
         <thead><tr><th>액션</th><th>레벨</th><th>발생 시점</th></tr></thead>
@@ -334,13 +346,13 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.55.0"></script>
-  <script src="../js/supabase-config.js?v=3.55.0"></script>
-  <script src="../js/activity-log.js?v=3.55.0"></script>
-  <script src="../js/codes.js?v=3.55.0"></script>
-  <script src="../js/auth.js?v=3.55.0"></script>
-  <script src="../js/theme.js?v=3.55.0"></script>
-  <script src="../js/nav.js?v=3.55.0"></script>
+  <script src="../config/public-config.js?v=3.57.0"></script>
+  <script src="../js/supabase-config.js?v=3.57.0"></script>
+  <script src="../js/activity-log.js?v=3.57.0"></script>
+  <script src="../js/codes.js?v=3.57.0"></script>
+  <script src="../js/auth.js?v=3.57.0"></script>
+  <script src="../js/theme.js?v=3.57.0"></script>
+  <script src="../js/nav.js?v=3.57.0"></script>
   <script>
     initSupabase();
     (async () => {

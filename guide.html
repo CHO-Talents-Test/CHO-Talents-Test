@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>학생 가이드 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.55.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.55.0" />
-  <link rel="stylesheet" href="css/guide.css?v=3.55.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.57.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.57.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.57.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -72,6 +72,7 @@
         <li>첫 로그인 때 새 비밀번호로 바꾸면 사이트를 사용할 수 있습니다.</li>
       </ol>
       <div class="guide-note">비밀번호는 8자 이상이어야 하고 영문과 숫자가 모두 들어가야 합니다. 초기 비밀번호 1234는 새 비밀번호로 사용할 수 없습니다.</div>
+      <div class="guide-note">운영자가 등록한 활성 공지가 있으면 로그인 후 메인 화면에 공지 팝업이 표시됩니다. <strong>다시 열지 않음</strong>을 누르면 해당 계정에는 같은 공지가 다시 표시되지 않습니다.</div>
     </section>
 
     <section class="guide-section">
@@ -212,6 +213,10 @@
           <p>상단 테마 스위치에서 일반/다크 모드를 바꿀 수 있습니다. 로그인 상태에서는 선택한 테마가 계정에 저장됩니다.</p>
         </div>
         <div class="guide-card">
+          <h3>공지 팝업이 떴어요</h3>
+          <p>운영자가 활성화한 안내입니다. 이번만 닫으려면 닫기를 누르고, 앞으로 같은 공지를 보지 않으려면 다시 열지 않음을 누릅니다.</p>
+        </div>
+        <div class="guide-card">
           <h3>갑자기 로그아웃됐어요</h3>
           <p>24시간 동안 사이트를 사용하지 않으면 세션이 만료되어 자동 로그아웃됩니다. 다시 로그인하면 됩니다. 사용 중에는 활동할 때마다 타이머가 초기화됩니다.</p>
         </div>
@@ -228,13 +233,13 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.55.0"></script>
-  <script src="js/supabase-config.js?v=3.55.0"></script>
-  <script src="js/activity-log.js?v=3.55.0"></script>
-  <script src="js/codes.js?v=3.55.0"></script>
-  <script src="js/auth.js?v=3.55.0"></script>
-  <script src="js/theme.js?v=3.55.0"></script>
-  <script src="js/nav.js?v=3.55.0"></script>
+  <script src="config/public-config.js?v=3.57.0"></script>
+  <script src="js/supabase-config.js?v=3.57.0"></script>
+  <script src="js/activity-log.js?v=3.57.0"></script>
+  <script src="js/codes.js?v=3.57.0"></script>
+  <script src="js/auth.js?v=3.57.0"></script>
+  <script src="js/theme.js?v=3.57.0"></script>
+  <script src="js/nav.js?v=3.57.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -255,6 +260,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="js/version.js?v=3.55.0"></script>
+  <script src="js/version.js?v=3.57.0"></script>
 </body>
 </html>

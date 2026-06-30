@@ -273,9 +273,13 @@ VALUES
   ('activity_logs.action', 'ROLE_ACCESS_UPDATE', '페이지 접근 권한 변경', 9010, '{"category":"PERM","emoji":"🔐"}'),
   ('activity_logs.action', 'ROLE_FEATURE_UPDATE', '페이지 기능 권한 변경', 9020, '{"category":"PERM","emoji":"🔧"}'),
   ('activity_logs.action', 'PAGE_PERM_UPDATE', '페이지 권한 설정 변경', 9030, '{"category":"PERM","emoji":"🛡️"}'),
-  ('activity_logs.action', 'REPORT_SAVE', '보고서 저장', 9040, '{"category":"PERM","emoji":"📄"}'),
-  ('activity_logs.action', 'REPORT_DELETE', '보고서 삭제', 9050, '{"category":"PERM","emoji":"🗑️"}'),
-  ('activity_logs.action', 'REPORT_SEED', '보고서 시드 등록', 9060, '{"category":"PERM","emoji":"🌱"}')
+  ('activity_logs.action', 'ANNOUNCEMENT_CREATE', '공지 등록', 9040, '{"category":"PERM","emoji":"📢"}'),
+  ('activity_logs.action', 'ANNOUNCEMENT_UPDATE', '공지 수정', 9050, '{"category":"PERM","emoji":"📢"}'),
+  ('activity_logs.action', 'ANNOUNCEMENT_TOGGLE', '공지 활성 토글', 9060, '{"category":"PERM","emoji":"🔘"}'),
+  ('activity_logs.action', 'ANNOUNCEMENT_DISMISS', '공지 다시 열지 않음', 9070, '{"category":"PERM","emoji":"🚫"}'),
+  ('activity_logs.action', 'REPORT_SAVE', '보고서 저장', 9080, '{"category":"PERM","emoji":"📄"}'),
+  ('activity_logs.action', 'REPORT_DELETE', '보고서 삭제', 9090, '{"category":"PERM","emoji":"🗑️"}'),
+  ('activity_logs.action', 'REPORT_SEED', '보고서 시드 등록', 9100, '{"category":"PERM","emoji":"🌱"}')
 ON CONFLICT (group_key, code_key) DO UPDATE
 SET code_value = EXCLUDED.code_value,
     sort_order = EXCLUDED.sort_order,
