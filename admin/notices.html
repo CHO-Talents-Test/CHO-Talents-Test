@@ -4,15 +4,20 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>공지 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.57.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.57.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.58.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.58.0" />
   <style>
     .notice-toolbar { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
     .notice-toolbar-left, .notice-toolbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .notice-summary { color: var(--admin-text-muted); font-size: 0.85rem; }
-    .notice-title-cell { font-weight: 700; max-width: 260px; }
-    .notice-content-preview { color: var(--admin-text-muted); font-size: 0.82rem; line-height: 1.45; max-width: 420px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-    .notice-content-col { width: 1%; }
+    table.admin-table.notice-table { table-layout: auto; }
+    table.admin-table.notice-table th, table.admin-table.notice-table td { padding-left: 0.45rem; padding-right: 0.45rem; }
+    .notice-active-col { width: 72px; text-align: center; }
+    .notice-title-cell { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
+    .notice-content-col { width: auto; min-width: 0; }
+    .notice-content-preview { color: var(--admin-text-muted); font-size: 0.82rem; line-height: 1.45; width: 100%; min-width: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .notice-author-cell { white-space: nowrap; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+    .notice-management-col { width: 96px; }
     .notice-switch { position: relative; display: inline-flex; align-items: center; width: 42px; height: 24px; }
     .notice-switch input { opacity: 0; width: 0; height: 0; }
     .notice-slider { position: absolute; cursor: pointer; inset: 0; background: #ced4da; border-radius: 999px; transition: 0.18s; }
@@ -23,6 +28,21 @@
     .notice-filter-switch .notice-switch { width: 38px; height: 22px; }
     .notice-filter-switch .notice-slider:before { width: 16px; height: 16px; left: 3px; top: 3px; }
     .notice-filter-switch .notice-switch input:checked + .notice-slider:before { transform: translateX(16px); }
+    .notice-status-pill { display: inline-flex; align-items: center; font-size: 0.8rem; font-weight: 700; white-space: nowrap; }
+    .notice-status-pill.active { color: var(--admin-primary); }
+    .notice-status-pill.inactive { color: #6c757d; }
+    .notice-view-meta { display: flex; flex-wrap: wrap; gap: 0.45rem 0.6rem; font-size: 0.78rem; color: var(--admin-text-muted); margin-bottom: 0.7rem; }
+    .notice-view-meta .notice-date { white-space: nowrap; }
+    .notice-view-image-wrap { margin-bottom: 0.7rem; display: none; }
+    .notice-view-image-wrap img { display: block; width: 100%; max-height: 240px; object-fit: contain; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-bg, #f8f9fa); cursor: zoom-in; }
+    .notice-image-zoom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .notice-image-zoom-overlay.hidden { display: none; }
+    .notice-image-zoom-modal { width: min(92vw, 1000px); max-height: 92vh; background: var(--t-card, #fff); color: var(--t-text, #222); border: 1px solid var(--admin-border); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; }
+    .notice-image-zoom-head { padding: 1rem 1.1rem; border-bottom: 1px solid var(--admin-border); display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; }
+    .notice-image-zoom-head h3 { margin: 0; font-size: 1.05rem; line-height: 1.35; }
+    .notice-image-zoom-close { border: 1px solid var(--admin-border); background: var(--t-bg, #f8f9fa); color: var(--t-text, #222); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto; }
+    .notice-image-zoom-body { padding: 1rem 1.1rem 1.1rem; overflow: auto; }
+    .notice-image-zoom-body img { display: block; max-width: 100%; max-height: 74vh; margin: 0 auto; object-fit: contain; }
     .notice-mgmt-dropdown { position: relative; display: inline-block; }
     .notice-mgmt-toggle { min-width: 72px; justify-content: center; }
     .notice-mgmt-toggle::after { content: '▾'; font-size: 0.68rem; margin-left: 0.3rem; opacity: 0.65; }
@@ -36,11 +56,22 @@
     .notice-form-row label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 700; }
     .notice-form-row input, .notice-form-row textarea { width: 100%; box-sizing: border-box; padding: 0.65rem; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-input-bg, #fff); color: var(--t-text, #333); font-size: 0.9rem; }
     .notice-form-row textarea { min-height: 220px; resize: vertical; line-height: 1.55; }
+    .notice-image-row { margin-bottom: 0.9rem; }
+    .notice-image-row label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 700; }
+    .notice-image-upload { display: flex; gap: 0.6rem; align-items: center; flex-wrap: wrap; }
+    .notice-image-upload input[type="file"] { flex: 1 1 240px; min-width: 0; }
+    .notice-image-url { margin-top: 0.6rem; }
+    .notice-image-url input { width: 100%; box-sizing: border-box; padding: 0.65rem; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-input-bg, #fff); color: var(--t-text, #333); font-size: 0.9rem; }
+    .notice-image-url input:focus { border-color: var(--admin-primary); outline: none; }
+    .notice-image-preview { margin-top: 0.7rem; display: none; }
+    .notice-image-preview img { display: block; width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-bg, #f8f9fa); }
+    .notice-image-preview .notice-image-caption { margin-top: 0.35rem; font-size: 0.75rem; color: var(--admin-text-muted); display: flex; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; }
+    .notice-image-preview .notice-image-caption button { border: 0; background: transparent; color: #d63031; cursor: pointer; padding: 0; font-size: 0.75rem; font-weight: 700; }
     .notice-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
     .notice-modal-header h3 { margin: 0; }
     @media (max-width: 640px) {
-      .notice-title-cell { max-width: 180px; }
       .notice-content-col { display: none; }
+      .notice-author-cell { max-width: 100px; }
       .notice-modal-header { align-items: flex-start; flex-direction: column; }
     }
   </style>
@@ -73,20 +104,18 @@
         <div class="admin-table-title">공지 목록</div>
         <span id="noticePageSizeWrap"></span>
       </div>
-      <table class="admin-table">
+      <table class="admin-table notice-table">
         <thead>
           <tr>
-            <th style="width:72px;">활성</th>
-            <th>제목</th>
+            <th class="notice-active-col">활성</th>
+            <th style="width:24%;">제목</th>
             <th class="notice-content-col">내용</th>
-            <th>작성자</th>
-            <th>등록일</th>
-            <th>수정일</th>
-            <th style="width:96px;">관리</th>
+            <th style="width:120px;">작성자</th>
+            <th class="notice-management-col">관리</th>
           </tr>
         </thead>
         <tbody id="noticeList">
-          <tr><td colspan="7" class="empty-state">로딩 중...</td></tr>
+          <tr><td colspan="5" class="empty-state">로딩 중...</td></tr>
         </tbody>
       </table>
       <div id="noticePaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
@@ -102,8 +131,21 @@
           <button class="btn-cancel" onclick="closeNoticeView()">닫기</button>
         </div>
       </div>
-      <div style="font-size:0.78rem;color:var(--admin-text-muted);margin-bottom:0.7rem;" id="viewNoticeMeta"></div>
+      <div class="notice-view-meta" id="viewNoticeMeta"></div>
+      <div class="notice-view-image-wrap" id="viewNoticeImageWrap"><img id="viewNoticeImage" alt="공지 이미지" /></div>
       <div class="notice-detail-box" id="viewNoticeContent"></div>
+    </div>
+  </div>
+
+  <div class="notice-image-zoom-overlay hidden" id="noticeImageZoomOverlay">
+    <div class="notice-image-zoom-modal" role="dialog" aria-modal="true" aria-labelledby="noticeImageZoomTitle">
+      <div class="notice-image-zoom-head">
+        <h3 id="noticeImageZoomTitle">이미지 크게 보기</h3>
+        <button class="notice-image-zoom-close" type="button" onclick="closeNoticeImageZoom()">&times;</button>
+      </div>
+      <div class="notice-image-zoom-body">
+        <img id="noticeImageZoomImg" alt="공지 이미지 확대 보기" />
+      </div>
     </div>
   </div>
 
@@ -122,6 +164,23 @@
         <label for="noticeContentInput">내용</label>
         <textarea id="noticeContentInput" placeholder="사용자에게 안내할 공지 내용을 입력하세요."></textarea>
       </div>
+      <div class="notice-image-row">
+        <label for="noticeImageInput">이미지 첨부</label>
+        <div class="notice-image-upload">
+          <input type="file" id="noticeImageInput" accept="image/*" onchange="previewNoticeImage(this)" />
+          <button type="button" class="btn-cancel" onclick="clearNoticeImageSelection()">이미지 제거</button>
+        </div>
+        <div class="notice-image-url">
+          <input type="url" id="noticeImageUrlInput" placeholder="이미지 링크 주소를 입력하세요." oninput="previewNoticeImageUrl(this.value)" />
+        </div>
+        <div class="notice-image-preview" id="noticeImagePreview">
+          <img id="noticeImagePreviewImg" alt="공지 이미지 미리보기" />
+          <div class="notice-image-caption">
+            <span id="noticeImagePreviewLabel"></span>
+            <button type="button" onclick="clearNoticeImageSelection()">제거</button>
+          </div>
+        </div>
+      </div>
       <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;font-weight:700;">
         <input type="checkbox" id="noticeActiveInput" />
         활성 공지로 표시
@@ -134,14 +193,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.57.0"></script>
-  <script src="../js/supabase-config.js?v=3.57.0"></script>
-  <script src="../js/activity-log.js?v=3.57.0"></script>
-  <script src="../js/codes.js?v=3.57.0"></script>
-  <script src="../js/auth.js?v=3.57.0"></script>
-  <script src="../js/theme.js?v=3.57.0"></script>
-  <script src="../js/nav.js?v=3.57.0"></script>
-  <script src="../js/page-size.js?v=3.57.0"></script>
+  <script src="../config/public-config.js?v=3.58.0"></script>
+  <script src="../js/supabase-config.js?v=3.58.0"></script>
+  <script src="../js/activity-log.js?v=3.58.0"></script>
+  <script src="../js/codes.js?v=3.58.0"></script>
+  <script src="../js/auth.js?v=3.58.0"></script>
+  <script src="../js/theme.js?v=3.58.0"></script>
+  <script src="../js/nav.js?v=3.58.0"></script>
+  <script src="../js/page-size.js?v=3.58.0"></script>
   <script>
     initSupabase();
     let session;
@@ -151,6 +210,11 @@
     let noticeShowActiveOnly = true;
     let editingNoticeId = null;
     let viewingNoticeId = null;
+    let editingNoticeImageUrl = null;
+    let editingNoticeImageUrlText = '';
+    let noticeImageRemoved = false;
+    let noticePreviewObjectUrl = null;
+    let noticePreviewUrlObject = null;
 
     (async () => {
       await navInit();
@@ -178,6 +242,137 @@
       return text.slice(0, maxLen - 1) + '...';
     }
 
+    function storagePathFromUrl(url) {
+      if (!url) return null;
+      try {
+        const path = String(url).split('/Talents_Items/').pop();
+        return path && path !== url ? decodeURIComponent(path) : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    async function uploadNoticeImage(file) {
+      if (!_sb) return { url: null, error: 'Supabase not initialized' };
+      try {
+        const ext = (file.name.split('.').pop() || 'png').toLowerCase();
+        const fileName = `announcement_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+        const { data, error } = await _sb.storage.from('Talents_Items').upload(fileName, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+        if (error) {
+          await logError('IMAGE_UPLOAD_FAIL', { 구분: '공지', 오류: error.message });
+          return { url: null, error: error.message };
+        }
+        const { data: urlData } = _sb.storage.from('Talents_Items').getPublicUrl(data.path);
+        await logInfo('IMAGE_UPLOAD', { 구분: '공지', path: data.path });
+        return { url: urlData.publicUrl, error: null, path: data.path };
+      } catch (err) {
+        await logError('IMAGE_UPLOAD_ERROR', { 구분: '공지', 오류: String(err) });
+        return { url: null, error: String(err) };
+      }
+    }
+
+    async function deleteNoticeImage(imageUrl) {
+      const path = storagePathFromUrl(imageUrl);
+      if (!_sb || !path) return;
+      try {
+        await _sb.storage.from('Talents_Items').remove([path]);
+      } catch (err) {
+        await logWarn('IMAGE_DELETE_FAIL', { 구분: '공지', imageUrl, 오류: String(err) });
+      }
+    }
+
+    function resetNoticeImagePreview() {
+      if (noticePreviewObjectUrl) {
+        try { URL.revokeObjectURL(noticePreviewObjectUrl); } catch (e) {}
+        noticePreviewObjectUrl = null;
+      }
+      if (noticePreviewUrlObject) {
+        try { URL.revokeObjectURL(noticePreviewUrlObject); } catch (e) {}
+        noticePreviewUrlObject = null;
+      }
+      const preview = document.getElementById('noticeImagePreview');
+      const previewImg = document.getElementById('noticeImagePreviewImg');
+      const label = document.getElementById('noticeImagePreviewLabel');
+      if (previewImg) previewImg.removeAttribute('src');
+      if (label) label.textContent = '';
+      if (preview) preview.style.display = 'none';
+    }
+
+    function setNoticeImagePreview(src, labelText, sourceType = 'url') {
+      const preview = document.getElementById('noticeImagePreview');
+      const previewImg = document.getElementById('noticeImagePreviewImg');
+      const label = document.getElementById('noticeImagePreviewLabel');
+      if (!preview || !previewImg || !label) return;
+      previewImg.src = src;
+      label.textContent = labelText || '';
+      preview.style.display = 'block';
+      preview.dataset.sourceType = sourceType;
+    }
+
+    function previewNoticeImage(input) {
+      noticeImageRemoved = false;
+      const urlInput = document.getElementById('noticeImageUrlInput');
+      if (urlInput && urlInput.value.trim()) {
+        urlInput.value = '';
+      }
+      const file = input.files && input.files[0];
+      if (!file) {
+        if (editingNoticeImageUrl) {
+          setNoticeImagePreview(editingNoticeImageUrl, '현재 첨부된 이미지', 'stored');
+        } else {
+          resetNoticeImagePreview();
+        }
+        return;
+      }
+      if (noticePreviewObjectUrl) {
+        try { URL.revokeObjectURL(noticePreviewObjectUrl); } catch (e) {}
+      }
+      noticePreviewObjectUrl = URL.createObjectURL(file);
+      setNoticeImagePreview(noticePreviewObjectUrl, file.name, 'file');
+    }
+
+    function previewNoticeImageUrl(value) {
+      noticeImageRemoved = false;
+      const fileInput = document.getElementById('noticeImageInput');
+      if (fileInput && fileInput.files && fileInput.files.length) {
+        fileInput.value = '';
+        if (noticePreviewObjectUrl) {
+          try { URL.revokeObjectURL(noticePreviewObjectUrl); } catch (e) {}
+          noticePreviewObjectUrl = null;
+        }
+      }
+      const url = String(value || '').trim();
+      if (!url) {
+        if (editingNoticeImageUrl) {
+          setNoticeImagePreview(editingNoticeImageUrl, '현재 첨부된 이미지', 'stored');
+        } else {
+          resetNoticeImagePreview();
+        }
+        return;
+      }
+      setNoticeImagePreview(url, '링크 주소', 'url');
+    }
+
+    function clearNoticeImageSelection() {
+      noticeImageRemoved = true;
+      editingNoticeImageUrl = null;
+      editingNoticeImageUrlText = '';
+      const fileInput = document.getElementById('noticeImageInput');
+      const urlInput = document.getElementById('noticeImageUrlInput');
+      if (fileInput) fileInput.value = '';
+      if (urlInput) urlInput.value = '';
+      resetNoticeImagePreview();
+      if (viewingNoticeId) {
+        const notice = getNoticeById(viewingNoticeId);
+        if (notice && notice.image_url) {
+          noticeImageRemoved = true;
+        }
+      }
+    }
+
     function closeNoticeMenus() {
       document.querySelectorAll('.notice-mgmt-menu.show').forEach(menu => menu.classList.remove('show'));
     }
@@ -196,6 +391,22 @@
       return notices.find(n => n.id === id);
     }
 
+    function openNoticeImageZoom(src, title) {
+      const overlay = document.getElementById('noticeImageZoomOverlay');
+      const img = document.getElementById('noticeImageZoomImg');
+      document.getElementById('noticeImageZoomTitle').textContent = title || '이미지 크게 보기';
+      img.src = src;
+      img.onerror = function() { img.removeAttribute('src'); };
+      overlay.classList.remove('hidden');
+    }
+
+    function closeNoticeImageZoom() {
+      const overlay = document.getElementById('noticeImageZoomOverlay');
+      const img = document.getElementById('noticeImageZoomImg');
+      img.removeAttribute('src');
+      overlay.classList.add('hidden');
+    }
+
     function noticeAuthor(n) {
       return n.updated_by_name || n.created_by_name || '-';
     }
@@ -207,7 +418,7 @@
 
     async function loadNotices() {
       const tbody = document.getElementById('noticeList');
-      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">로딩 중...</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="5" class="empty-state">로딩 중...</td></tr>';
       const baseQuery = _sb
         .from('announcements')
         .select('*')
@@ -221,7 +432,7 @@
           .order('created_at', { ascending: false });
         if (fallback.error) {
           await logError('ANNOUNCEMENT_LOAD_FAIL', { 오류: fallback.error.message });
-          tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(fallback.error.message)) + '</td></tr>';
+          tbody.innerHTML = '<tr><td colspan="5" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(fallback.error.message)) + '</td></tr>';
           return;
         }
         notices = (fallback.data || []).map(n => ({ ...n, is_deleted: n.is_deleted === true }));
@@ -231,7 +442,7 @@
 
       if (error) {
         await logError('ANNOUNCEMENT_LOAD_FAIL', { 오류: error.message });
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(error.message)) + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(error.message)) + '</td></tr>';
         return;
       }
 
@@ -249,7 +460,7 @@
 
       const tbody = document.getElementById('noticeList');
       if (!visibleNotices.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (noticeShowActiveOnly ? '활성 공지가 없습니다.' : '등록된 공지가 없습니다.') + '</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">' + (noticeShowActiveOnly ? '활성 공지가 없습니다.' : '등록된 공지가 없습니다.') + '</td></tr>';
         document.getElementById('noticePaging').innerHTML = '';
         return;
       }
@@ -262,13 +473,11 @@
       tbody.innerHTML = pageData.map(n => {
         const checked = n.is_active ? 'checked' : '';
         return `<tr>
-          <td><label class="notice-switch" title="공지 활성화"><input type="checkbox" ${checked} onchange="toggleNoticeActive('${n.id}', ${!!n.is_active})" /><span class="notice-slider"></span></label></td>
+          <td class="notice-active-col"><label class="notice-switch" title="공지 활성화"><input type="checkbox" ${checked} onchange="toggleNoticeActive('${n.id}', ${!!n.is_active})" /><span class="notice-slider"></span></label></td>
           <td class="notice-title-cell">${escapeHtml(n.title)}</td>
           <td class="notice-content-col"><div class="notice-content-preview">${escapeHtml(compactText(n.content, 160))}</div></td>
-          <td>${escapeHtml(noticeAuthor(n))}</td>
-          <td>${formatKSTShort(n.created_at)}</td>
-          <td>${formatKSTShort(n.updated_at || n.created_at)}</td>
-          <td>
+          <td class="notice-author-cell">${escapeHtml(noticeAuthor(n))}</td>
+          <td class="notice-management-col">
             <div class="notice-mgmt-dropdown">
               <button class="filter-btn notice-mgmt-toggle" onclick="toggleNoticeMgmtMenu(event, this)">관리</button>
               <div class="notice-mgmt-menu">
@@ -309,8 +518,28 @@
       if (!notice) return;
       viewingNoticeId = id;
       document.getElementById('viewNoticeTitle').textContent = notice.title;
-      document.getElementById('viewNoticeMeta').textContent =
-        (notice.is_active ? '활성 공지' : '비활성') + ' · 작성자 ' + noticeAuthor(notice) + ' · 등록 ' + formatKSTShort(notice.created_at);
+      document.getElementById('viewNoticeMeta').innerHTML =
+        '<span class="notice-status-pill ' + (notice.is_active ? 'active' : 'inactive') + '">' + (notice.is_active ? '활성 공지' : '비활성') + '</span>' +
+        '<span>· 작성자 ' + escapeHtml(noticeAuthor(notice)) + '</span>' +
+        '<span class="notice-date">· 등록 ' + escapeHtml(formatKSTShort(notice.created_at)) + '</span>' +
+        '<span class="notice-date">· 수정 ' + escapeHtml(formatKSTShort(notice.updated_at || notice.created_at)) + '</span>';
+      const viewImageWrap = document.getElementById('viewNoticeImageWrap');
+      const viewImage = document.getElementById('viewNoticeImage');
+      if (notice.image_url) {
+        viewImage.src = notice.image_url;
+        viewImage.onerror = function() {
+          viewImage.removeAttribute('src');
+          viewImageWrap.style.display = 'none';
+        };
+        viewImage.onclick = function() {
+          openNoticeImageZoom(notice.image_url, notice.title || '공지 이미지');
+        };
+        viewImageWrap.style.display = 'block';
+      } else {
+        viewImage.removeAttribute('src');
+        viewImage.onclick = null;
+        viewImageWrap.style.display = 'none';
+      }
       document.getElementById('viewNoticeContent').textContent = notice.content || '';
       document.getElementById('noticeViewModal').classList.remove('hidden');
       logInfo('ANNOUNCEMENT_VIEW', { 공지ID: id, 제목: notice.title });
@@ -318,6 +547,7 @@
 
     function closeNoticeView() {
       document.getElementById('noticeViewModal').classList.add('hidden');
+      closeNoticeImageZoom();
     }
 
     function editCurrentNotice() {
@@ -330,10 +560,23 @@
       closeNoticeMenus();
       editingNoticeId = id || null;
       const notice = editingNoticeId ? getNoticeById(editingNoticeId) : null;
+      editingNoticeImageUrl = notice ? (notice.image_url || null) : null;
+      editingNoticeImageUrlText = notice && notice.image_url ? notice.image_url : '';
+      noticeImageRemoved = false;
       document.getElementById('editNoticeTitle').textContent = notice ? '공지 수정' : '공지 등록';
       document.getElementById('noticeTitleInput').value = notice ? notice.title || '' : '';
       document.getElementById('noticeContentInput').value = notice ? notice.content || '' : '';
       document.getElementById('noticeActiveInput').checked = notice ? !!notice.is_active : false;
+      const fileInput = document.getElementById('noticeImageInput');
+      const urlInput = document.getElementById('noticeImageUrlInput');
+      if (fileInput) fileInput.value = '';
+      if (urlInput) urlInput.value = notice && notice.image_url ? notice.image_url : '';
+      if (noticePreviewObjectUrl) {
+        try { URL.revokeObjectURL(noticePreviewObjectUrl); } catch (e) {}
+        noticePreviewObjectUrl = null;
+      }
+      if (notice && notice.image_url) setNoticeImagePreview(notice.image_url, '현재 첨부된 이미지', 'stored');
+      else resetNoticeImagePreview();
       document.getElementById('noticeError').classList.remove('show');
       document.getElementById('noticeEditModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('noticeTitleInput').focus(), 30);
@@ -341,6 +584,11 @@
 
     function closeNoticeEditor() {
       document.getElementById('noticeEditModal').classList.add('hidden');
+      noticeImageRemoved = false;
+      editingNoticeImageUrl = null;
+      editingNoticeImageUrlText = '';
+      resetNoticeImagePreview();
+      closeNoticeImageZoom();
     }
 
     async function saveNotice() {
@@ -349,6 +597,8 @@
       const title = document.getElementById('noticeTitleInput').value.trim();
       const content = document.getElementById('noticeContentInput').value.trim();
       const isActive = document.getElementById('noticeActiveInput').checked;
+      const fileInput = document.getElementById('noticeImageInput');
+      const urlInput = document.getElementById('noticeImageUrlInput');
 
       if (!title) { errEl.textContent = '제목을 입력해주세요.'; errEl.classList.add('show'); return; }
       if (!content) { errEl.textContent = '내용을 입력해주세요.'; errEl.classList.add('show'); return; }
@@ -358,9 +608,30 @@
       saveBtn.textContent = '저장 중...';
 
       const writerName = session.displayName || session.username;
+      const previousImageUrl = editingNoticeId ? (getNoticeById(editingNoticeId)?.image_url || null) : null;
+      let imageUrl = noticeImageRemoved ? null : (editingNoticeImageUrl || null);
+      let uploadedImagePath = null;
+      const typedImageUrl = urlInput ? urlInput.value.trim() : '';
+
+      if (fileInput && fileInput.files && fileInput.files[0]) {
+        const { url, error, path } = await uploadNoticeImage(fileInput.files[0]);
+        if (error) {
+          errEl.textContent = tErr(error);
+          errEl.classList.add('show');
+          saveBtn.disabled = false;
+          saveBtn.textContent = '저장';
+          return;
+        }
+        imageUrl = url;
+        uploadedImagePath = path || null;
+      } else if (typedImageUrl) {
+        imageUrl = typedImageUrl;
+      }
+
       const row = {
         title,
         content,
+        image_url: imageUrl,
         is_active: isActive,
         updated_by: session.id,
         updated_by_name: writerName,
@@ -381,16 +652,25 @@
           await logError(editingNoticeId ? 'ANNOUNCEMENT_UPDATE_FAIL' : 'ANNOUNCEMENT_CREATE_FAIL', { 제목: title, 오류: result.error.message });
           errEl.textContent = tErr(result.error.message);
           errEl.classList.add('show');
+          if (uploadedImagePath) {
+            try { await _sb.storage.from('Talents_Items').remove([uploadedImagePath]); } catch (e) {}
+          }
           return;
         }
 
-        await logInfo(editingNoticeId ? 'ANNOUNCEMENT_UPDATE' : 'ANNOUNCEMENT_CREATE', { 제목: title, 활성: isActive });
+      await logInfo(editingNoticeId ? 'ANNOUNCEMENT_UPDATE' : 'ANNOUNCEMENT_CREATE', { 제목: title, 활성: isActive, 이미지: !!imageUrl });
+        if (previousImageUrl && previousImageUrl !== imageUrl && storagePathFromUrl(previousImageUrl)) {
+          await deleteNoticeImage(previousImageUrl);
+        }
         closeNoticeEditor();
         await loadNotices();
       } catch (err) {
         await logError('ANNOUNCEMENT_SAVE_ERROR', { 제목: title, 오류: String(err) });
         errEl.textContent = tErr(err.message || String(err));
         errEl.classList.add('show');
+        if (uploadedImagePath) {
+          try { await _sb.storage.from('Talents_Items').remove([uploadedImagePath]); } catch (e) {}
+        }
       } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = '저장';
@@ -445,6 +725,7 @@
       }
 
       await logInfo('ANNOUNCEMENT_DELETE', { 공지ID: id, 제목: notice.title });
+      if (notice.image_url && storagePathFromUrl(notice.image_url)) await deleteNoticeImage(notice.image_url);
       notices = notices.map(n => n.id === id ? { ...n, ...payload } : n);
       noticePage = 1;
       renderNotices();
@@ -453,10 +734,13 @@
     document.getElementById('noticeViewModal').addEventListener('click', e => {
       if (e.target.classList.contains('modal-overlay')) closeNoticeView();
     });
+    document.getElementById('noticeImageZoomOverlay').addEventListener('click', e => {
+      if (e.target.classList.contains('notice-image-zoom-overlay')) closeNoticeImageZoom();
+    });
     document.getElementById('noticeEditModal').addEventListener('click', e => {
       if (e.target.classList.contains('modal-overlay')) closeNoticeEditor();
     });
   </script>
-  <script src="../js/version.js?v=3.57.0"></script>
+  <script src="../js/version.js?v=3.58.0"></script>
 </body>
 </html>

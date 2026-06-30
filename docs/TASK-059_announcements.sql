@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   id uuid PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   title text NOT NULL CHECK (char_length(trim(title)) > 0 AND char_length(title) <= 200),
   content text NOT NULL CHECK (char_length(trim(content)) > 0),
+  image_url text,
   is_active boolean NOT NULL DEFAULT false,
   is_deleted boolean NOT NULL DEFAULT false,
   deleted_at timestamptz,
@@ -21,6 +22,8 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+ALTER TABLE public.announcements
+  ADD COLUMN IF NOT EXISTS image_url text;
 ALTER TABLE public.announcements
   ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL DEFAULT false;
 ALTER TABLE public.announcements
