@@ -368,6 +368,7 @@ function detectCurrentPageId() {
   if (path.includes('admin/logs.html')) return 'admin-logs';
   if (path.includes('admin/log-rules.html')) return 'admin-log-rules';
   if (path.includes('admin/slack-rules.html')) return 'admin-slack-rules';
+  if (path.includes('admin/notices.html')) return 'admin-notices';
   if (path.includes('admin/versions.html')) return 'admin-versions';
   if (path.includes('admin/talent-items.html')) return 'admin-talent-items';
   if (path.includes('admin/page-access.html')) return 'admin-page-access';

@@ -5,9 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 마을 - CHO Talents</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.55.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.55.0" />
-  <link rel="stylesheet" href="css/style.css?v=3.55.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.57.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.57.0" />
+  <link rel="stylesheet" href="css/style.css?v=3.57.0" />
+  <style>
+    .announcement-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .announcement-overlay.hidden { display: none; }
+    .announcement-modal { width: min(560px, 96vw); max-height: 86vh; overflow: hidden; background: var(--t-card, #fff); color: var(--t-text, #222); border: 1px solid var(--t-border, #e9ecef); border-radius: 8px; box-shadow: 0 16px 42px rgba(0,0,0,0.22); display: flex; flex-direction: column; }
+    .announcement-head { padding: 1rem 1.1rem; border-bottom: 1px solid var(--t-border, #e9ecef); display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; }
+    .announcement-head h3 { margin: 0; font-size: 1.05rem; line-height: 1.35; }
+    .announcement-close { border: 1px solid var(--t-border, #dee2e6); background: var(--t-bg, #f8f9fa); color: var(--t-text, #222); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto; }
+    .announcement-meta { padding: 0.65rem 1.1rem 0; color: var(--t-text-muted, #868e96); font-size: 0.78rem; }
+    .announcement-body { padding: 0.85rem 1.1rem 1rem; overflow-y: auto; white-space: pre-wrap; line-height: 1.65; font-size: 0.92rem; }
+    .announcement-actions { padding: 0.85rem 1.1rem 1rem; border-top: 1px solid var(--t-border, #e9ecef); display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
+    .announcement-btn { border: 1px solid var(--t-border, #dee2e6); border-radius: 8px; padding: 0.55rem 0.8rem; background: var(--t-bg, #f8f9fa); color: var(--t-text, #222); cursor: pointer; font-weight: 700; }
+    .announcement-btn.primary { background: var(--admin-primary, #6c5ce7); border-color: var(--admin-primary, #6c5ce7); color: #fff; }
+  </style>
 </head>
 <body>
   <div class="falling-stars" id="fallingStars"></div>
@@ -96,14 +109,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.55.0"></script>
-  <script src="js/supabase-config.js?v=3.55.0"></script>
-  <script src="js/activity-log.js?v=3.55.0"></script>
-  <script src="js/codes.js?v=3.55.0"></script>
-  <script src="js/auth.js?v=3.55.0"></script>
-  <script src="js/theme.js?v=3.55.0"></script>
-  <script src="js/nav.js?v=3.55.0"></script>
-  <script src="js/app.js?v=3.55.0"></script>
+  <script src="config/public-config.js?v=3.57.0"></script>
+  <script src="js/supabase-config.js?v=3.57.0"></script>
+  <script src="js/activity-log.js?v=3.57.0"></script>
+  <script src="js/codes.js?v=3.57.0"></script>
+  <script src="js/auth.js?v=3.57.0"></script>
+  <script src="js/theme.js?v=3.57.0"></script>
+  <script src="js/nav.js?v=3.57.0"></script>
+  <script src="js/app.js?v=3.57.0"></script>
   <script>
     const ALL_SHORTCUTS = [
       { id:'earn-talents',  href:'earn-talents.html',        icon:'💰', title:'달란트 적립',   desc:'열심히 활동하고 달란트를 모아요!',           color:'var(--accent)',  minRank:0 },
@@ -129,6 +142,7 @@
       { id:'admin-perm',    href:'docs/page-permission-rules.html', icon:'🔐', title:'페이지 권한 룰', desc:'페이지별 접근 권한을 확인해요!',       color:'#636e72',       minRank:80 },
       { id:'admin-logrule', href:'admin/log-rules.html',     icon:'📝', title:'로그 작성 룰',   desc:'로그 작성 규칙을 확인해요!',                  color:'#b2bec3',       minRank:80 },
       { id:'admin-auditrule',href:'admin/audit-rules.html',  icon:'📃', title:'작업 이력 룰',   desc:'작업 이력 작성 규칙을 확인해요!',             color:'#dfe6e9',       minRank:80 },
+      { id:'admin-notices',  href:'admin/notices.html',      icon:'📢', title:'공지 관리',      desc:'로그인 공지를 등록하고 관리해요!',             color:'#ffe066',       minRank:90 },
       { id:'admin-ver',     href:'admin/versions.html',      icon:'🔖', title:'버전',          desc:'버전 업데이트 이력을 확인해요!',               color:'#636e72',       minRank:80 },
       { id:'admin-report',  href:'admin/reports.html',       icon:'📑', title:'보고서',         desc:'운영 보고서를 확인해요!',                     color:'#00cec9',       minRank:80 },
       { id:'admin-access',  href:'admin/page-access.html',   icon:'🔑', title:'페이지 접근',   desc:'페이지 접근 권한을 설정해요!',                color:'#e17055',       minRank:100 },
@@ -252,6 +266,111 @@
       closeFavModal();
     }
 
+    function escapeAnnouncementHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function ensureAnnouncementModal() {
+      let overlay = document.getElementById('announcementOverlay');
+      if (overlay) return overlay;
+      overlay = document.createElement('div');
+      overlay.id = 'announcementOverlay';
+      overlay.className = 'announcement-overlay hidden';
+      overlay.innerHTML =
+        '<div class="announcement-modal" role="dialog" aria-modal="true" aria-labelledby="announcementTitle">' +
+          '<div class="announcement-head"><h3 id="announcementTitle"></h3><button class="announcement-close" type="button" onclick="closeAnnouncementPopup()">×</button></div>' +
+          '<div class="announcement-meta" id="announcementMeta"></div>' +
+          '<div class="announcement-body" id="announcementBody"></div>' +
+          '<div class="announcement-actions">' +
+            '<button class="announcement-btn" type="button" onclick="closeAnnouncementPopup()">닫기</button>' +
+            '<button class="announcement-btn primary" type="button" onclick="dismissCurrentAnnouncement()">다시 열지 않음</button>' +
+          '</div>' +
+        '</div>';
+      document.body.appendChild(overlay);
+      overlay.addEventListener('click', e => {
+        if (e.target === overlay) closeAnnouncementPopup();
+      });
+      return overlay;
+    }
+
+    let _announcementQueue = [];
+    let _currentAnnouncement = null;
+    let _announcementSession = null;
+
+    async function showActiveAnnouncements(session) {
+      if (!_sb || !session || !session.id) return;
+      _announcementSession = session;
+      try {
+        const { data: activeNotices, error } = await _sb
+          .from('announcements')
+          .select('id,title,content,created_at')
+          .eq('is_active', true)
+          .order('created_at', { ascending: false })
+          .limit(20);
+        if (error || !activeNotices || !activeNotices.length) return;
+
+        const ids = activeNotices.map(n => n.id);
+        const { data: dismissed } = await _sb
+          .from('announcement_dismissals')
+          .select('announcement_id')
+          .eq('user_id', session.id)
+          .in('announcement_id', ids);
+        const dismissedIds = new Set((dismissed || []).map(d => d.announcement_id));
+        _announcementQueue = activeNotices.filter(n => !dismissedIds.has(n.id));
+        showNextAnnouncement();
+      } catch (err) {
+        console.warn('[Announcement] load skipped:', err.message || err);
+      }
+    }
+
+    function showNextAnnouncement() {
+      _currentAnnouncement = _announcementQueue.shift() || null;
+      if (!_currentAnnouncement) return;
+      const overlay = ensureAnnouncementModal();
+      document.getElementById('announcementTitle').textContent = _currentAnnouncement.title || '공지';
+      document.getElementById('announcementMeta').textContent =
+        '등록일 ' + formatKSTShort(_currentAnnouncement.created_at);
+      document.getElementById('announcementBody').innerHTML =
+        escapeAnnouncementHtml(_currentAnnouncement.content).replace(/\n/g, '<br>');
+      overlay.classList.remove('hidden');
+    }
+
+    function closeAnnouncementPopup(showNext = true) {
+      const overlay = document.getElementById('announcementOverlay');
+      if (overlay) overlay.classList.add('hidden');
+      if (showNext) setTimeout(showNextAnnouncement, 0);
+    }
+
+    async function dismissCurrentAnnouncement() {
+      if (!_currentAnnouncement || !_announcementSession) {
+        closeAnnouncementPopup();
+        return;
+      }
+      try {
+        const { error } = await _sb.from('announcement_dismissals').upsert({
+          announcement_id: _currentAnnouncement.id,
+          user_id: _announcementSession.id,
+          dismissed_at: new Date().toISOString()
+        }, { onConflict: 'announcement_id,user_id' });
+        if (error) throw error;
+        await logInfo('ANNOUNCEMENT_DISMISS', {
+          공지ID: _currentAnnouncement.id,
+          제목: _currentAnnouncement.title
+        });
+        closeAnnouncementPopup(false);
+        showNextAnnouncement();
+      } catch (err) {
+        await logError('ANNOUNCEMENT_DISMISS_FAIL', {
+          공지ID: _currentAnnouncement.id,
+          제목: _currentAnnouncement.title,
+          오류: err.message || String(err)
+        });
+        alert('공지 숨김 처리에 실패했습니다: ' + tErr(err.message || String(err)));
+      }
+    }
+
     (async () => {
       if (!_sb) initSupabase();
       await navInit();
@@ -278,6 +397,7 @@
           } catch(e) {}
         }
         await renderFavCards();
+        await showActiveAnnouncements(s);
       } else {
         const guestBanner = document.getElementById('guestGuideBanner');
         if (guestBanner) guestBanner.style.display = '';
@@ -286,6 +406,6 @@
       await initTheme();
     })();
   </script>
-  <script src="js/version.js?v=3.55.0"></script>
+  <script src="js/version.js?v=3.57.0"></script>
 </body>
 </html>

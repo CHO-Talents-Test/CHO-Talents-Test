@@ -192,6 +192,18 @@ const ACTION_LABELS = {
   QNA_COMMENT: '댓글 등록',
   QNA_DELETE: 'Q&A 삭제',
   QNA_FAQ_SET: 'FAQ 설정',
+  // 공지
+  ANNOUNCEMENT_VIEW: '공지 조회',
+  ANNOUNCEMENT_CREATE: '공지 등록',
+  ANNOUNCEMENT_CREATE_FAIL: '공지 등록 실패',
+  ANNOUNCEMENT_UPDATE: '공지 수정',
+  ANNOUNCEMENT_UPDATE_FAIL: '공지 수정 실패',
+  ANNOUNCEMENT_TOGGLE: '공지 활성 토글',
+  ANNOUNCEMENT_TOGGLE_FAIL: '공지 활성 토글 실패',
+  ANNOUNCEMENT_LOAD_FAIL: '공지 조회 실패',
+  ANNOUNCEMENT_DISMISS: '공지 다시 열지 않음',
+  ANNOUNCEMENT_DISMISS_FAIL: '공지 다시 열지 않음 실패',
+  ANNOUNCEMENT_SAVE_ERROR: '공지 저장 오류',
   // 로그 관리
   LOG_ACKNOWLEDGED: '로그 확인',
   LOG_BULK_ACK: '로그 일괄 확인',

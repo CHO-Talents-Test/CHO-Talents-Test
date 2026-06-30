@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>공지 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.57.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.57.0" />
+  <style>
+    .notice-toolbar { display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
+    .notice-summary { color: var(--admin-text-muted); font-size: 0.85rem; }
+    .notice-title-cell { font-weight: 700; max-width: 260px; }
+    .notice-content-preview { color: var(--admin-text-muted); font-size: 0.82rem; line-height: 1.45; max-width: 420px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .notice-switch { position: relative; display: inline-flex; align-items: center; width: 42px; height: 24px; }
+    .notice-switch input { opacity: 0; width: 0; height: 0; }
+    .notice-slider { position: absolute; cursor: pointer; inset: 0; background: #ced4da; border-radius: 999px; transition: 0.18s; }
+    .notice-slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.18s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+    .notice-switch input:checked + .notice-slider { background: var(--admin-primary); }
+    .notice-switch input:checked + .notice-slider:before { transform: translateX(18px); }
+    .notice-detail-box { border: 1px solid var(--admin-border); border-radius: 8px; padding: 0.9rem; background: var(--t-bg, #f8f9fa); white-space: pre-wrap; line-height: 1.6; max-height: 45vh; overflow-y: auto; }
+    .notice-form-row { margin-bottom: 0.9rem; }
+    .notice-form-row label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 700; }
+    .notice-form-row input, .notice-form-row textarea { width: 100%; box-sizing: border-box; padding: 0.65rem; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-input-bg, #fff); color: var(--t-text, #333); font-size: 0.9rem; }
+    .notice-form-row textarea { min-height: 220px; resize: vertical; line-height: 1.55; }
+    .notice-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
+    .notice-modal-header h3 { margin: 0; }
+    @media (max-width: 640px) {
+      .notice-title-cell, .notice-content-preview { max-width: 180px; }
+      .notice-modal-header { align-items: flex-start; flex-direction: column; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:0.5rem;">공지 관리</h2>
+    <p style="color:var(--admin-text-muted);margin-bottom:1.2rem;">전도사님 이상의 권한자가 공지를 등록하고, 활성 공지는 로그인한 사용자의 메인 화면에 표시합니다.</p>
+
+    <div class="notice-toolbar">
+      <div class="notice-summary" id="noticeSummary">공지 목록을 불러오는 중입니다.</div>
+      <button class="btn-confirm" onclick="openNoticeEditor()">공지 등록</button>
+    </div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title">공지 목록</div>
+        <span id="noticePageSizeWrap"></span>
+      </div>
+      <table class="admin-table">
+        <thead>
+          <tr>
+            <th>공지</th>
+            <th>제목</th>
+            <th>내용</th>
+            <th>작성자</th>
+            <th>등록일</th>
+            <th>수정일</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="noticeList">
+          <tr><td colspan="7" class="empty-state">로딩 중...</td></tr>
+        </tbody>
+      </table>
+      <div id="noticePaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="noticeViewModal">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="notice-modal-header">
+        <h3 class="modal-title" id="viewNoticeTitle">공지</h3>
+        <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
+          <button class="filter-btn" onclick="editCurrentNotice()">수정</button>
+          <button class="btn-cancel" onclick="closeNoticeView()">닫기</button>
+        </div>
+      </div>
+      <div style="font-size:0.78rem;color:var(--admin-text-muted);margin-bottom:0.7rem;" id="viewNoticeMeta"></div>
+      <div class="notice-detail-box" id="viewNoticeContent"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="noticeEditModal">
+    <div class="modal-box" style="max-width:720px;">
+      <div class="notice-modal-header">
+        <h3 class="modal-title" id="editNoticeTitle">공지 등록</h3>
+        <button class="btn-cancel" onclick="closeNoticeEditor()">닫기</button>
+      </div>
+      <div class="form-error" id="noticeError"></div>
+      <div class="notice-form-row">
+        <label for="noticeTitleInput">제목</label>
+        <input type="text" id="noticeTitleInput" maxlength="200" placeholder="공지 제목을 입력하세요." />
+      </div>
+      <div class="notice-form-row">
+        <label for="noticeContentInput">내용</label>
+        <textarea id="noticeContentInput" placeholder="사용자에게 안내할 공지 내용을 입력하세요."></textarea>
+      </div>
+      <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:1rem;font-weight:700;">
+        <input type="checkbox" id="noticeActiveInput" />
+        활성 공지로 표시
+      </label>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeNoticeEditor()">취소</button>
+        <button class="btn-confirm" id="noticeSaveBtn" onclick="saveNotice()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.57.0"></script>
+  <script src="../js/supabase-config.js?v=3.57.0"></script>
+  <script src="../js/activity-log.js?v=3.57.0"></script>
+  <script src="../js/codes.js?v=3.57.0"></script>
+  <script src="../js/auth.js?v=3.57.0"></script>
+  <script src="../js/theme.js?v=3.57.0"></script>
+  <script src="../js/nav.js?v=3.57.0"></script>
+  <script src="../js/page-size.js?v=3.57.0"></script>
+  <script>
+    initSupabase();
+    let session;
+    let notices = [];
+    let noticePage = 1;
+    let noticePageSize = 20;
+    let editingNoticeId = null;
+    let viewingNoticeId = null;
+
+    (async () => {
+      await navInit();
+      session = await initPage(90, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      await initTheme();
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      noticePageSize = await loadPageSize('notices', 20);
+      await loadNotices();
+    })();
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function compactText(value, maxLen) {
+      const text = String(value || '').replace(/\s+/g, ' ').trim();
+      if (text.length <= maxLen) return text;
+      return text.slice(0, maxLen - 1) + '...';
+    }
+
+    function getNoticeById(id) {
+      return notices.find(n => n.id === id);
+    }
+
+    function noticeAuthor(n) {
+      return n.updated_by_name || n.created_by_name || '-';
+    }
+
+    async function loadNotices() {
+      const tbody = document.getElementById('noticeList');
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">로딩 중...</td></tr>';
+      const { data, error } = await _sb
+        .from('announcements')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        await logError('ANNOUNCEMENT_LOAD_FAIL', { 오류: error.message });
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(error.message)) + '</td></tr>';
+        return;
+      }
+
+      notices = data || [];
+      renderNotices();
+    }
+
+    function renderNotices() {
+      const activeCount = notices.filter(n => n.is_active).length;
+      document.getElementById('noticeSummary').textContent =
+        '전체 ' + notices.length + '건 · 활성 공지 ' + activeCount + '건';
+      document.getElementById('noticePageSizeWrap').innerHTML =
+        renderPageSizeSelector('notices', noticePageSize, 'onNoticePageSizeChange(this.value)');
+
+      const tbody = document.getElementById('noticeList');
+      if (!notices.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">등록된 공지가 없습니다.</td></tr>';
+        document.getElementById('noticePaging').innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(notices.length / noticePageSize));
+      if (noticePage > totalPages) noticePage = totalPages;
+      const start = (noticePage - 1) * noticePageSize;
+      const pageData = notices.slice(start, start + noticePageSize);
+
+      tbody.innerHTML = pageData.map(n => {
+        const checked = n.is_active ? 'checked' : '';
+        return `<tr>
+          <td><label class="notice-switch" title="공지 활성화"><input type="checkbox" ${checked} onchange="toggleNoticeActive('${n.id}', ${!!n.is_active})" /><span class="notice-slider"></span></label></td>
+          <td class="notice-title-cell">${escapeHtml(n.title)}</td>
+          <td><div class="notice-content-preview">${escapeHtml(compactText(n.content, 160))}</div></td>
+          <td>${escapeHtml(noticeAuthor(n))}</td>
+          <td>${formatKSTShort(n.created_at)}</td>
+          <td>${formatKSTShort(n.updated_at || n.created_at)}</td>
+          <td><button class="filter-btn" onclick="openNoticeView('${n.id}')">보기</button> <button class="filter-btn" onclick="openNoticeEditor('${n.id}')">수정</button></td>
+        </tr>`;
+      }).join('');
+
+      document.getElementById('noticePaging').innerHTML =
+        buildPagingButtons(noticePage, totalPages, 'goNoticePage(__PAGE__)');
+    }
+
+    async function onNoticePageSizeChange(value) {
+      noticePageSize = parseInt(value, 10) || 20;
+      noticePage = 1;
+      await savePageSize('notices', noticePageSize);
+      renderNotices();
+    }
+
+    function goNoticePage(page) {
+      noticePage = page;
+      renderNotices();
+    }
+
+    function openNoticeView(id) {
+      const notice = getNoticeById(id);
+      if (!notice) return;
+      viewingNoticeId = id;
+      document.getElementById('viewNoticeTitle').textContent = notice.title;
+      document.getElementById('viewNoticeMeta').textContent =
+        (notice.is_active ? '활성 공지' : '비활성') + ' · 작성자 ' + noticeAuthor(notice) + ' · 등록 ' + formatKSTShort(notice.created_at);
+      document.getElementById('viewNoticeContent').textContent = notice.content || '';
+      document.getElementById('noticeViewModal').classList.remove('hidden');
+      logInfo('ANNOUNCEMENT_VIEW', { 공지ID: id, 제목: notice.title });
+    }
+
+    function closeNoticeView() {
+      document.getElementById('noticeViewModal').classList.add('hidden');
+    }
+
+    function editCurrentNotice() {
+      if (!viewingNoticeId) return;
+      closeNoticeView();
+      openNoticeEditor(viewingNoticeId);
+    }
+
+    function openNoticeEditor(id) {
+      editingNoticeId = id || null;
+      const notice = editingNoticeId ? getNoticeById(editingNoticeId) : null;
+      document.getElementById('editNoticeTitle').textContent = notice ? '공지 수정' : '공지 등록';
+      document.getElementById('noticeTitleInput').value = notice ? notice.title || '' : '';
+      document.getElementById('noticeContentInput').value = notice ? notice.content || '' : '';
+      document.getElementById('noticeActiveInput').checked = notice ? !!notice.is_active : false;
+      document.getElementById('noticeError').classList.remove('show');
+      document.getElementById('noticeEditModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('noticeTitleInput').focus(), 30);
+    }
+
+    function closeNoticeEditor() {
+      document.getElementById('noticeEditModal').classList.add('hidden');
+    }
+
+    async function saveNotice() {
+      const errEl = document.getElementById('noticeError');
+      const title = document.getElementById('noticeTitleInput').value.trim();
+      const content = document.getElementById('noticeContentInput').value.trim();
+      const isActive = document.getElementById('noticeActiveInput').checked;
+
+      if (!title) { errEl.textContent = '제목을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!content) { errEl.textContent = '내용을 입력해주세요.'; errEl.classList.add('show'); return; }
+
+      const saveBtn = document.getElementById('noticeSaveBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = '저장 중...';
+
+      const writerName = session.displayName || session.username;
+      const row = {
+        title,
+        content,
+        is_active: isActive,
+        updated_by: session.id,
+        updated_by_name: writerName,
+        updated_at: new Date().toISOString()
+      };
+
+      try {
+        let result;
+        if (editingNoticeId) {
+          result = await _sb.from('announcements').update(row).eq('id', editingNoticeId);
+        } else {
+          row.created_by = session.id;
+          row.created_by_name = writerName;
+          result = await _sb.from('announcements').insert(row);
+        }
+
+        if (result.error) {
+          await logError(editingNoticeId ? 'ANNOUNCEMENT_UPDATE_FAIL' : 'ANNOUNCEMENT_CREATE_FAIL', { 제목: title, 오류: result.error.message });
+          errEl.textContent = tErr(result.error.message);
+          errEl.classList.add('show');
+          return;
+        }
+
+        await logInfo(editingNoticeId ? 'ANNOUNCEMENT_UPDATE' : 'ANNOUNCEMENT_CREATE', { 제목: title, 활성: isActive });
+        closeNoticeEditor();
+        await loadNotices();
+      } catch (err) {
+        await logError('ANNOUNCEMENT_SAVE_ERROR', { 제목: title, 오류: String(err) });
+        errEl.textContent = tErr(err.message || String(err));
+        errEl.classList.add('show');
+      } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = '저장';
+      }
+    }
+
+    async function toggleNoticeActive(id, currentActive) {
+      const notice = getNoticeById(id);
+      if (!notice) return;
+      const nextActive = !currentActive;
+      const { error } = await _sb.from('announcements').update({
+        is_active: nextActive,
+        updated_by: session.id,
+        updated_by_name: session.displayName || session.username,
+        updated_at: new Date().toISOString()
+      }).eq('id', id);
+
+      if (error) {
+        await logError('ANNOUNCEMENT_TOGGLE_FAIL', { 공지ID: id, 제목: notice.title, 오류: error.message });
+        alert('공지 상태 변경 실패: ' + tErr(error.message));
+        renderNotices();
+        return;
+      }
+
+      await logInfo('ANNOUNCEMENT_TOGGLE', { 공지ID: id, 제목: notice.title, 활성: nextActive });
+      notice.is_active = nextActive;
+      notice.updated_by_name = session.displayName || session.username;
+      notice.updated_at = new Date().toISOString();
+      renderNotices();
+    }
+
+    document.getElementById('noticeViewModal').addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay')) closeNoticeView();
+    });
+    document.getElementById('noticeEditModal').addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay')) closeNoticeEditor();
+    });
+  </script>
+  <script src="../js/version.js?v=3.57.0"></script>
+</body>
+</html>

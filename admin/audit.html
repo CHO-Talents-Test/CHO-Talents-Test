@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>작업 이력 - 달란트 마을</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.55.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.55.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.57.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.57.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -66,15 +66,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.55.0"></script>
-  <script src="../js/supabase-config.js?v=3.55.0"></script>
-  <script src="../js/activity-log.js?v=3.55.0"></script>
-  <script src="../js/codes.js?v=3.55.0"></script>
-  <script src="../js/auth.js?v=3.55.0"></script>
-  <script src="../js/theme.js?v=3.55.0"></script>
-  <script src="../js/nav.js?v=3.55.0"></script>
-  <script src="../js/page-size.js?v=3.55.0"></script>
-  <script src="../js/user-mgmt.js?v=3.55.0"></script>
+  <script src="../config/public-config.js?v=3.57.0"></script>
+  <script src="../js/supabase-config.js?v=3.57.0"></script>
+  <script src="../js/activity-log.js?v=3.57.0"></script>
+  <script src="../js/codes.js?v=3.57.0"></script>
+  <script src="../js/auth.js?v=3.57.0"></script>
+  <script src="../js/theme.js?v=3.57.0"></script>
+  <script src="../js/nav.js?v=3.57.0"></script>
+  <script src="../js/page-size.js?v=3.57.0"></script>
+  <script src="../js/user-mgmt.js?v=3.57.0"></script>
   <script>
     initSupabase();
     let session, allAuditLogs = [], currentFilter = 'all';
@@ -158,6 +158,9 @@
       ROLE_ACCESS_UPDATE: { label: '페이지 접근 권한 변경', category: 'PERM', emoji: '🔐' },
       ROLE_FEATURE_UPDATE: { label: '페이지 기능 권한 변경', category: 'PERM', emoji: '🔧' },
       PAGE_PERM_UPDATE: { label: '페이지 권한 설정 변경', category: 'PERM', emoji: '🛡️' },
+      ANNOUNCEMENT_CREATE: { label: '공지 등록', category: 'PERM', emoji: '📢' },
+      ANNOUNCEMENT_UPDATE: { label: '공지 수정', category: 'PERM', emoji: '📢' },
+      ANNOUNCEMENT_TOGGLE: { label: '공지 활성 토글', category: 'PERM', emoji: '🔘' },
       REPORT_SAVE: { label: '보고서 저장', category: 'PERM', emoji: '📄' },
       REPORT_DELETE: { label: '보고서 삭제', category: 'PERM', emoji: '🗑️' },
       REPORT_SEED: { label: '보고서 시드 등록', category: 'PERM', emoji: '🌱' },
@@ -417,6 +420,6 @@
       if (e.target.classList.contains('modal-overlay')) closeDetailModal();
     });
   </script>
-  <script src="../js/version.js?v=3.55.0"></script>
+  <script src="../js/version.js?v=3.57.0"></script>
 </body>
 </html>
