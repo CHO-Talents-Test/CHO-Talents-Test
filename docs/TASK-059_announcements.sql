@@ -11,6 +11,8 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   title text NOT NULL CHECK (char_length(trim(title)) > 0 AND char_length(title) <= 200),
   content text NOT NULL CHECK (char_length(trim(content)) > 0),
   is_active boolean NOT NULL DEFAULT false,
+  is_deleted boolean NOT NULL DEFAULT false,
+  deleted_at timestamptz,
   created_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
   created_by_name text,
   updated_by uuid REFERENCES public.profiles(id) ON DELETE SET NULL,
@@ -18,6 +20,11 @@ CREATE TABLE IF NOT EXISTS public.announcements (
   created_at timestamptz NOT NULL DEFAULT now(),
   updated_at timestamptz NOT NULL DEFAULT now()
 );
+
+ALTER TABLE public.announcements
+  ADD COLUMN IF NOT EXISTS is_deleted boolean NOT NULL DEFAULT false;
+ALTER TABLE public.announcements
+  ADD COLUMN IF NOT EXISTS deleted_at timestamptz;
 
 CREATE TABLE IF NOT EXISTS public.announcement_dismissals (
   announcement_id uuid NOT NULL REFERENCES public.announcements(id) ON DELETE CASCADE,
@@ -28,6 +35,8 @@ CREATE TABLE IF NOT EXISTS public.announcement_dismissals (
 
 CREATE INDEX IF NOT EXISTS idx_announcements_active_created
   ON public.announcements(is_active, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_announcements_deleted_created
+  ON public.announcements(is_deleted, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_announcement_dismissals_user
   ON public.announcement_dismissals(user_id, announcement_id);
 
@@ -50,7 +59,8 @@ BEGIN
       ('activity_logs.action', 'ANNOUNCEMENT_CREATE', '공지 등록', 9040, '{"category":"PERM","emoji":"📢"}'),
       ('activity_logs.action', 'ANNOUNCEMENT_UPDATE', '공지 수정', 9050, '{"category":"PERM","emoji":"📢"}'),
       ('activity_logs.action', 'ANNOUNCEMENT_TOGGLE', '공지 활성 토글', 9060, '{"category":"PERM","emoji":"🔘"}'),
-      ('activity_logs.action', 'ANNOUNCEMENT_DISMISS', '공지 다시 열지 않음', 9070, '{"category":"PERM","emoji":"🚫"}')
+      ('activity_logs.action', 'ANNOUNCEMENT_DELETE', '공지 삭제', 9070, '{"category":"PERM","emoji":"🗑️"}'),
+      ('activity_logs.action', 'ANNOUNCEMENT_DISMISS', '공지 다시 열지 않음', 9080, '{"category":"PERM","emoji":"🚫"}')
     ON CONFLICT (group_key, code_key) DO UPDATE
     SET code_value = EXCLUDED.code_value,
         sort_order = EXCLUDED.sort_order,
@@ -63,8 +73,11 @@ DROP POLICY IF EXISTS announcements_select ON public.announcements;
 CREATE POLICY announcements_select ON public.announcements
   FOR SELECT TO authenticated
   USING (
-    is_active = true
-    OR public.get_permission_rank(auth.uid()) >= 90
+    is_deleted IS NOT TRUE
+    AND (
+      is_active = true
+      OR public.get_permission_rank(auth.uid()) >= 90
+    )
   );
 
 DROP POLICY IF EXISTS announcements_insert ON public.announcements;

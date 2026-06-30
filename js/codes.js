@@ -189,10 +189,11 @@ const CODE_ITEMS = {
     { key: 'ANNOUNCEMENT_CREATE', value: '공지 등록', category: 'PERM', emoji: '📢', order: 9040 },
     { key: 'ANNOUNCEMENT_UPDATE', value: '공지 수정', category: 'PERM', emoji: '📢', order: 9050 },
     { key: 'ANNOUNCEMENT_TOGGLE', value: '공지 활성 토글', category: 'PERM', emoji: '🔘', order: 9060 },
-    { key: 'ANNOUNCEMENT_DISMISS', value: '공지 다시 열지 않음', category: 'PERM', emoji: '🚫', order: 9070 },
-    { key: 'REPORT_SAVE', value: '보고서 저장', category: 'PERM', emoji: '📄', order: 9080 },
-    { key: 'REPORT_DELETE', value: '보고서 삭제', category: 'PERM', emoji: '🗑️', order: 9090 },
-    { key: 'REPORT_SEED', value: '보고서 시드 등록', category: 'PERM', emoji: '🌱', order: 9100 }
+    { key: 'ANNOUNCEMENT_DELETE', value: '공지 삭제', category: 'PERM', emoji: '🗑️', order: 9070 },
+    { key: 'ANNOUNCEMENT_DISMISS', value: '공지 다시 열지 않음', category: 'PERM', emoji: '🚫', order: 9080 },
+    { key: 'REPORT_SAVE', value: '보고서 저장', category: 'PERM', emoji: '📄', order: 9090 },
+    { key: 'REPORT_DELETE', value: '보고서 삭제', category: 'PERM', emoji: '🗑️', order: 9100 },
+    { key: 'REPORT_SEED', value: '보고서 시드 등록', category: 'PERM', emoji: '🌱', order: 9110 }
   ]
 };
 
