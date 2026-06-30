@@ -7,16 +7,30 @@
   <link rel="stylesheet" href="../css/themes.css?v=3.57.0" />
   <link rel="stylesheet" href="../css/admin.css?v=3.57.0" />
   <style>
-    .notice-toolbar { display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
+    .notice-toolbar { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
+    .notice-toolbar-left, .notice-toolbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .notice-summary { color: var(--admin-text-muted); font-size: 0.85rem; }
     .notice-title-cell { font-weight: 700; max-width: 260px; }
     .notice-content-preview { color: var(--admin-text-muted); font-size: 0.82rem; line-height: 1.45; max-width: 420px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .notice-content-col { width: 1%; }
     .notice-switch { position: relative; display: inline-flex; align-items: center; width: 42px; height: 24px; }
     .notice-switch input { opacity: 0; width: 0; height: 0; }
     .notice-slider { position: absolute; cursor: pointer; inset: 0; background: #ced4da; border-radius: 999px; transition: 0.18s; }
     .notice-slider:before { content: ""; position: absolute; width: 18px; height: 18px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: 0.18s; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
     .notice-switch input:checked + .notice-slider { background: var(--admin-primary); }
     .notice-switch input:checked + .notice-slider:before { transform: translateX(18px); }
+    .notice-filter-switch { display: inline-flex; align-items: center; gap: 0.45rem; font-size: 0.82rem; color: var(--admin-text); font-weight: 700; }
+    .notice-filter-switch .notice-switch { width: 38px; height: 22px; }
+    .notice-filter-switch .notice-slider:before { width: 16px; height: 16px; left: 3px; top: 3px; }
+    .notice-filter-switch .notice-switch input:checked + .notice-slider:before { transform: translateX(16px); }
+    .notice-mgmt-dropdown { position: relative; display: inline-block; }
+    .notice-mgmt-toggle { min-width: 72px; justify-content: center; }
+    .notice-mgmt-toggle::after { content: '▾'; font-size: 0.68rem; margin-left: 0.3rem; opacity: 0.65; }
+    .notice-mgmt-menu { display: none; position: absolute; right: 0; top: calc(100% + 6px); min-width: 118px; padding: 0.35rem 0; background: var(--t-card, #fff); border: 1px solid var(--admin-border); border-radius: 8px; box-shadow: 0 10px 24px rgba(0,0,0,0.14); z-index: 20; }
+    .notice-mgmt-menu.show { display: block; }
+    .notice-mgmt-menu button { display: block; width: 100%; border: 0; background: transparent; color: var(--t-text, #333); text-align: left; padding: 0.55rem 0.85rem; font-size: 0.84rem; cursor: pointer; }
+    .notice-mgmt-menu button:hover { background: var(--t-hover-bg, #f3f0ff); color: var(--admin-primary); }
+    .notice-mgmt-menu button.danger:hover { color: #d63031; background: rgba(214, 48, 49, 0.08); }
     .notice-detail-box { border: 1px solid var(--admin-border); border-radius: 8px; padding: 0.9rem; background: var(--t-bg, #f8f9fa); white-space: pre-wrap; line-height: 1.6; max-height: 45vh; overflow-y: auto; }
     .notice-form-row { margin-bottom: 0.9rem; }
     .notice-form-row label { display: block; margin-bottom: 0.35rem; font-size: 0.85rem; font-weight: 700; }
@@ -25,7 +39,8 @@
     .notice-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
     .notice-modal-header h3 { margin: 0; }
     @media (max-width: 640px) {
-      .notice-title-cell, .notice-content-preview { max-width: 180px; }
+      .notice-title-cell { max-width: 180px; }
+      .notice-content-col { display: none; }
       .notice-modal-header { align-items: flex-start; flex-direction: column; }
     }
   </style>
@@ -38,8 +53,19 @@
     <p style="color:var(--admin-text-muted);margin-bottom:1.2rem;">전도사님 이상의 권한자가 공지를 등록하고, 활성 공지는 로그인한 사용자의 메인 화면에 표시합니다.</p>
 
     <div class="notice-toolbar">
-      <div class="notice-summary" id="noticeSummary">공지 목록을 불러오는 중입니다.</div>
-      <button class="btn-confirm" onclick="openNoticeEditor()">공지 등록</button>
+      <div class="notice-toolbar-left">
+        <div class="notice-summary" id="noticeSummary">공지 목록을 불러오는 중입니다.</div>
+        <label class="notice-filter-switch" title="활성 공지만 표시하거나 전체를 봅니다.">
+          <span>활성 공지만 보기</span>
+          <span class="notice-switch">
+            <input type="checkbox" id="noticeActiveOnlySwitch" checked onchange="onNoticeFilterChange(this.checked)" />
+            <span class="notice-slider"></span>
+          </span>
+        </label>
+      </div>
+      <div class="notice-toolbar-right">
+        <button class="btn-confirm" onclick="openNoticeEditor()">공지 등록</button>
+      </div>
     </div>
 
     <div class="admin-table-wrap">
@@ -50,13 +76,13 @@
       <table class="admin-table">
         <thead>
           <tr>
-            <th>공지</th>
+            <th style="width:72px;">활성</th>
             <th>제목</th>
-            <th>내용</th>
+            <th class="notice-content-col">내용</th>
             <th>작성자</th>
             <th>등록일</th>
             <th>수정일</th>
-            <th>관리</th>
+            <th style="width:96px;">관리</th>
           </tr>
         </thead>
         <tbody id="noticeList">
@@ -122,6 +148,7 @@
     let notices = [];
     let noticePage = 1;
     let noticePageSize = 20;
+    let noticeShowActiveOnly = true;
     let editingNoticeId = null;
     let viewingNoticeId = null;
 
@@ -151,6 +178,20 @@
       return text.slice(0, maxLen - 1) + '...';
     }
 
+    function closeNoticeMenus() {
+      document.querySelectorAll('.notice-mgmt-menu.show').forEach(menu => menu.classList.remove('show'));
+    }
+
+    function toggleNoticeMgmtMenu(event, button) {
+      event.stopPropagation();
+      const menu = button.nextElementSibling;
+      if (!menu) return;
+      closeNoticeMenus();
+      menu.classList.add('show');
+    }
+
+    document.addEventListener('click', closeNoticeMenus);
+
     function getNoticeById(id) {
       return notices.find(n => n.id === id);
     }
@@ -159,13 +200,34 @@
       return n.updated_by_name || n.created_by_name || '-';
     }
 
+    function getVisibleNotices() {
+      const base = notices.filter(n => n.is_deleted !== true);
+      return noticeShowActiveOnly ? base.filter(n => n.is_active) : base;
+    }
+
     async function loadNotices() {
       const tbody = document.getElementById('noticeList');
       tbody.innerHTML = '<tr><td colspan="7" class="empty-state">로딩 중...</td></tr>';
-      const { data, error } = await _sb
+      const baseQuery = _sb
         .from('announcements')
         .select('*')
         .order('created_at', { ascending: false });
+      const { data, error } = await baseQuery.or('is_deleted.is.null,is_deleted.eq.false');
+
+      if (error && /is_deleted|column|does not exist/i.test(error.message || '')) {
+        const fallback = await _sb
+          .from('announcements')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (fallback.error) {
+          await logError('ANNOUNCEMENT_LOAD_FAIL', { 오류: fallback.error.message });
+          tbody.innerHTML = '<tr><td colspan="7" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(fallback.error.message)) + '</td></tr>';
+          return;
+        }
+        notices = (fallback.data || []).map(n => ({ ...n, is_deleted: n.is_deleted === true }));
+        renderNotices();
+        return;
+      }
 
       if (error) {
         await logError('ANNOUNCEMENT_LOAD_FAIL', { 오류: error.message });
@@ -173,44 +235,60 @@
         return;
       }
 
-      notices = data || [];
+      notices = (data || []).map(n => ({ ...n, is_deleted: n.is_deleted === true }));
       renderNotices();
     }
 
     function renderNotices() {
-      const activeCount = notices.filter(n => n.is_active).length;
+      const visibleNotices = getVisibleNotices();
+      const activeCount = notices.filter(n => n.is_deleted !== true && n.is_active).length;
       document.getElementById('noticeSummary').textContent =
-        '전체 ' + notices.length + '건 · 활성 공지 ' + activeCount + '건';
+        '전체 ' + notices.filter(n => n.is_deleted !== true).length + '건 · 활성 공지 ' + activeCount + '건 · 표시 ' + visibleNotices.length + '건';
       document.getElementById('noticePageSizeWrap').innerHTML =
         renderPageSizeSelector('notices', noticePageSize, 'onNoticePageSizeChange(this.value)');
 
       const tbody = document.getElementById('noticeList');
-      if (!notices.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">등록된 공지가 없습니다.</td></tr>';
+      if (!visibleNotices.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">' + (noticeShowActiveOnly ? '활성 공지가 없습니다.' : '등록된 공지가 없습니다.') + '</td></tr>';
         document.getElementById('noticePaging').innerHTML = '';
         return;
       }
 
-      const totalPages = Math.max(1, Math.ceil(notices.length / noticePageSize));
+      const totalPages = Math.max(1, Math.ceil(visibleNotices.length / noticePageSize));
       if (noticePage > totalPages) noticePage = totalPages;
       const start = (noticePage - 1) * noticePageSize;
-      const pageData = notices.slice(start, start + noticePageSize);
+      const pageData = visibleNotices.slice(start, start + noticePageSize);
 
       tbody.innerHTML = pageData.map(n => {
         const checked = n.is_active ? 'checked' : '';
         return `<tr>
           <td><label class="notice-switch" title="공지 활성화"><input type="checkbox" ${checked} onchange="toggleNoticeActive('${n.id}', ${!!n.is_active})" /><span class="notice-slider"></span></label></td>
           <td class="notice-title-cell">${escapeHtml(n.title)}</td>
-          <td><div class="notice-content-preview">${escapeHtml(compactText(n.content, 160))}</div></td>
+          <td class="notice-content-col"><div class="notice-content-preview">${escapeHtml(compactText(n.content, 160))}</div></td>
           <td>${escapeHtml(noticeAuthor(n))}</td>
           <td>${formatKSTShort(n.created_at)}</td>
           <td>${formatKSTShort(n.updated_at || n.created_at)}</td>
-          <td><button class="filter-btn" onclick="openNoticeView('${n.id}')">보기</button> <button class="filter-btn" onclick="openNoticeEditor('${n.id}')">수정</button></td>
+          <td>
+            <div class="notice-mgmt-dropdown">
+              <button class="filter-btn notice-mgmt-toggle" onclick="toggleNoticeMgmtMenu(event, this)">관리</button>
+              <div class="notice-mgmt-menu">
+                <button type="button" onclick="closeNoticeMenus(); openNoticeView('${n.id}')">보기</button>
+                <button type="button" onclick="closeNoticeMenus(); openNoticeEditor('${n.id}')">수정</button>
+                <button type="button" class="danger" onclick="closeNoticeMenus(); deleteNotice('${n.id}')">삭제</button>
+              </div>
+            </div>
+          </td>
         </tr>`;
       }).join('');
 
       document.getElementById('noticePaging').innerHTML =
         buildPagingButtons(noticePage, totalPages, 'goNoticePage(__PAGE__)');
+    }
+
+    function onNoticeFilterChange(checked) {
+      noticeShowActiveOnly = checked;
+      noticePage = 1;
+      renderNotices();
     }
 
     async function onNoticePageSizeChange(value) {
@@ -226,6 +304,7 @@
     }
 
     function openNoticeView(id) {
+      closeNoticeMenus();
       const notice = getNoticeById(id);
       if (!notice) return;
       viewingNoticeId = id;
@@ -248,6 +327,7 @@
     }
 
     function openNoticeEditor(id) {
+      closeNoticeMenus();
       editingNoticeId = id || null;
       const notice = editingNoticeId ? getNoticeById(editingNoticeId) : null;
       document.getElementById('editNoticeTitle').textContent = notice ? '공지 수정' : '공지 등록';
@@ -264,6 +344,7 @@
     }
 
     async function saveNotice() {
+      closeNoticeMenus();
       const errEl = document.getElementById('noticeError');
       const title = document.getElementById('noticeTitleInput').value.trim();
       const content = document.getElementById('noticeContentInput').value.trim();
@@ -317,6 +398,7 @@
     }
 
     async function toggleNoticeActive(id, currentActive) {
+      closeNoticeMenus();
       const notice = getNoticeById(id);
       if (!notice) return;
       const nextActive = !currentActive;
@@ -338,6 +420,33 @@
       notice.is_active = nextActive;
       notice.updated_by_name = session.displayName || session.username;
       notice.updated_at = new Date().toISOString();
+      renderNotices();
+    }
+
+    async function deleteNotice(id) {
+      const notice = getNoticeById(id);
+      if (!notice) return;
+      if (!confirm(`'${notice.title}' 공지를 삭제 처리하시겠습니까?\n이 항목은 목록에서 숨겨집니다.`)) return;
+
+      const payload = {
+        is_active: false,
+        is_deleted: true,
+        deleted_at: new Date().toISOString(),
+        updated_by: session.id,
+        updated_by_name: session.displayName || session.username,
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await _sb.from('announcements').update(payload).eq('id', id);
+      if (error) {
+        await logError('ANNOUNCEMENT_DELETE_FAIL', { 공지ID: id, 제목: notice.title, 오류: error.message });
+        alert('공지 삭제 처리 실패: ' + tErr(error.message));
+        return;
+      }
+
+      await logInfo('ANNOUNCEMENT_DELETE', { 공지ID: id, 제목: notice.title });
+      notices = notices.map(n => n.id === id ? { ...n, ...payload } : n);
+      noticePage = 1;
       renderNotices();
     }
 
