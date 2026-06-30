@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 마을 - CHO Talents</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.57.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.57.0" />
-  <link rel="stylesheet" href="css/style.css?v=3.57.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.58.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.58.0" />
+  <link rel="stylesheet" href="css/style.css?v=3.58.0" />
   <style>
     .announcement-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .announcement-overlay.hidden { display: none; }
@@ -16,10 +16,20 @@
     .announcement-head h3 { margin: 0; font-size: 1.05rem; line-height: 1.35; }
     .announcement-close { border: 1px solid var(--t-border, #dee2e6); background: var(--t-bg, #f8f9fa); color: var(--t-text, #222); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto; }
     .announcement-meta { padding: 0.65rem 1.1rem 0; color: var(--t-text-muted, #868e96); font-size: 0.78rem; }
+    .announcement-image-wrap { padding: 0.85rem 1.1rem 0; }
+    .announcement-image-wrap img { display: block; width: 100%; max-height: 220px; object-fit: contain; border: 1px solid var(--t-border, #e9ecef); border-radius: 8px; background: var(--t-bg, #f8f9fa); cursor: zoom-in; }
     .announcement-body { padding: 0.85rem 1.1rem 1rem; overflow-y: auto; white-space: pre-wrap; line-height: 1.65; font-size: 0.92rem; }
     .announcement-actions { padding: 0.85rem 1.1rem 1rem; border-top: 1px solid var(--t-border, #e9ecef); display: flex; justify-content: flex-end; gap: 0.5rem; flex-wrap: wrap; }
     .announcement-btn { border: 1px solid var(--t-border, #dee2e6); border-radius: 8px; padding: 0.55rem 0.8rem; background: var(--t-bg, #f8f9fa); color: var(--t-text, #222); cursor: pointer; font-weight: 700; }
     .announcement-btn.primary { background: var(--admin-primary, #6c5ce7); border-color: var(--admin-primary, #6c5ce7); color: #fff; }
+    .image-zoom-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 3000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
+    .image-zoom-overlay.hidden { display: none; }
+    .image-zoom-modal { width: min(92vw, 1000px); max-height: 92vh; background: var(--t-card, #fff); color: var(--t-text, #222); border: 1px solid var(--t-border, #e9ecef); border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.25); overflow: hidden; display: flex; flex-direction: column; }
+    .image-zoom-head { padding: 1rem 1.1rem; border-bottom: 1px solid var(--t-border, #e9ecef); display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem; }
+    .image-zoom-head h3 { margin: 0; font-size: 1.05rem; line-height: 1.35; }
+    .image-zoom-close { border: 1px solid var(--t-border, #dee2e6); background: var(--t-bg, #f8f9fa); color: var(--t-text, #222); width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto; }
+    .image-zoom-body { padding: 1rem 1.1rem 1.1rem; overflow: auto; }
+    .image-zoom-body img { display: block; max-width: 100%; max-height: 74vh; margin: 0 auto; object-fit: contain; }
   </style>
 </head>
 <body>
@@ -108,15 +118,27 @@
     </div>
   </div>
 
+  <div class="image-zoom-overlay hidden" id="imageZoomOverlay">
+    <div class="image-zoom-modal" role="dialog" aria-modal="true" aria-labelledby="imageZoomTitle">
+      <div class="image-zoom-head">
+        <h3 id="imageZoomTitle">이미지 크게 보기</h3>
+        <button class="image-zoom-close" type="button" onclick="closeImageZoom()">&times;</button>
+      </div>
+      <div class="image-zoom-body">
+        <img id="imageZoomImg" alt="확대 이미지" />
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.57.0"></script>
-  <script src="js/supabase-config.js?v=3.57.0"></script>
-  <script src="js/activity-log.js?v=3.57.0"></script>
-  <script src="js/codes.js?v=3.57.0"></script>
-  <script src="js/auth.js?v=3.57.0"></script>
-  <script src="js/theme.js?v=3.57.0"></script>
-  <script src="js/nav.js?v=3.57.0"></script>
-  <script src="js/app.js?v=3.57.0"></script>
+  <script src="config/public-config.js?v=3.58.0"></script>
+  <script src="js/supabase-config.js?v=3.58.0"></script>
+  <script src="js/activity-log.js?v=3.58.0"></script>
+  <script src="js/codes.js?v=3.58.0"></script>
+  <script src="js/auth.js?v=3.58.0"></script>
+  <script src="js/theme.js?v=3.58.0"></script>
+  <script src="js/nav.js?v=3.58.0"></script>
+  <script src="js/app.js?v=3.58.0"></script>
   <script>
     const ALL_SHORTCUTS = [
       { id:'earn-talents',  href:'earn-talents.html',        icon:'💰', title:'달란트 적립',   desc:'열심히 활동하고 달란트를 모아요!',           color:'var(--accent)',  minRank:0 },
@@ -272,6 +294,22 @@
       }[ch]));
     }
 
+    function openImageZoom(src, title) {
+      const overlay = document.getElementById('imageZoomOverlay');
+      const img = document.getElementById('imageZoomImg');
+      document.getElementById('imageZoomTitle').textContent = title || '이미지 크게 보기';
+      img.src = src;
+      img.onerror = function() { img.removeAttribute('src'); };
+      overlay.classList.remove('hidden');
+    }
+
+    function closeImageZoom() {
+      const overlay = document.getElementById('imageZoomOverlay');
+      const img = document.getElementById('imageZoomImg');
+      img.removeAttribute('src');
+      overlay.classList.add('hidden');
+    }
+
     function ensureAnnouncementModal() {
       let overlay = document.getElementById('announcementOverlay');
       if (overlay) return overlay;
@@ -282,6 +320,7 @@
         '<div class="announcement-modal" role="dialog" aria-modal="true" aria-labelledby="announcementTitle">' +
           '<div class="announcement-head"><h3 id="announcementTitle"></h3></div>' +
           '<div class="announcement-meta" id="announcementMeta"></div>' +
+          '<div class="announcement-image-wrap" id="announcementImageWrap" style="display:none;"><img id="announcementImage" alt="공지 이미지" /></div>' +
           '<div class="announcement-body" id="announcementBody"></div>' +
           '<div class="announcement-actions">' +
             '<button class="announcement-btn" type="button" onclick="closeAnnouncementPopup()">닫기</button>' +
@@ -305,10 +344,29 @@
       try {
         const { data: activeNotices, error } = await _sb
           .from('announcements')
-          .select('id,title,content,created_at')
+          .select('*')
           .eq('is_active', true)
           .order('created_at', { ascending: false })
           .limit(20);
+        if (error && /is_deleted|column|does not exist/i.test(error.message || '')) {
+          const fallback = await _sb
+            .from('announcements')
+            .select('*')
+            .eq('is_active', true)
+            .order('created_at', { ascending: false })
+            .limit(20);
+          if (fallback.error || !fallback.data || !fallback.data.length) return;
+          const ids = fallback.data.map(n => n.id);
+          const { data: dismissed } = await _sb
+            .from('announcement_dismissals')
+            .select('announcement_id')
+            .eq('user_id', session.id)
+            .in('announcement_id', ids);
+          const dismissedIds = new Set((dismissed || []).map(d => d.announcement_id));
+          _announcementQueue = fallback.data.filter(n => !dismissedIds.has(n.id));
+          showNextAnnouncement();
+          return;
+        }
         if (error || !activeNotices || !activeNotices.length) return;
 
         const ids = activeNotices.map(n => n.id);
@@ -332,6 +390,23 @@
       document.getElementById('announcementTitle').textContent = _currentAnnouncement.title || '공지';
       document.getElementById('announcementMeta').textContent =
         '등록일 ' + formatKSTShort(_currentAnnouncement.created_at);
+      const imageWrap = document.getElementById('announcementImageWrap');
+      const imageEl = document.getElementById('announcementImage');
+      if (_currentAnnouncement.image_url) {
+        imageEl.src = _currentAnnouncement.image_url;
+        imageEl.onerror = function() {
+          imageEl.removeAttribute('src');
+          imageWrap.style.display = 'none';
+        };
+        imageEl.onclick = function() {
+          openImageZoom(_currentAnnouncement.image_url, _currentAnnouncement.title || '공지 이미지');
+        };
+        imageWrap.style.display = 'block';
+      } else {
+        imageWrap.style.display = 'none';
+        imageEl.removeAttribute('src');
+        imageEl.onclick = null;
+      }
       document.getElementById('announcementBody').innerHTML =
         escapeAnnouncementHtml(_currentAnnouncement.content).replace(/\n/g, '<br>');
       overlay.classList.remove('hidden');
@@ -371,6 +446,10 @@
       }
     }
 
+    document.getElementById('imageZoomOverlay').addEventListener('click', e => {
+      if (e.target.classList.contains('image-zoom-overlay')) closeImageZoom();
+    });
+
     (async () => {
       if (!_sb) initSupabase();
       await navInit();
@@ -406,6 +485,6 @@
       await initTheme();
     })();
   </script>
-  <script src="js/version.js?v=3.57.0"></script>
+  <script src="js/version.js?v=3.58.0"></script>
 </body>
 </html>

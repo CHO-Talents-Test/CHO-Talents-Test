@@ -5,8 +5,53 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 상점 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.57.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.57.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.58.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.58.0" />
+  <style>
+    .product-card { cursor: pointer; }
+    .product-card img.product-img { cursor: zoom-in; }
+    .product-card .product-buy-btn { cursor: pointer; }
+    .product-detail-overlay, .image-zoom-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000;
+      display: flex; align-items: center; justify-content: center; padding: 1rem;
+    }
+    .product-detail-overlay.hidden, .image-zoom-overlay.hidden { display: none; }
+    .product-detail-modal, .image-zoom-modal {
+      background: var(--t-card, #fff); color: var(--t-text, #212529); border: 1px solid var(--t-border, #e9ecef);
+      border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.22); max-height: 90vh; overflow: hidden;
+    }
+    .product-detail-modal { width: min(760px, 96vw); display: flex; flex-direction: column; }
+    .product-detail-head, .image-zoom-head {
+      padding: 1rem 1.1rem; border-bottom: 1px solid var(--t-border, #e9ecef);
+      display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem;
+    }
+    .product-detail-head h3, .image-zoom-head h3 { margin: 0; font-size: 1.05rem; line-height: 1.35; }
+    .product-detail-close, .image-zoom-close {
+      border: 1px solid var(--t-border, #dee2e6); background: var(--t-bg, #f8f9fa); color: var(--t-text, #222);
+      width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto;
+    }
+    .product-detail-body { padding: 1rem 1.1rem 1.1rem; overflow-y: auto; }
+    .product-detail-layout { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 1.2fr); gap: 1rem; align-items: start; }
+    .product-detail-media img {
+      width: 100%; max-height: 360px; object-fit: contain; display: block; border: 1px solid var(--t-border, #e9ecef);
+      border-radius: 10px; background: var(--t-bg, #f8f9fa); cursor: zoom-in;
+    }
+    .product-detail-emoji {
+      width: 100%; min-height: 220px; border: 1px solid var(--t-border, #e9ecef); border-radius: 10px;
+      background: var(--t-bg, #f8f9fa); display: flex; align-items: center; justify-content: center; font-size: 4rem;
+    }
+    .product-detail-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.8rem; font-size: 0.78rem; color: var(--t-text-muted, #868e96); }
+    .product-detail-price { font-size: 1.25rem; font-weight: 800; margin: 0.25rem 0 0.8rem; }
+    .product-detail-desc { line-height: 1.65; white-space: pre-wrap; }
+    .product-detail-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; justify-content: flex-end; }
+    .image-zoom-modal { width: min(92vw, 1000px); max-height: 92vh; display: flex; flex-direction: column; }
+    .image-zoom-body { padding: 1rem 1.1rem 1.1rem; overflow: auto; }
+    .image-zoom-body img { display: block; max-width: 100%; max-height: 74vh; margin: 0 auto; object-fit: contain; }
+    @media (max-width: 720px) {
+      .product-detail-layout { grid-template-columns: 1fr; }
+      .product-detail-emoji { min-height: 180px; }
+    }
+  </style>
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -55,10 +100,42 @@
       </div>
     </div>
 
-    <div id="productArea">
+  <div id="productArea">
       <div class="empty-state">
         <div class="empty-state-icon">⏳</div>
         <p>상품을 불러오는 중...</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="product-detail-overlay hidden" id="productDetailOverlay">
+    <div class="product-detail-modal" role="dialog" aria-modal="true" aria-labelledby="productDetailTitle">
+      <div class="product-detail-head">
+        <h3 id="productDetailTitle">상품 상세</h3>
+        <button class="product-detail-close" type="button" onclick="closeProductDetail()">&times;</button>
+      </div>
+      <div class="product-detail-body">
+        <div class="product-detail-layout">
+          <div class="product-detail-media" id="productDetailMedia"></div>
+          <div>
+            <div class="product-detail-meta" id="productDetailMeta"></div>
+            <div class="product-detail-price" id="productDetailPrice"></div>
+            <div class="product-detail-desc" id="productDetailDesc"></div>
+            <div class="product-detail-actions" id="productDetailActions"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="image-zoom-overlay hidden" id="imageZoomOverlay">
+    <div class="image-zoom-modal" role="dialog" aria-modal="true" aria-labelledby="imageZoomTitle">
+      <div class="image-zoom-head">
+        <h3 id="imageZoomTitle">이미지 크게 보기</h3>
+        <button class="image-zoom-close" type="button" onclick="closeImageZoom()">&times;</button>
+      </div>
+      <div class="image-zoom-body">
+        <img id="imageZoomImg" alt="확대 이미지" />
       </div>
     </div>
   </div>
@@ -68,16 +145,16 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.57.0"></script>
-  <script src="js/supabase-config.js?v=3.57.0"></script>
-  <script src="js/activity-log.js?v=3.57.0"></script>
-  <script src="js/codes.js?v=3.57.0"></script>
-  <script src="js/auth.js?v=3.57.0"></script>
-  <script src="js/theme.js?v=3.57.0"></script>
-  <script src="js/nav.js?v=3.57.0"></script>
-  <script src="js/product.js?v=3.57.0"></script>
-  <script src="js/user-mgmt.js?v=3.57.0"></script>
-  <script src="js/slack-notify.js?v=3.57.0"></script>
+  <script src="config/public-config.js?v=3.58.0"></script>
+  <script src="js/supabase-config.js?v=3.58.0"></script>
+  <script src="js/activity-log.js?v=3.58.0"></script>
+  <script src="js/codes.js?v=3.58.0"></script>
+  <script src="js/auth.js?v=3.58.0"></script>
+  <script src="js/theme.js?v=3.58.0"></script>
+  <script src="js/nav.js?v=3.58.0"></script>
+  <script src="js/product.js?v=3.58.0"></script>
+  <script src="js/user-mgmt.js?v=3.58.0"></script>
+  <script src="js/slack-notify.js?v=3.58.0"></script>
   <script>
     initSupabase();
     let currentShopTab = 'student';
@@ -86,6 +163,17 @@
     let _shopSession = null;
     let _userBalance = 0;
     let _userPending = 0;
+    let _selectedProduct = null;
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function escapeAttr(value) {
+      return escapeHtml(value);
+    }
 
     (async () => {
       await navInit();
@@ -181,16 +269,60 @@
       const buyBtnHtml = _shopSession
         ? (isTeacherBuyingStudent
           ? ''
-          : `<button class="product-buy-btn" onclick="requestOrder('${p.id}','${p.name.replace(/'/g,"\\'")}',${p.price})" ${!canBuy?'disabled':''} style="margin-top:0.5rem;width:100%;padding:0.5rem;border:none;border-radius:8px;background:${canBuy?'#228be6':'var(--t-border, #dee2e6)'};color:${canBuy?'#fff':'var(--t-text-muted, #868e96)'};font-weight:700;cursor:${canBuy?'pointer':'default'};">🛒 구매 신청</button>`)
+          : `<button class="product-buy-btn" onclick="event.stopPropagation(); requestOrder('${p.id}','${p.name.replace(/'/g,"\\'")}',${p.price})" ${!canBuy?'disabled':''} style="margin-top:0.5rem;width:100%;padding:0.5rem;border:none;border-radius:8px;background:${canBuy?'#228be6':'var(--t-border, #dee2e6)'};color:${canBuy?'#fff':'var(--t-text-muted, #868e96)'};font-weight:700;cursor:${canBuy?'pointer':'default'};">🛒 구매 신청</button>`)
         : '';
-      return `<div class="product-card">
-        ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" class="product-img" />` : `<span class="product-emoji">${p.image_emoji || '🎁'}</span>`}
-        <div class="product-name">${p.name}</div>
+      return `<div class="product-card" onclick="openProductDetail('${p.id}')">
+        ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" class="product-img" onclick="event.stopPropagation(); openImageZoom('${escapeAttr(p.image_url)}','${escapeAttr(p.name)}')" />` : `<span class="product-emoji">${p.image_emoji || '🎁'}</span>`}
+        <div class="product-name">${escapeHtml(p.name)}</div>
         <div class="product-price">${fmtNum(p.price)} <span class="unit">달란트</span></div>
-        <div class="product-desc">${p.description || ''}</div>
+        <div class="product-desc">${escapeHtml(p.description || '')}</div>
         
         ${buyBtnHtml}
       </div>`;
+    }
+
+    function openProductDetail(productId) {
+      const product = allShopProducts.find(p => p.id === productId);
+      if (!product) return;
+      _selectedProduct = product;
+      document.getElementById('productDetailTitle').textContent = product.name || '상품 상세';
+      document.getElementById('productDetailMeta').innerHTML =
+        `<span>카테고리: ${escapeHtml(getProductCategoryLabel(product.category || 'etc'))}</span>` +
+        `<span>대상: ${escapeHtml(getProductTargetLabel(product.target_role || 'student'))}</span>`;
+      document.getElementById('productDetailPrice').textContent = `${fmtNum(product.price)} 달란트`;
+      document.getElementById('productDetailDesc').textContent = product.description || '설명이 없습니다.';
+      const media = document.getElementById('productDetailMedia');
+      if (product.image_url) {
+        media.innerHTML = `<img src="${escapeAttr(product.image_url)}" alt="${escapeAttr(product.name)}" onclick="openImageZoom('${escapeAttr(product.image_url)}','${escapeAttr(product.name)}')" />`;
+      } else {
+        media.innerHTML = `<div class="product-detail-emoji">${escapeHtml(product.image_emoji || '🎁')}</div>`;
+      }
+      const available = _userBalance - _userPending;
+      const isTeacherBuyingStudent = _shopSession && _shopSession.userType === 'teacher' && product.target_role === 'student';
+      const canBuy = _shopSession && product.is_active && available >= product.price && !isTeacherBuyingStudent;
+      document.getElementById('productDetailActions').innerHTML = _shopSession && !isTeacherBuyingStudent
+        ? `<button class="product-buy-btn" type="button" onclick="requestOrder('${product.id}','${product.name.replace(/'/g,"\\'")}',${product.price}); closeProductDetail();" ${!canBuy ? 'disabled' : ''} style="padding:0.55rem 1rem;border:none;border-radius:8px;background:${canBuy?'#228be6':'var(--t-border, #dee2e6)'};color:${canBuy?'#fff':'var(--t-text-muted, #868e96)'};font-weight:700;cursor:${canBuy?'pointer':'default'};">🛒 구매 신청</button>`
+        : '';
+      document.getElementById('productDetailOverlay').classList.remove('hidden');
+    }
+
+    function closeProductDetail() {
+      document.getElementById('productDetailOverlay').classList.add('hidden');
+      _selectedProduct = null;
+    }
+
+    function openImageZoom(src, title) {
+      const img = document.getElementById('imageZoomImg');
+      document.getElementById('imageZoomTitle').textContent = title || '이미지 크게 보기';
+      img.src = src;
+      img.onerror = function() { img.removeAttribute('src'); };
+      document.getElementById('imageZoomOverlay').classList.remove('hidden');
+    }
+
+    function closeImageZoom() {
+      const img = document.getElementById('imageZoomImg');
+      img.removeAttribute('src');
+      document.getElementById('imageZoomOverlay').classList.add('hidden');
     }
 
     async function requestOrder(productId, productName, price) {
@@ -230,6 +362,14 @@
         alert('구매 신청 중 오류가 발생했습니다: ' + tErr(err.message));
       }
     }
+
+    document.getElementById('productDetailOverlay').addEventListener('click', e => {
+      if (e.target.classList.contains('product-detail-overlay')) closeProductDetail();
+    });
+    document.getElementById('imageZoomOverlay').addEventListener('click', e => {
+      if (e.target.classList.contains('image-zoom-overlay')) closeImageZoom();
+    });
+
     let _proxyUsers = [];
     let _proxyTarget = null;
     let _proxyTimer = null;
@@ -408,6 +548,6 @@
       }
     }
   </script>
-  <script src="js/version.js?v=3.57.0"></script>
+  <script src="js/version.js?v=3.58.0"></script>
 </body>
 </html>

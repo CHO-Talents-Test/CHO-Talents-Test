@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-06-29 KST 현재 코드 기준 (v3.57.0)
+작성 기준: 2026-06-30 KST 현재 코드 기준 (v3.58.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -768,7 +768,7 @@ flowchart TD
 | 17 | `docs/TASK-041_page_sizes.sql` | v3.40.0: user_preferences.page_sizes JSONB 컬럼 |
 | 18 | `docs/TASK-052_super_admin_update_fix.sql` | v3.45.0: admin_update_user RPC에서 is_super_admin 호출자 rank 110 처리 |
 | 19 | `docs/TASK-057_code_master.sql` | v3.50.0: `code_groups`/`code_items`, 코드 컬럼 검증 트리거, `get_permission_rank()` 코드화 |
-| 20 | `docs/TASK-059_announcements.sql` | v3.57.0: 공지 관리 `announcements`, `announcement_dismissals` 테이블/RLS 및 공지 로그 액션 코드 |
+| 20 | `docs/TASK-059_announcements.sql` | v3.58.0: 공지 관리 `announcements`, `announcement_dismissals` 테이블/RLS 및 공지 로그 액션 코드 |
 | 21 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
 
 ## 19. 개발 주의사항
