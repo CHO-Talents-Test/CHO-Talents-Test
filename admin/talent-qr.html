@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 QR 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.58.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.58.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.59.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.59.0" />
   <style>
     .qr-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
     .qr-item-card { background: #fff; border: 1px solid var(--admin-border); border-radius: 12px; padding: 1rem; margin-bottom: 0.8rem; display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
@@ -496,15 +496,15 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
-  <script src="../config/public-config.js?v=3.58.0"></script>
-  <script src="../js/supabase-config.js?v=3.58.0"></script>
-  <script src="../js/activity-log.js?v=3.58.0"></script>
-  <script src="../js/codes.js?v=3.58.0"></script>
-  <script src="../js/auth.js?v=3.58.0"></script>
-  <script src="../js/theme.js?v=3.58.0"></script>
-  <script src="../js/page-size.js?v=3.58.0"></script>
-  <script src="../js/nav.js?v=3.58.0"></script>
-  <script src="../js/talent.js?v=3.58.0"></script>
+  <script src="../config/public-config.js?v=3.59.0"></script>
+  <script src="../js/supabase-config.js?v=3.59.0"></script>
+  <script src="../js/activity-log.js?v=3.59.0"></script>
+  <script src="../js/codes.js?v=3.59.0"></script>
+  <script src="../js/auth.js?v=3.59.0"></script>
+  <script src="../js/theme.js?v=3.59.0"></script>
+  <script src="../js/page-size.js?v=3.59.0"></script>
+  <script src="../js/nav.js?v=3.59.0"></script>
+  <script src="../js/talent.js?v=3.59.0"></script>
   <script>
     initSupabase();
     let session, allQR = [], currentTab = 'active';
@@ -1221,7 +1221,8 @@
       pageData.forEach((q, idx) => {
         const el = document.getElementById('qr-img-' + idx);
         if (el) {
-          try { new QRCode(el, { text: q.code, width: 88, height: 88, correctLevel: QRCode.CorrectLevel.M }); }
+          const qrText = buildTalentReceiveQrUrl(q.code);
+          try { new QRCode(el, { text: qrText, width: 88, height: 88, correctLevel: QRCode.CorrectLevel.M }); }
           catch (e) { el.textContent = '?'; }
         }
       });
@@ -1246,11 +1247,32 @@
       navigator.clipboard.writeText(code).then(() => alert('코드가 복사되었습니다: ' + code));
     }
 
+    function buildTalentReceiveQrUrl(code) {
+      try {
+        const env = (window.CHO_TALENTS_CONFIG && window.CHO_TALENTS_CONFIG.env) || 'DEV';
+        const baseUrl = (window.CHO_TALENTS_CONFIG && window.CHO_TALENTS_CONFIG.appUrls)
+          ? (env === 'PROD' ? window.CHO_TALENTS_CONFIG.appUrls.prod : window.CHO_TALENTS_CONFIG.appUrls.dev)
+          : null;
+        const url = baseUrl
+          ? new URL('talent-receive.html', baseUrl)
+          : new URL('../talent-receive.html', window.location.href);
+        url.searchParams.set('code', code);
+        return url.href;
+      } catch (e) {
+        const env = (window.CHO_TALENTS_CONFIG && window.CHO_TALENTS_CONFIG.env) || 'DEV';
+        const fallbackBase = env === 'PROD'
+          ? 'https://cho-talents.github.io/CHO-Talents/'
+          : 'https://cho-talents-test.github.io/CHO-Talents-Test/';
+        return fallbackBase + 'talent-receive.html?code=' + encodeURIComponent(code);
+      }
+    }
+
     function printQR(code, desc, amount) {
       const tmp = document.createElement('div');
       tmp.style.cssText = 'position:absolute;left:-9999px;top:-9999px;';
       document.body.appendChild(tmp);
-      new QRCode(tmp, { text: code, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
+      const qrText = buildTalentReceiveQrUrl(code);
+      new QRCode(tmp, { text: qrText, width: 200, height: 200, correctLevel: QRCode.CorrectLevel.M });
       setTimeout(() => {
         const canvas = tmp.querySelector('canvas');
         const imgSrc = canvas ? canvas.toDataURL('image/png') : '';
@@ -1487,6 +1509,6 @@
     document.getElementById('editModal').addEventListener('click', function(e) { if (e.target === this) closeEditModal(); });
     document.getElementById('scanListModal').addEventListener('click', function(e) { if (e.target === this) closeScanListModal(); });
   </script>
-  <script src="../js/version.js?v=3.58.0"></script>
+  <script src="../js/version.js?v=3.59.0"></script>
 </body>
 </html>
