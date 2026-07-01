@@ -143,6 +143,11 @@ function _navGuideHrefForSession(session) {
   return 'guide.html';
 }
 
+function _navBrandLabel() {
+  const env = (window.CHO_TALENTS_CONFIG && window.CHO_TALENTS_CONFIG.env) || 'DEV';
+  return env === 'DEV' ? '달란트 마을 (DEV)' : '달란트 마을';
+}
+
 function _navUpdateGuideHref(session) {
   const guideItem = document.querySelector('[data-guide-link="true"]');
   const link = guideItem ? guideItem.querySelector('a') : null;
@@ -157,7 +162,7 @@ function renderNav(containerId) {
   if (!container) return;
 
   let html = `<nav class="admin-nav" id="mainNavBar">`;
-  html += `<a href="${_navResolveHref('index.html')}" class="admin-nav-brand"><span class="brand-icon">⭐</span> 달란트 마을</a>`;
+  html += `<a href="${_navResolveHref('index.html')}" class="admin-nav-brand"><span class="brand-icon">⭐</span> ${_navBrandLabel()}</a>`;
 
   html += `<div class="nav-header-actions" id="navHeaderActions">`;
   html += `<div id="navThemePicker"></div>`;

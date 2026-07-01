@@ -38,6 +38,11 @@
   window.CHO_TALENTS_CONFIG = Object.freeze({
     env: TARGET_ENV,
 
+    appUrls: {
+      dev: 'https://cho-talents-test.github.io/CHO-Talents-Test/',
+      prod: 'https://cho-talents.github.io/CHO-Talents/'
+    },
+
     supabase: {
       ...supabaseConfig,
       authEmailDomain: '@cho-talents.app'

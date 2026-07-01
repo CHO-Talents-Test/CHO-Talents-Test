@@ -180,6 +180,58 @@ function getRoleRedirectUrl(role, basePath) {
   return base + path;
 }
 
+function resolveAppUrl(url, baseUrl) {
+  try {
+    return new URL(url || '', baseUrl || window.location.href).href;
+  } catch (e) {
+    return url || '';
+  }
+}
+
+function buildUrlWithRedirect(url, redirectUrl) {
+  const resolved = resolveAppUrl(url);
+  if (!redirectUrl) return resolved;
+  try {
+    const target = new URL(resolved);
+    target.searchParams.set('redirect', redirectUrl);
+    return target.href;
+  } catch (e) {
+    const sep = resolved.includes('?') ? '&' : '?';
+    return resolved + sep + 'redirect=' + encodeURIComponent(redirectUrl);
+  }
+}
+
+function getRedirectTargetFromQuery(defaultUrl) {
+  try {
+    const raw = new URLSearchParams(window.location.search).get('redirect');
+    if (!raw) return defaultUrl || null;
+    const resolved = resolveAppUrl(raw);
+    if (!resolved) return defaultUrl || null;
+    try {
+      const parsed = new URL(resolved);
+      if (parsed.protocol !== window.location.protocol && parsed.origin !== window.location.origin) {
+        return defaultUrl || null;
+      }
+      if (parsed.pathname.endsWith('/login.html') || parsed.pathname.endsWith('login.html')) {
+        return defaultUrl || null;
+      }
+    } catch (e) {}
+    return resolved;
+  } catch (e) {
+    return defaultUrl || null;
+  }
+}
+
+function buildLoginRedirectUrl(loginPath, redirectUrl) {
+  return buildUrlWithRedirect(loginPath || '../login.html', redirectUrl);
+}
+
+function getTalentReceiveUrl(code) {
+  const base = window.location.pathname.includes('/admin/') ? '../talent-receive.html' : 'talent-receive.html';
+  const resolved = resolveAppUrl(base);
+  return code ? resolved + '?code=' + encodeURIComponent(code) : resolved;
+}
+
 async function logout(loginPath) {
   const session = getSession();
   if (session) {
@@ -192,18 +244,18 @@ async function logout(loginPath) {
   if (_sessionTimer) { clearTimeout(_sessionTimer); _sessionTimer = null; }
   try { localStorage.removeItem(SESSION_ACTIVITY_KEY); } catch (e) {}
   if (typeof applyTheme === 'function') applyTheme('default');
-  window.location.href = loginPath || '../login.html';
+  window.location.href = resolveAppUrl(loginPath || '../login.html');
 }
 
 function requirePermission(minRank, loginPath) {
   const session = getSession();
   if (!session) {
-    window.location.href = loginPath || '../login.html';
+    window.location.href = resolveAppUrl(loginPath || '../login.html');
     return null;
   }
   const rank = session.permissionRank || getPermRank(session.permissionLevel);
   if (rank < minRank) {
-    window.location.href = loginPath || '../login.html';
+    window.location.href = resolveAppUrl(loginPath || '../login.html');
     return null;
   }
   return session;
@@ -212,12 +264,12 @@ function requirePermission(minRank, loginPath) {
 function requireRole(allowedRoles, loginPath) {
   const session = getSession();
   if (!session) {
-    window.location.href = loginPath || '../login.html';
+    window.location.href = resolveAppUrl(loginPath || '../login.html');
     return null;
   }
   const perm = session.permissionLevel;
   if (!allowedRoles.includes(perm)) {
-    window.location.href = loginPath || '../login.html';
+    window.location.href = resolveAppUrl(loginPath || '../login.html');
     return null;
   }
   return session;
@@ -228,7 +280,7 @@ async function validateAuthSession(loginPath) {
   const { data: { session: authSession } } = await _sb.auth.getSession();
   if (!authSession) {
     clearSession();
-    window.location.href = loginPath || '../login.html';
+    window.location.href = buildLoginRedirectUrl(loginPath || '../login.html', window.location.href);
     return null;
   }
   return getSession();
@@ -256,7 +308,7 @@ async function _logAuthRedirect(reason, session, target, extra) {
 async function initPage(allowedRolesOrMinRank, loginPath) {
   const session = await loadAuthSession();
   if (!session) {
-    const target = loginPath || '../login.html';
+    const target = buildLoginRedirectUrl(loginPath || '../login.html', window.location.href);
     await _logAuthRedirect('세션 없음 또는 만료', null, target, {
       필요조건: allowedRolesOrMinRank,
       세션실패: window.__lastAuthSessionFailure || null
@@ -266,7 +318,7 @@ async function initPage(allowedRolesOrMinRank, loginPath) {
   }
 
   if (session.isFirstLogin && !window.location.pathname.includes('change-password')) {
-    const target = _getAuthRedirectBase(loginPath) + 'admin/change-password.html';
+    const target = buildUrlWithRedirect(_getAuthRedirectBase(loginPath) + 'admin/change-password.html', window.location.href);
     await _logAuthRedirect('첫 로그인 비밀번호 변경 필요', session, target, {
       필요조건: allowedRolesOrMinRank
     });
@@ -501,8 +553,9 @@ function _resetSessionTimer() {
     alert('세션이 만료되었습니다. 다시 로그인해주세요.');
     if (typeof logout === 'function') {
       const loginPath = window.location.pathname.includes('/admin/') || window.location.pathname.includes('/docs/') ? '../login.html' : 'login.html';
-      await _logAuthRedirect('24시간 비활성 세션 만료', s, loginPath, { 만료기준: 'idle_timer' });
-      await logout(loginPath);
+      const target = buildLoginRedirectUrl(loginPath, window.location.href);
+      await _logAuthRedirect('24시간 비활성 세션 만료', s, target, { 만료기준: 'idle_timer' });
+      await logout(target);
     }
   }, SESSION_TIMEOUT_MS);
 }
@@ -513,8 +566,9 @@ async function startSessionTimer() {
     clearSession();
     const loginPath = window.location.pathname.includes('/admin/') || window.location.pathname.includes('/docs/') ? '../login.html' : 'login.html';
     if (!window.location.pathname.includes('login.html') && !window.location.pathname.includes('register.html')) {
-      await _logAuthRedirect('24시간 비활성 세션 만료', s, loginPath, { 만료기준: 'last_activity' });
-      window.location.href = loginPath;
+      const target = buildLoginRedirectUrl(loginPath, window.location.href);
+      await _logAuthRedirect('24시간 비활성 세션 만료', s, target, { 만료기준: 'last_activity' });
+      window.location.href = target;
     }
     return;
   }
@@ -531,8 +585,9 @@ async function startSessionTimer() {
           alert('세션이 만료되었습니다. 다시 로그인해주세요.');
           const loginPath = window.location.pathname.includes('/admin/') || window.location.pathname.includes('/docs/') ? '../login.html' : 'login.html';
           if (typeof logout === 'function') {
-            _logAuthRedirect('24시간 비활성 세션 만료', s, loginPath, { 만료기준: 'visibilitychange' })
-              .finally(() => logout(loginPath));
+            const target = buildLoginRedirectUrl(loginPath, window.location.href);
+            _logAuthRedirect('24시간 비활성 세션 만료', s, target, { 만료기준: 'visibilitychange' })
+              .finally(() => logout(target));
           }
         }
       } else {

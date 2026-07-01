@@ -2,9 +2,19 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.58.0',
-  date: '2026-06-30',
+  current: '3.59.0',
+  date: '2026-07-01',
   history: [
+    {
+      version: '3.59.0',
+      date: '2026-07-01',
+      title: '환경 표기 및 QR 수령 URL 정리',
+      changes: [
+        'TARGET_ENV가 DEV일 때 네비게이션 브랜드에 (DEV) 표시',
+        'DEV/PROD 환경별 talent-receive QR 절대 URL 경로 분기 유지',
+        '버전 표시와 캐시 버스팅 참조를 v3.59.0 기준으로 갱신'
+      ]
+    },
     {
       version: '3.58.0',
       date: '2026-06-30',

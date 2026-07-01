@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 수령 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📱</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.58.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.58.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.59.0" />
   <style>
     .qr-hero { text-align: center; margin-bottom: 1.5rem; }
     .qr-hero h1 { font-size: 1.6rem; color: var(--c-primary); }
@@ -87,14 +87,14 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
-  <script src="config/public-config.js?v=3.58.0"></script>
-  <script src="js/supabase-config.js?v=3.58.0"></script>
-  <script src="js/activity-log.js?v=3.58.0"></script>
-  <script src="js/codes.js?v=3.58.0"></script>
-  <script src="js/auth.js?v=3.58.0"></script>
-  <script src="js/theme.js?v=3.58.0"></script>
-  <script src="js/nav.js?v=3.58.0"></script>
-  <script src="js/page-size.js?v=3.58.0"></script>
+  <script src="config/public-config.js?v=3.59.0"></script>
+  <script src="js/supabase-config.js?v=3.59.0"></script>
+  <script src="js/activity-log.js?v=3.59.0"></script>
+  <script src="js/codes.js?v=3.59.0"></script>
+  <script src="js/auth.js?v=3.59.0"></script>
+  <script src="js/theme.js?v=3.59.0"></script>
+  <script src="js/nav.js?v=3.59.0"></script>
+  <script src="js/page-size.js?v=3.59.0"></script>
   <script>
     initSupabase();
     let session;
@@ -111,6 +111,32 @@
     let historyItems = [];
     let historyPage = 1;
     let historyPageSize = null;
+    let autoReceiveTriggered = false;
+
+    function extractQrCodeValue(raw) {
+      const text = String(raw || '').trim();
+      if (!text) return '';
+      try {
+        const parsed = new URL(text, window.location.href);
+        const code = parsed.searchParams.get('code');
+        if (code) return code.trim();
+      } catch (e) {}
+      return text;
+    }
+
+    function getRequestedQrCode() {
+      return extractQrCodeValue(new URLSearchParams(window.location.search).get('code') || '');
+    }
+
+    async function autoReceiveFromUrl() {
+      if (autoReceiveTriggered) return;
+      const code = getRequestedQrCode();
+      if (!code) return;
+      autoReceiveTriggered = true;
+      const input = document.getElementById('qrInput');
+      if (input) input.value = code;
+      await scanCode({ fromCamera: false, code });
+    }
 
     (async () => {
       await navInit();
@@ -127,6 +153,7 @@
       updateNavOrderBadge();
       loadHistory();
       loadQRList();
+      await autoReceiveFromUrl();
     })();
 
     function isScanCoolingDown() {
@@ -159,7 +186,10 @@
 
     async function scanCode(options = {}) {
       const fromCamera = options.fromCamera === true;
-      const code = document.getElementById('qrInput').value.trim();
+      const inputEl = document.getElementById('qrInput');
+      const rawValue = options.code != null ? String(options.code).trim() : (inputEl ? inputEl.value.trim() : '');
+      const code = extractQrCodeValue(rawValue);
+      if (inputEl && inputEl.value.trim() !== code) inputEl.value = code;
       if (!code) { showResult('fail', '코드를 입력해주세요.'); return; }
       if (scanProcessing) return;
       scanProcessing = true;
@@ -626,6 +656,6 @@
       renderQRList();
     }
   </script>
-  <script src="js/version.js?v=3.58.0"></script>
+  <script src="js/version.js?v=3.59.0"></script>
 </body>
 </html>

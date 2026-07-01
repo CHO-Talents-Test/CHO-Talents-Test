@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>구매 통계 - 관리자</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.58.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.58.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.59.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.59.0" />
   <style>
     .stats-summary { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.6rem; margin-bottom: 1.2rem; }
     .kanban-board { display: flex; gap: 0.6rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
@@ -134,16 +134,16 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.58.0"></script>
-  <script src="../js/supabase-config.js?v=3.58.0"></script>
-  <script src="../js/activity-log.js?v=3.58.0"></script>
-  <script src="../js/codes.js?v=3.58.0"></script>
-  <script src="../js/auth.js?v=3.58.0"></script>
-  <script src="../js/theme.js?v=3.58.0"></script>
-  <script src="../js/nav.js?v=3.58.0"></script>
-  <script src="../js/page-size.js?v=3.58.0"></script>
-  <script src="../js/user-mgmt.js?v=3.58.0"></script>
-  <script src="../js/slack-notify.js?v=3.58.0"></script>
+  <script src="../config/public-config.js?v=3.59.0"></script>
+  <script src="../js/supabase-config.js?v=3.59.0"></script>
+  <script src="../js/activity-log.js?v=3.59.0"></script>
+  <script src="../js/codes.js?v=3.59.0"></script>
+  <script src="../js/auth.js?v=3.59.0"></script>
+  <script src="../js/theme.js?v=3.59.0"></script>
+  <script src="../js/nav.js?v=3.59.0"></script>
+  <script src="../js/page-size.js?v=3.59.0"></script>
+  <script src="../js/user-mgmt.js?v=3.59.0"></script>
+  <script src="../js/slack-notify.js?v=3.59.0"></script>
   <script>
     initSupabase();
     let session, allOrders = [], allProfiles = [], allDepts = [];
@@ -703,6 +703,6 @@
     document.getElementById('deptDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeDeptDetailModal(); });
     document.getElementById('userDetailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeUserDetailModal(); });
   </script>
-  <script src="../js/version.js?v=3.58.0"></script>
+  <script src="../js/version.js?v=3.59.0"></script>
 </body>
 </html>

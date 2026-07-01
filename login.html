@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>로그인 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.58.0" />
-  <link rel="stylesheet" href="css/admin.css?v=3.58.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/admin.css?v=3.59.0" />
   <style>
     .login-wrapper { background: linear-gradient(135deg, #f8f5ff 0%, #e8e0ff 50%, #fce4ec 100%); }
     .login-card { max-width: 400px; }
@@ -58,16 +58,33 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.58.0"></script>
-  <script src="js/supabase-config.js?v=3.58.0"></script>
-  <script src="js/activity-log.js?v=3.58.0"></script>
-  <script src="js/codes.js?v=3.58.0"></script>
-  <script src="js/auth.js?v=3.58.0"></script>
-  <script src="js/theme.js?v=3.58.0"></script>
+  <script src="config/public-config.js?v=3.59.0"></script>
+  <script src="js/supabase-config.js?v=3.59.0"></script>
+  <script src="js/activity-log.js?v=3.59.0"></script>
+  <script src="js/codes.js?v=3.59.0"></script>
+  <script src="js/auth.js?v=3.59.0"></script>
+  <script src="js/theme.js?v=3.59.0"></script>
   <script>
     const SAVED_USERNAME_KEY = 'cho_saved_username';
 
     initSupabase();
+
+    function getLoginRedirectTarget() {
+      return typeof getRedirectTargetFromQuery === 'function' ? getRedirectTargetFromQuery(null) : null;
+    }
+
+    function getPostLoginTarget(session) {
+      const redirectTarget = getLoginRedirectTarget();
+      if (session && session.isFirstLogin) {
+        const fallbackTarget = getRoleRedirectUrl(session.permissionLevel, '');
+        const changePwUrl = typeof buildUrlWithRedirect === 'function'
+          ? buildUrlWithRedirect('admin/change-password.html', redirectTarget || fallbackTarget)
+          : 'admin/change-password.html';
+        return changePwUrl;
+      }
+      if (redirectTarget) return redirectTarget;
+      return getRoleRedirectUrl(session.permissionLevel, '');
+    }
 
     (async () => {
       const savedUsername = localStorage.getItem(SAVED_USERNAME_KEY) || '';
@@ -82,11 +99,7 @@
 
       const session = await loadAuthSession();
       if (session) {
-        if (session.isFirstLogin) {
-          window.location.href = 'admin/change-password.html';
-        } else {
-          window.location.href = 'index.html';
-        }
+        window.location.href = getPostLoginTarget(session);
         return;
       }
 
@@ -111,11 +124,10 @@
             localStorage.removeItem(SAVED_USERNAME_KEY);
           }
           logInfo('LOGIN_SUCCESS', { username });
-          if (result.data.is_first_login) {
-            window.location.href = 'admin/change-password.html';
-          } else {
-            window.location.href = 'index.html';
-          }
+          window.location.href = getPostLoginTarget({
+            isFirstLogin: !!result.data.is_first_login,
+            permissionLevel: result.data.permission_level || result.data.permissionLevel || 'teacher'
+          });
         } else {
           logWarn('LOGIN_FAIL', { username, error: result.error });
           let regStatus = 'not_found';
@@ -140,6 +152,6 @@
       });
     })();
   </script>
-  <script src="js/version.js?v=3.58.0"></script>
+  <script src="js/version.js?v=3.59.0"></script>
 </body>
 </html>
