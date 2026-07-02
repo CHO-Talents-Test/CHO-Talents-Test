@@ -40,6 +40,7 @@ alwaysApply: false
 | `admin/talents.html` | 40 | 일반 교사 이상, 권한별 부서/반 스코핑 |
 | `admin/index.html`, `admin/users.html`, `admin/departments.html` | 60 | 부서 담당 교사 이상 |
 | `admin/shop.html`, `admin/purchases.html`, `admin/purchase-stats.html` | 60 | 구매 담당 교사는 전체 부서 주문 처리 |
+| `admin/talent-adjustments.html` | 60 | 예외 지급/반환 이력 조회, 부서 담당 교사는 담당 부서 스코핑 |
 | `admin/bulk-register.html`, `admin/managers.html`, `admin/reports.html`, `admin/versions.html` | 80 | 부장 교사 이상 |
 | `docs/page-permission-rules.html`, `admin/log-rules.html`, `admin/slack-rules.html`, `admin/audit-rules.html` | 80 | 운영 룰 문서, 부장 교사 이상 열람 |
 | `admin/talent-qr.html` | 90 | 전도사님 이상 |

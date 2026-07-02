@@ -21,6 +21,7 @@ const NAV_MENU = [
       { href: 'my-talents.html', label: '내 달란트', id: 'navMyTalent', authOnly: true },
       { href: 'talent-receive.html', label: '달란트 수령', authOnly: true },
       { href: 'admin/talents.html', label: '달란트 관리', minPerm: 40 },
+      { href: 'admin/talent-adjustments.html', label: '예외 지급/반환 관리', minPerm: 60 },
       { href: 'admin/talent-items.html', label: '달란트 항목 관리', minPerm: 60 },
       { href: 'admin/talent-stats.html', label: '달란트 통계', minPerm: 60 },
       { href: 'admin/talent-qr.html', label: '달란트 QR 관리', minPerm: 90 }

@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.59.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -74,6 +74,14 @@
         <div style="font-weight:700;font-size:0.85rem;margin-bottom:0.5rem;">항목 선택 (체크 후 지급 확정)</div>
         <div id="talentItemBtns" style="display:flex;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.8rem;"></div>
         <button class="btn-confirm" id="btnConfirmGive" onclick="confirmGiveItems()" style="width:100%;padding:0.6rem;margin-bottom:0.8rem;display:none;">✅ 지급 확정</button>
+        <div id="overrideWeekLimitWrap" style="display:none;margin-bottom:0.8rem;padding:0.7rem;border:1px solid var(--admin-border);border-radius:8px;background:var(--t-card, #fff);">
+          <label style="display:flex;align-items:center;gap:0.45rem;font-weight:700;font-size:0.85rem;margin-bottom:0.45rem;">
+            <input type="checkbox" id="overrideWeekLimit" onchange="onOverrideWeekLimitChange()" />
+            이번 주 제한 예외 지급
+          </label>
+          <input type="text" id="overrideReason" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="예외 지급 사유를 입력해주세요" />
+          <div style="font-size:0.75rem;color:var(--admin-text-muted);margin-top:0.35rem;">전도사님 이상만 사용할 수 있습니다.</div>
+        </div>
         <details id="manualGiveSection" style="margin-bottom:0.8rem;display:none;">
           <summary style="cursor:pointer;font-size:0.85rem;color:var(--admin-primary);">수동 입력 (항목에 없는 경우)</summary>
           <div style="display:flex;gap:0.5rem;margin-top:0.5rem;">
@@ -135,19 +143,25 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.59.0"></script>
-  <script src="../js/supabase-config.js?v=3.59.0"></script>
-  <script src="../js/activity-log.js?v=3.59.0"></script>
-  <script src="../js/codes.js?v=3.59.0"></script>
-  <script src="../js/auth.js?v=3.59.0"></script>
-  <script src="../js/theme.js?v=3.59.0"></script>
-  <script src="../js/nav.js?v=3.59.0"></script>
-  <script src="../js/page-size.js?v=3.59.0"></script>
-  <script src="../js/user-mgmt.js?v=3.59.0"></script>
-  <script src="../js/table-sort.js?v=3.59.0"></script>
-  <script src="../js/talent.js?v=3.59.0"></script>
+  <script src="../config/public-config.js?v=3.60.0"></script>
+  <script src="../js/supabase-config.js?v=3.60.0"></script>
+  <script src="../js/activity-log.js?v=3.60.0"></script>
+  <script src="../js/codes.js?v=3.60.0"></script>
+  <script src="../js/auth.js?v=3.60.0"></script>
+  <script src="../js/theme.js?v=3.60.0"></script>
+  <script src="../js/nav.js?v=3.60.0"></script>
+  <script src="../js/page-size.js?v=3.60.0"></script>
+  <script src="../js/user-mgmt.js?v=3.60.0"></script>
+  <script src="../js/table-sort.js?v=3.60.0"></script>
+  <script src="../js/talent.js?v=3.60.0"></script>
   <style>
     .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:120px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
+    #overrideWeekLimitWrap{background:var(--t-card, #fff);color:var(--t-text, #212529);}
+    #overrideWeekLimitWrap input[type="text"]{background:var(--t-input-bg, #fff);color:var(--t-text, #212529);}
+    [data-theme="dark"] #overrideWeekLimitWrap{background:#111827;border-color:#374151!important;}
+    [data-theme="dark"] #overrideWeekLimitWrap input[type="text"]{background:#0f172a;color:#e5e7eb;border-color:#475569;}
+    [data-theme="dark"] .modal-box{background:#111827;color:#e5e7eb;border-color:#374151;}
+    [data-theme="dark"] .modal-box .form-error{color:#fca5a5;}
     @media(max-width:768px){.hide-mobile{display:none!important;}}
   </style>
   <script>
@@ -166,6 +180,7 @@
     let talentPage = 1;
     let talentUserList = [];
     let talentPageSize = null;
+    let talentSortInitialized = false;
     let detailUserId = null;
     let detailHistoryItems = [];
     let detailHistoryPage = 1;
@@ -179,6 +194,15 @@
       return desc.replace(/\[[0-9a-f-]{36}\]\s*/gi, '');
     }
 
+    function getTalentHistoryTypeMeta(t) {
+      const isReturn = t.type === 'use' && t.description && t.description.startsWith('반환:');
+      const isException = t.type === 'earn' && t.override_week_limit === true;
+      if (isReturn) return { label: '반환', bg: '#fff0f6', color: '#c2255c', amountColor: '#c2255c', sign: '-' };
+      if (isException) return { label: '예외', bg: '#fff3bf', color: '#e67700', amountColor: '#e67700', sign: '+' };
+      if (t.type === 'earn') return { label: '적립', bg: '#e6fcf5', color: '#2b8a3e', amountColor: '#2b8a3e', sign: '+' };
+      return { label: '사용', bg: '#fff5f5', color: '#e03131', amountColor: '#e03131', sign: '-' };
+    }
+
     function getWeekStartKST() {
       const now = new Date();
       const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
@@ -187,6 +211,36 @@
       kst.setUTCDate(kst.getUTCDate() - diff);
       kst.setUTCHours(0, 0, 0, 0);
       return new Date(kst.getTime() - 9 * 60 * 60 * 1000);
+    }
+
+    function canOverrideWeeklyLimit() {
+      return (session.permissionRank || 0) >= 90;
+    }
+
+    function isOverrideWeekLimitEnabled() {
+      const el = document.getElementById('overrideWeekLimit');
+      return canOverrideWeeklyLimit() && !!el && el.checked;
+    }
+
+    function syncOverrideControls() {
+      const wrap = document.getElementById('overrideWeekLimitWrap');
+      const chk = document.getElementById('overrideWeekLimit');
+      const reason = document.getElementById('overrideReason');
+      const enabled = canOverrideWeeklyLimit();
+      if (wrap) wrap.style.display = enabled ? '' : 'none';
+      if (chk && !enabled) chk.checked = false;
+      if (reason) {
+        reason.disabled = !enabled;
+        if (!enabled) reason.value = '';
+      }
+      if (enabled) updateConfirmBtn();
+    }
+
+    function onOverrideWeekLimitChange() {
+      const reason = document.getElementById('overrideReason');
+      if (reason && !isOverrideWeekLimitEnabled()) reason.value = '';
+      renderTalentItemButtons();
+      updateConfirmBtn();
     }
 
     function getTalentPageSize(){
@@ -354,7 +408,10 @@
       </tr>`;
       }).join('');
       renderTalentPaging(totalPages);
-      initSortableHeaders('talentTable', function(){ return talentUserList; }, function(d){ talentUserList = d; talentPage = 1; renderTalentTable(); });
+      if (!talentSortInitialized) {
+        initSortableHeaders('talentTable', function(){ return talentUserList; }, function(d){ talentUserList = d; talentPage = 1; renderTalentTable(); });
+        talentSortInitialized = true;
+      }
     }
 
     function renderTalentPaging(totalPages) {
@@ -534,7 +591,7 @@
       if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('talents_detail_history', pageSize, 'onDetailHistoryPageSizeChange(this.value)');
 
       if (!detailHistoryItems.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">내역이 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">이력이 없습니다.</td></tr>';
         if (paging) paging.innerHTML = '';
         return;
       }
@@ -547,19 +604,15 @@
 
       tbody.innerHTML = pageItems.map(t => {
         const creatorName = t.created_by ? (detailCreatorMap[t.created_by] || '-') : '-';
-        const isReturn = t.type === 'use' && t.description && t.description.startsWith('반환:');
+        const meta = getTalentHistoryTypeMeta(t);
         const alreadyReturned = detailReturnedTxnIds.has(t.id);
         const returnBtn = (canReturn && t.type === 'earn' && !alreadyReturned)
-          ? `<button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="openReturnModal('${detailUserId}','${t.id}','${t.amount}','${(t.description||'').replace(/'/g,"\\'")}')">반환</button>`
+          ? `<button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="openReturnModal('${detailUserId}','${t.id}','${t.amount}','${(t.description||'').replace(/'/g, "\\'")}')">반환</button>`
           : (alreadyReturned && t.type === 'earn' ? '<span style="font-size:0.7rem;color:#868e96;">반환됨</span>' : '');
-        let typeBg, typeColor, typeLabel;
-        if (isReturn) { typeBg = '#fff0f6'; typeColor = '#c2255c'; typeLabel = '반환'; }
-        else if (t.type === 'earn') { typeBg = '#e6fcf5'; typeColor = '#2b8a3e'; typeLabel = '적립'; }
-        else { typeBg = '#fff5f5'; typeColor = '#e03131'; typeLabel = '사용'; }
         return `<tr>
           <td>${formatKSTShort(t.created_at)}</td>
-          <td><span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;background:${typeBg};color:${typeColor};">${typeLabel}</span>${t.type==='earn' && t.source==='qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</td>
-          <td style="font-weight:700;color:${typeColor}">${t.type==='earn'?'+':'-'}${t.amount}</td>
+          <td><span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;background:${meta.bg};color:${meta.color};font-weight:700;">${meta.label}</span>${t.type==='earn' && t.source==='qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</td>
+          <td style="font-weight:700;color:${meta.amountColor}">${meta.sign}${t.amount}</td>
           <td>${maskTalentDesc(t.description)}</td>
           <td style="font-size:0.78rem;">${creatorName}</td>
           <td>${t.balance_after != null ? t.balance_after : '-'}</td>
@@ -646,9 +699,12 @@
       document.getElementById('talentBalance').textContent = fmtNum(balance);
       document.getElementById('talentError').classList.remove('show');
       setTalentType('earn');
-      if ((session.permissionRank || 0) >= 100) {
-        document.getElementById('manualGiveSection').style.display = '';
-      }
+      const overrideChk = document.getElementById('overrideWeekLimit');
+      const overrideReason = document.getElementById('overrideReason');
+      if (overrideChk) overrideChk.checked = false;
+      if (overrideReason) overrideReason.value = '';
+      document.getElementById('manualGiveSection').style.display = (session.permissionRank || 0) >= 100 ? '' : 'none';
+      syncOverrideControls();
       document.getElementById('talentModal').classList.remove('hidden');
       await renderTalentItemButtons();
       loadTalentHistory(userId);
@@ -662,66 +718,108 @@
     }
 
     let _weeklyGivenMap = {};
+    let _weeklyGivenRecordsMap = {};
 
     async function renderTalentItemButtons() {
       const items = talentItems.filter(i => i.target_type === currentTab && i.is_active);
       const container = document.getElementById('talentItemBtns');
       const confirmBtn = document.getElementById('btnConfirmGive');
+      const overrideEnabled = isOverrideWeekLimitEnabled();
+
       if (items.length === 0) {
         container.innerHTML = '<div style="color:var(--admin-text-muted);font-size:0.85rem;">등록된 항목이 없습니다.</div>';
         confirmBtn.style.display = 'none';
         return;
       }
+
       const weekStart = getWeekStartKST();
-      const { data: weekEarns } = await _sb.from('talent_transactions')
-        .select('id, talent_item_id, amount, description, created_at, source')
+      let { data: weekEarns, error: weekEarnErr } = await _sb.from('talent_transactions')
+        .select('id, talent_item_id, amount, description, created_at, source, override_week_limit')
         .eq('user_id', talentUserId)
         .eq('type', 'earn')
         .gte('created_at', weekStart.toISOString())
         .not('talent_item_id', 'is', null)
         .order('created_at', { ascending: true });
+      if (weekEarnErr && /column .*override_week_limit.*does not exist|schema cache/i.test(weekEarnErr.message || '')) {
+        const fallback = await _sb.from('talent_transactions')
+          .select('id, talent_item_id, amount, description, created_at, source')
+          .eq('user_id', talentUserId)
+          .eq('type', 'earn')
+          .gte('created_at', weekStart.toISOString())
+          .not('talent_item_id', 'is', null)
+          .order('created_at', { ascending: true });
+        weekEarns = fallback.data || [];
+      }
+
       const { data: weekReturns } = await _sb.from('talent_transactions')
         .select('amount, description')
         .eq('user_id', talentUserId)
         .eq('type', 'use')
-        .like('description', '반환:%')
+        .like('description', '\uBC18\uD658:%')
         .gte('created_at', weekStart.toISOString());
       const cancelledById = new Set();
       const legacyRetCount = {};
       (weekReturns || []).forEach(r => {
-        const m = r.description.match(/반환:\s*\[([^\]]+)\]/);
+        const m = r.description.match(/\uBC18\uD658:\s*\[([^\]]+)\]/);
         if (m) { cancelledById.add(m[1]); }
         else {
-          const k = r.amount + '|' + r.description.replace('반환: ','').replace('반환:','');
+          const k = r.amount + '|' + r.description.replace('\uBC18\uD658: ', '').replace('\uBC18\uD658:', '');
           legacyRetCount[k] = (legacyRetCount[k] || 0) + 1;
         }
       });
       _weeklyGivenMap = {};
+      _weeklyGivenRecordsMap = {};
       (weekEarns || []).forEach(t => {
         if (cancelledById.has(t.id)) return;
         const matchKey = t.amount + '|' + (t.description || '');
         if (legacyRetCount[matchKey] > 0) { legacyRetCount[matchKey]--; return; }
-        _weeklyGivenMap[t.talent_item_id] = { id: t.id, amount: t.amount, description: t.description, source: t.source || 'admin' };
+        const itemId = t.talent_item_id;
+        const record = { id: t.id, amount: t.amount, description: t.description, source: t.source || 'admin', override_week_limit: t.override_week_limit === true };
+        if (!_weeklyGivenRecordsMap[itemId]) _weeklyGivenRecordsMap[itemId] = [];
+        _weeklyGivenRecordsMap[itemId].push(record);
+        _weeklyGivenMap[itemId] = record;
       });
 
       container.innerHTML = items.map(i => {
-        const done = !!_weeklyGivenMap[i.id];
-        return `<div style="display:flex;align-items:center;gap:0.4rem;padding:0.5rem 0.8rem;border:1px solid ${done?'#51cf66':'var(--t-border, #dee2e6)'};border-radius:8px;background:${done?'var(--t-success-surface, #e6fcf5)':'var(--t-card, #fff)'};font-size:0.88rem;color:var(--t-text, #212529);">
+        const records = _weeklyGivenRecordsMap[i.id] || [];
+        const latest = records[records.length - 1];
+        const done = records.length > 0;
+        const canReissue = done && overrideEnabled;
+        const isDarkTheme = document.documentElement.getAttribute('data-theme') === 'dark';
+        const exceptionActive = latest?.override_week_limit === true || (done && overrideEnabled);
+        const countTag = records.length > 1 ? `<span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#f1f3f5;color:#495057;">x${records.length}</span>` : '';
+        const statusTag = done
+          ? exceptionActive
+            ? (isDarkTheme
+              ? '<span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#5f3f00;color:#fff3bf;">예외</span>'
+              : '<span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#fff3bf;color:#e67700;">예외</span>')
+            : '<span style="font-size:0.7rem;color:#51cf66;">✓완료</span>'
+          : '';
+        const borderColor = exceptionActive ? '#f59f00' : (done ? '#51cf66' : 'var(--t-border, #dee2e6)');
+        const backgroundColor = exceptionActive
+          ? (isDarkTheme ? '#3b2a00' : 'var(--t-warning-surface, #fff9db)')
+          : (done ? 'var(--t-success-surface, #e6fcf5)' : 'var(--t-card, #fff)');
+        return `<div style="display:flex;align-items:center;gap:0.4rem;padding:0.5rem 0.8rem;border:1px solid ${borderColor};border-radius:8px;background:${backgroundColor};font-size:0.88rem;color:var(--t-text, #212529);">
           ${done
-            ? `<span style="flex:1;">${i.name} <strong style="color:#868e96;">+${i.talent_amount}</strong> <span style="font-size:0.7rem;color:#51cf66;">✓완료</span>${_weeklyGivenMap[i.id]?.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</span>
-               <button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="cancelTalentItem('${i.id}','${i.name}',${i.talent_amount})">취소</button>`
+            ? canReissue
+              ? `<label style="flex:1;display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
+                   <input type="checkbox" class="talent-item-chk" value="${i.id}" data-name="${i.name}" data-amount="${i.talent_amount}" data-overridden="true" onchange="updateConfirmBtn()" />
+                   ${i.name} <strong style="color:#2b8a3e;">+${i.talent_amount}</strong> ${statusTag}${countTag}${latest?.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}
+                 </label>`
+              : `<span style="flex:1;">${i.name} <strong style="color:#868e96;">+${i.talent_amount}</strong> ${statusTag}${countTag}${latest?.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</span>
+                 <button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="cancelTalentItem('${i.id}','${i.name}',${i.talent_amount})">취소</button>`
             : `<label style="flex:1;display:flex;align-items:center;gap:0.4rem;cursor:pointer;">
-                 <input type="checkbox" class="talent-item-chk" value="${i.id}" data-name="${i.name}" data-amount="${i.talent_amount}" onchange="updateConfirmBtn()" />
-                 ${i.name} <strong style="color:#2b8a3e;">+${i.talent_amount}</strong>
+                 <input type="checkbox" class="talent-item-chk" value="${i.id}" data-name="${i.name}" data-amount="${i.talent_amount}" data-overridden="${overrideEnabled && done ? 'true' : 'false'}" onchange="updateConfirmBtn()" />
+                 ${i.name} <strong style="color:#2b8a3e;">+${i.talent_amount}</strong>${done ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#fff3bf;color:#e67700;">예외</span>' : ''}
                </label>`
           }
         </div>`;
       }).join('');
       updateConfirmBtn();
     }
-
     async function cancelTalentItem(itemId, itemName, amount) {
-      const txn = _weeklyGivenMap[itemId];
+      const records = _weeklyGivenRecordsMap[itemId] || [];
+      const txn = records[records.length - 1];
       if (!txn) return;
       if (!confirm(`"${itemName}" 지급을 취소하시겠습니까? (${amount} 달란트 반환)`)) return;
       try {
@@ -732,6 +830,13 @@
           return;
         }
         await logInfo('TALENT_ITEM_CANCEL', { userId: talentUserId, itemId, 항목명: itemName, 금액: txn.amount, txnId: txn.id });
+        records.pop();
+        if (records.length === 0) {
+          delete _weeklyGivenRecordsMap[itemId];
+          delete _weeklyGivenMap[itemId];
+        } else {
+          _weeklyGivenMap[itemId] = records[records.length - 1];
+        }
         const bal = await fetchTalentBalance(talentUserId);
         document.getElementById('talentBalance').textContent = fmtNum(bal);
         await renderTalentItemButtons();
@@ -744,29 +849,51 @@
     function updateConfirmBtn() {
       const chks = document.querySelectorAll('.talent-item-chk:not(:disabled):checked');
       const btn = document.getElementById('btnConfirmGive');
+      const overrideEnabled = isOverrideWeekLimitEnabled();
+      const selectedOverride = [...chks].some(chk => chk.dataset.overridden === 'true');
       btn.style.display = chks.length > 0 ? 'block' : 'none';
-      btn.textContent = `✅ 지급 확정 (${chks.length}건)`;
+      btn.textContent = selectedOverride || overrideEnabled ? `✅ 예외 지급 확정 (${chks.length}건)` : `✅ 지급 확정 (${chks.length}건)`;
     }
 
     async function confirmGiveItems() {
       const chks = [...document.querySelectorAll('.talent-item-chk:not(:disabled):checked')];
       if (chks.length === 0) return;
+      const overrideEnabled = isOverrideWeekLimitEnabled();
+      const overrideReason = document.getElementById('overrideReason').value.trim();
+      if (overrideEnabled && !overrideReason) {
+        const errEl = document.getElementById('talentError');
+        errEl.textContent = '예외 지급 사유를 입력해주세요.';
+        errEl.classList.add('show');
+        return;
+      }
       const names = chks.map(c => c.dataset.name).join(', ');
-      if (!confirm(`${chks.length}건의 달란트를 지급하시겠습니까?\n항목: ${names}`)) return;
+      if (!confirm(`${chks.length}건의 달란트를 지급하시겠습니까?\n항목: ${names}${overrideEnabled ? '\n이번 주 제한 예외가 적용됩니다.' : ''}`)) return;
       const errEl = document.getElementById('talentError');
       errEl.classList.remove('show');
       let lastBalance = 0;
       for (const chk of chks) {
-        if (_weeklyGivenMap[chk.value]) continue;
+        if (_weeklyGivenMap[chk.value] && !overrideEnabled) continue;
         try {
-          const result = await giveTalentByItem(talentUserId, chk.value, session.id);
+          const result = await giveTalentByItem(talentUserId, chk.value, session.id, {
+            overrideWeekLimit: overrideEnabled && !!_weeklyGivenMap[chk.value],
+            overrideReason: overrideEnabled ? overrideReason : null,
+          });
           if (result.success === false) {
             await logError('TALENT_GIVE_ITEM_FAIL', { userId: talentUserId, itemId: chk.value, 항목명: chk.dataset.name, 오류: result.error });
             errEl.textContent = `"${chk.dataset.name}" 지급 실패: ${tErr(result.error)}`;
             errEl.classList.add('show');
             break;
           }
-          _weeklyGivenMap[chk.value] = { id: result?.id || '', amount: result?.amount || Number(chk.dataset.amount), description: result?.description || chk.dataset.name };
+          const record = {
+            id: result?.txn_id || result?.id || '',
+            amount: result?.amount || Number(chk.dataset.amount),
+            description: result?.description || chk.dataset.name,
+            source: overrideEnabled ? 'override' : 'admin',
+            override_week_limit: overrideEnabled && !!_weeklyGivenMap[chk.value],
+          };
+          if (!_weeklyGivenRecordsMap[chk.value]) _weeklyGivenRecordsMap[chk.value] = [];
+          _weeklyGivenRecordsMap[chk.value].push(record);
+          _weeklyGivenMap[chk.value] = record;
           lastBalance = result.balance;
         } catch (err) {
           await logError('TALENT_GIVE_ITEM_ERROR', { userId: talentUserId, itemId: chk.value, 오류: String(err) });
@@ -811,10 +938,12 @@
       const el = document.getElementById('talentHistory');
       if (!data || data.length === 0) { el.innerHTML = '<div style="color:var(--admin-text-muted);text-align:center;">내역 없음</div>'; return; }
       el.innerHTML = data.map(t => {
+        const meta = getTalentHistoryTypeMeta(t);
         const srcTag = t.type === 'earn' && t.source === 'qr' ? '<span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;margin-left:0.3rem;">QR</span>' : '';
         return `<div style="display:flex;justify-content:space-between;padding:0.3rem 0;border-bottom:1px solid #f0f0f0;">
           <span>${formatKSTShort(t.created_at)}${srcTag}</span>
-          <span style="color:${t.type === 'earn' ? '#2b8a3e' : '#e03131'};font-weight:700;">${t.type === 'earn' ? '+' : '-'}${t.amount}</span>
+          <span style="padding:0.1rem 0.35rem;border-radius:4px;font-size:0.72rem;background:${meta.bg};color:${meta.color};font-weight:800;">${meta.label}</span>
+          <span style="color:${meta.amountColor};font-weight:700;">${meta.sign}${t.amount}</span>
           <span style="color:var(--admin-text-muted);">${maskTalentDesc(t.description)}</span>
         </div>`;
       }).join('');
@@ -855,6 +984,6 @@
     document.getElementById('detailModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeDetailModal(); });
     document.getElementById('returnModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeReturnModal(); });
   </script>
-  <script src="../js/version.js?v=3.59.0"></script>
+  <script src="../js/version.js?v=3.60.0"></script>
 </body>
 </html>

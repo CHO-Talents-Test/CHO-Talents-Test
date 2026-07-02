@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>교사 가이드 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/guide.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.60.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -54,7 +54,7 @@
             <tr><td>대리 구매</td><td>학생을 선택(이름·유형·부서·반 표시)하여 학생 명의로 상품 구매 신청을 합니다.</td></tr>
             <tr><td>구매 관리</td><td>부서 담당 교사 이상은 칸반보드 형태의 상태별 카드로 현황을 파악하고 권한 범위 안의 주문을 처리합니다. 구매 담당 교사는 모든 부서 주문을 처리할 수 있습니다.</td></tr>
             <tr><td>구매 통계</td><td>부서 담당 교사 이상은 전체/부서별/사용자별/유형별 구매 통계를 확인합니다. 교사/학생 분리 표시, 상세 드릴다운, 페이지당 항목 수 선택과 기본 정렬을 제공합니다.</td></tr>
-            <tr><td>내 달란트</td><td>사용 가능 달란트, 수령 대기 상품수, 사용 완료·반환 달란트 요약, 적립/사용/반환 내역, 상품 수령 예정 현황을 확인합니다.</td></tr>
+            <tr><td>내 달란트</td><td>사용 가능 달란트, 수령 대기 상품수, 사용 완료·반환·예외 달란트 요약, 적립/예외/사용/반환 내역, 상품 수령 예정 현황을 확인합니다.</td></tr>
             <tr><td>대시보드</td><td>부서 담당 교사(60+) 이상 권한이면 관리 대시보드에 접근할 수 있습니다. 통계 카드와 이슈 로그 테이블을 확인합니다.</td></tr>
           </tbody>
         </table>
@@ -71,13 +71,14 @@
         <li><strong>지급 확정</strong>을 누르면 선택한 항목이 한 번에 반영됩니다.</li>
         <li><strong>상세</strong>를 누르면 해당 학생의 달란트 요약과 내역을 확인할 수 있습니다. 상세 팝업 상단에는 <strong>누적적립</strong>, <strong>총사용</strong>, <strong>총반환</strong>, <strong>잔여</strong>가 구분되어 표시되고, 이력은 페이지 이동과 페이지당 항목 수 선택을 지원합니다.</li>
       </ol>
-      <div class="guide-note">항목 지급은 주간(월~일) 1회 제한을 따릅니다. 이미 지급된 항목은 완료 또는 취소 표시가 나오며, 취소/반환은 같은 거래 ID 기준으로 동기화됩니다. 지급 취소 이력의 달란트 트랜잭션 ID는 관리자가 아닌 사용자에게는 표시되지 않습니다.</div>
+      <div class="guide-note">항목 지급은 주간(월~일) 1회 제한을 따릅니다. 이미 지급된 항목은 완료 또는 취소 표시가 나오며, 예외 재지급은 전도사님(90+) 이상만 사유 입력 후 처리할 수 있습니다. 취소/반환은 같은 거래 ID 기준으로 동기화됩니다. 지급 취소 이력의 달란트 트랜잭션 ID는 관리자가 아닌 사용자에게는 표시되지 않습니다.</div>
       <div class="guide-card">
         <h3>📊 달란트 내역 유형 (v3.48.0)</h3>
         <p>달란트 내역 테이블의 <strong>유형</strong> 열에는 다음 세 가지가 구분되어 표시됩니다.</p>
         <ul class="guide-list">
           <li><strong>적립</strong>: 선생님이나 QR 등으로 받은 달란트</li>
           <li><strong>사용</strong>: 상품 구매 등에 실제로 차감된 달란트</li>
+          <li><strong>예외</strong>: 주간 제한을 예외로 다시 지급한 건</li>
           <li><strong>반환</strong>: 잘못 지급된 달란트를 되돌린 건 (사용과 별도 집계)</li>
         </ul>
         <p style="margin-top:0.75rem;">반환은 잘못 지급된 달란트를 사유 입력 후 되돌리는 기능으로, <strong>부장 교사(80+) 이상</strong> 권한에서만 처리할 수 있습니다. 일반 교사는 내역에서 반환 건을 확인만 할 수 있습니다.</p>
@@ -217,13 +218,13 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.59.0"></script>
-  <script src="js/supabase-config.js?v=3.59.0"></script>
-  <script src="js/activity-log.js?v=3.59.0"></script>
-  <script src="js/codes.js?v=3.59.0"></script>
-  <script src="js/auth.js?v=3.59.0"></script>
-  <script src="js/theme.js?v=3.59.0"></script>
-  <script src="js/nav.js?v=3.59.0"></script>
+  <script src="config/public-config.js?v=3.60.0"></script>
+  <script src="js/supabase-config.js?v=3.60.0"></script>
+  <script src="js/activity-log.js?v=3.60.0"></script>
+  <script src="js/codes.js?v=3.60.0"></script>
+  <script src="js/auth.js?v=3.60.0"></script>
+  <script src="js/theme.js?v=3.60.0"></script>
+  <script src="js/nav.js?v=3.60.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -247,6 +248,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="js/version.js?v=3.59.0"></script>
+  <script src="js/version.js?v=3.60.0"></script>
 </body>
 </html>

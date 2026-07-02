@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>학생 가이드 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/guide.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.60.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -41,7 +41,7 @@
         <div class="guide-mini-card">
           <div class="icon">💰</div>
           <h3>내 달란트 확인</h3>
-          <p>로그인하면 사용 가능·사용 대기·사용 완료·반환·누적 적립 달란트와 적립/사용/반환 내역을 확인할 수 있습니다.</p>
+          <p>로그인하면 사용 가능·사용 대기·사용 완료·반환·예외·누적 적립 달란트와 적립/예외/사용/반환 내역을 확인할 수 있습니다.</p>
         </div>
         <div class="guide-mini-card">
           <div class="icon">🛒</div>
@@ -84,7 +84,7 @@
             <tr><td>달란트 적립</td><td>달란트를 받을 수 있는 활동과 각 활동의 현재 지급 수량, 지급 규칙, 설명을 확인합니다.</td></tr>
             <tr><td>상품 구매</td><td>달란트로 살 수 있는 상품을 보고 구매를 신청합니다.</td></tr>
             <tr><td>달란트 수령</td><td>QR 코드를 스캔하거나 코드를 입력해 달란트를 받습니다. 위치 제한 QR에서 기기/브라우저 위치 권한이 막혀 있으면 알림창이 표시됩니다. 최근 수령 내역은 페이지 이동과 페이지당 항목 수 선택을 지원합니다.</td></tr>
-            <tr><td>내 달란트</td><td>요약 박스(사용 가능·수령 대기·사용 대기·사용 완료·반환·누적 적립)와 적립/사용/반환 내역, 구매 진행 상태를 확인합니다.</td></tr>
+            <tr><td>내 달란트</td><td>요약 박스(사용 가능·수령 대기·사용 대기·사용 완료·반환·예외·누적 적립)와 적립/예외/사용/반환 내역, 구매 진행 상태를 확인합니다.</td></tr>
             <tr><td>내 구매 상품</td><td>신청한 상품의 진행 단계를 확인하고, 신청 단계에서 취소할 수 있습니다. 목록 우측 상단에서 페이지당 항목 수를 선택할 수 있습니다.</td></tr>
             <tr><td>Q &amp; A</td><td>자주 묻는 질문을 보거나, 궁금한 점을 질문합니다.</td></tr>
           </tbody>
@@ -167,6 +167,7 @@
             <tr><td>사용 대기 달란트 ⏳</td><td>구매 신청은 했지만 아직 달란트가 차감되지 않은 금액입니다.</td></tr>
             <tr><td>사용 완료 달란트 📉</td><td><strong>실제 상품 구매에 사용된</strong> 달란트만 표시됩니다. 교사가 잘못 지급한 달란트를 돌려받은 금액(반환)은 포함되지 않습니다.</td></tr>
             <tr><td>반환 달란트 ↩️</td><td>분홍색 요약 박스로 표시됩니다. 교사가 잘못 지급한 달란트를 돌려받은 총액입니다.</td></tr>
+            <tr><td>예외 달란트 ⚠️</td><td>노란색 요약 박스로 표시됩니다. 운영자가 주간 제한을 예외로 다시 지급한 금액입니다.</td></tr>
             <tr><td>누적 적립 달란트 📈</td><td>지금까지 받은 달란트의 총 합계입니다.</td></tr>
           </tbody>
         </table>
@@ -176,6 +177,7 @@
         <p>하단 <strong>달란트 내역</strong> 테이블에서는 각 건마다 유형 배지로 구분됩니다.</p>
         <ul class="guide-list" style="margin-top:0.5rem;">
           <li><strong>적립</strong> — 활동·QR 등으로 달란트를 받은 경우</li>
+          <li><strong>예외</strong> — 주간 제한 예외로 다시 지급받은 경우</li>
           <li><strong>사용</strong> — 상품 구매 등으로 달란트가 차감된 경우</li>
           <li><strong>반환</strong> — 교사가 잘못 지급한 달란트를 돌려받은 경우 (사용과 별도 표시)</li>
         </ul>
@@ -233,13 +235,13 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.59.0"></script>
-  <script src="js/supabase-config.js?v=3.59.0"></script>
-  <script src="js/activity-log.js?v=3.59.0"></script>
-  <script src="js/codes.js?v=3.59.0"></script>
-  <script src="js/auth.js?v=3.59.0"></script>
-  <script src="js/theme.js?v=3.59.0"></script>
-  <script src="js/nav.js?v=3.59.0"></script>
+  <script src="config/public-config.js?v=3.60.0"></script>
+  <script src="js/supabase-config.js?v=3.60.0"></script>
+  <script src="js/activity-log.js?v=3.60.0"></script>
+  <script src="js/codes.js?v=3.60.0"></script>
+  <script src="js/auth.js?v=3.60.0"></script>
+  <script src="js/theme.js?v=3.60.0"></script>
+  <script src="js/nav.js?v=3.60.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -260,6 +262,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="js/version.js?v=3.59.0"></script>
+  <script src="js/version.js?v=3.60.0"></script>
 </body>
 </html>

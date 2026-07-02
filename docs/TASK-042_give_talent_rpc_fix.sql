@@ -4,15 +4,22 @@
 
 BEGIN;
 
+ALTER TABLE public.talent_transactions
+  ADD COLUMN IF NOT EXISTS override_week_limit boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS override_reason text;
+
 DROP FUNCTION IF EXISTS public.give_talent(uuid, uuid, uuid);
 DROP FUNCTION IF EXISTS public.give_talent(uuid, integer, text, uuid);
+DROP FUNCTION IF EXISTS public.give_talent(uuid, integer, text, uuid, uuid);
 
 CREATE OR REPLACE FUNCTION public.give_talent(
   p_user_id uuid,
   p_amount integer DEFAULT 0,
   p_description text DEFAULT '',
   p_created_by uuid DEFAULT NULL,
-  p_talent_item_id uuid DEFAULT NULL
+  p_talent_item_id uuid DEFAULT NULL,
+  p_override_week_limit boolean DEFAULT false,
+  p_override_reason text DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -34,6 +41,7 @@ DECLARE
   v_actual_amount integer;
   v_actual_desc text;
   v_week_count integer;
+  v_override_week_limit boolean;
 BEGIN
   SELECT permission_level, department_id, class_number, managed_dept_id
   INTO v_caller_perm, v_caller_dept, v_caller_class, v_caller_managed_dept
@@ -43,6 +51,10 @@ BEGIN
   v_caller_rank := public.get_permission_rank(v_caller_perm);
   IF v_caller_perm IS NULL OR v_caller_rank < 40 THEN
     RETURN json_build_object('success', false, 'error', 'Unauthorized');
+  END IF;
+  v_override_week_limit := COALESCE(p_override_week_limit, false);
+  IF v_override_week_limit AND v_caller_rank < 90 THEN
+    RETURN json_build_object('success', false, 'error', '예외 지급은 전도사님 이상만 가능합니다');
   END IF;
 
   SELECT user_type, department_id, class_number
@@ -93,7 +105,7 @@ BEGIN
       AND created_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul')
       AND created_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') + interval '7 days';
 
-    IF v_week_count > 0 THEN
+    IF v_week_count > 0 AND NOT v_override_week_limit THEN
       RETURN json_build_object('success', false, 'error', 'Already given this item this week: ' || v_item.name);
     END IF;
   ELSE
@@ -103,6 +115,9 @@ BEGIN
     v_actual_amount := p_amount;
     v_actual_desc := COALESCE(NULLIF(p_description, ''), 'Manual');
   END IF;
+  IF v_override_week_limit AND (p_override_reason IS NULL OR btrim(p_override_reason) = '') THEN
+    RETURN json_build_object('success', false, 'error', '예외 지급 사유를 입력해주세요');
+  END IF;
 
   UPDATE public.profiles
   SET talent_balance = COALESCE(talent_balance, 0) + v_actual_amount
@@ -110,10 +125,10 @@ BEGIN
   RETURNING talent_balance INTO v_new_balance;
 
   INSERT INTO public.talent_transactions (
-    user_id, type, amount, balance_after, description, created_by, talent_item_id
+    user_id, type, amount, balance_after, description, created_by, talent_item_id, override_week_limit, override_reason
   ) VALUES (
     p_user_id, 'earn', v_actual_amount, v_new_balance, v_actual_desc,
-    COALESCE(p_created_by, auth.uid()), p_talent_item_id
+    COALESCE(p_created_by, auth.uid()), p_talent_item_id, v_override_week_limit, p_override_reason
   )
   RETURNING id INTO v_txn_id;
 
@@ -121,9 +136,9 @@ BEGIN
 END;
 $$;
 
-REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid) FROM anon;
-GRANT EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 
