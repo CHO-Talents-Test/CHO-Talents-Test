@@ -124,7 +124,7 @@ scripts/install-supabase-database.sh \
 | `registration_requests` | 가입 신청 | 비움 |
 | `department_transfer_requests` | 부서 이동 신청/승인 | 비움 |
 | `talent_items` | 달란트 지급 항목, 지급 규칙/설명 | 학생 8개, 교사 5개 |
-| `talent_transactions` | 달란트 적립/사용 이력 | 비움 |
+| `talent_transactions` | 달란트 적립/사용/반환/예외 지급 이력. 예외 지급은 `override_week_limit`, `override_reason`으로 표시 | 비움 |
 | `products` | 상품 목록 | 비움 |
 | `product_orders` | 상품 구매 신청/처리 | 비움 |
 | `qna` | FAQ와 질문 | FAQ 9개 |
@@ -186,7 +186,7 @@ scripts/install-supabase-database.sh \
 |---|---|
 | `get_my_profile`, `update_last_login`, `change_my_password` | 로그인 세션/프로필/비밀번호 관리 |
 | `admin_list_users`, `admin_create_user`, `admin_update_user`, `admin_delete_user`, `admin_reset_password` | 사용자와 권한 관리 |
-| `give_talent`, `use_talent` | 달란트 적립/사용/반환 |
+| `give_talent`, `use_talent` | 달란트 적립/사용/반환. `give_talent`는 `p_override_week_limit`, `p_override_reason`으로 전도사님 이상 예외 지급을 검증 |
 | `request_product_order`, `confirm_product_purchase`, `cancel_product_order` | 구매 신청, 구매 확정, 구매 신청 취소 |
 | `scan_qr_talent` | QR 수령 처리와 `talent_transactions.source='qr'` 기록 |
 | `submit_anonymous_question`, `admin_soft_delete_qna` | Q&A 익명 질문과 소프트 삭제 |

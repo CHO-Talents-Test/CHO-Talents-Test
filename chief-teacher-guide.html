@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>부장 교사 가이드 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/guide.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/guide.css?v=3.60.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -36,7 +36,7 @@
           <thead><tr><th>권한</th><th>할 수 있는 일</th><th>주의</th></tr></thead>
           <tbody>
             <tr><td>학생 일괄 등록</td><td>엑셀 양식으로 학생 계정을 한 번에 등록합니다.</td><td>초기 비밀번호는 1234입니다.</td></tr>
-            <tr><td>달란트 반환</td><td>달란트 관리 상세 팝업에서 잘못 지급된 달란트를 사유 입력 후 반환합니다. 상세 이력은 페이지 이동과 페이지당 항목 수 선택을 지원합니다. 반환 건은 <strong>총반환</strong>에 집계되고 <strong>총사용</strong>에서 제외됩니다.</td><td>거래 ID 기준 1회만 처리됩니다.</td></tr>
+            <tr><td>달란트 반환</td><td>달란트 관리 상세 팝업에서 잘못 지급된 달란트를 사유 입력 후 반환합니다. 예외 지급/반환 관리에서 전체 이력을 분리 조회할 수 있습니다. 반환 건은 <strong>총반환</strong>에 집계되고 <strong>총사용</strong>에서 제외됩니다.</td><td>거래 ID 기준 1회만 처리됩니다.</td></tr>
             <tr><td>관리자 관리 조회</td><td>운영 권한자를 확인하고 담당 부서 범위를 점검합니다.</td><td>부장 교사는 본인보다 낮은 권한만 관리 가능하며, 일부 화면은 조회 중심입니다.</td></tr>
             <tr><td>보고서/버전</td><td>작업 보고서와 버전 이력을 확인합니다.</td><td>시스템 로그/작업 이력 상세는 관리자 권한입니다.</td></tr>
             <tr><td>운영 룰 문서</td><td>페이지 권한 룰, 로그 작성 룰, Slack 알림 룰, 작업 이력 룰과 코드 마스터 기준을 확인합니다.</td><td>설정 변경은 관리자 권한에서 처리합니다.</td></tr>
@@ -57,7 +57,7 @@
     </section>
 
     <section class="guide-section">
-      <h2>💰 달란트 반환 (v3.48.0)</h2>
+      <h2>💰 달란트 반환과 예외 이력 확인 (v3.60.0)</h2>
       <div class="guide-card">
         <h3>상세 팝업 요약 4칸</h3>
         <p><strong>달란트 &gt; 달란트 관리 &gt; 상세</strong> 팝업 상단에는 다음 네 가지가 구분되어 표시됩니다.</p>
@@ -71,10 +71,11 @@
       <div class="guide-card">
         <h3>반환 처리 방법</h3>
         <ol class="guide-steps">
-          <li>상세 팝업에서 반환할 적립 내역을 찾습니다. 내역 <strong>유형</strong>은 <strong>적립</strong>, <strong>사용</strong>, <strong>반환</strong> 3종으로 구분되며, 이력은 공통 페이징과 페이지당 항목 수 설정을 사용합니다.</li>
+          <li>상세 팝업에서 반환할 적립 내역을 찾습니다. 내역 <strong>유형</strong>은 <strong>적립</strong>, <strong>예외</strong>, <strong>사용</strong>, <strong>반환</strong>으로 구분되며, 이력은 공통 페이징과 페이지당 항목 수 설정을 사용합니다.</li>
           <li>반환 버튼을 누르고 사유를 입력한 뒤 확정합니다.</li>
           <li>반환되면 해당 건은 <strong>총반환</strong>에 합산되고, <strong>총사용</strong>에는 포함되지 않습니다.</li>
           <li>같은 거래 ID 기준으로 1회만 반환할 수 있으며, 지급 모달의 취소 상태와 동기화됩니다.</li>
+          <li><strong>달란트 &gt; 예외 지급/반환 관리</strong>에서 예외 지급과 반환 이력을 별도 표로 확인합니다.</li>
         </ol>
       </div>
     </section>
@@ -115,13 +116,13 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.59.0"></script>
-  <script src="js/supabase-config.js?v=3.59.0"></script>
-  <script src="js/activity-log.js?v=3.59.0"></script>
-  <script src="js/codes.js?v=3.59.0"></script>
-  <script src="js/auth.js?v=3.59.0"></script>
-  <script src="js/theme.js?v=3.59.0"></script>
-  <script src="js/nav.js?v=3.59.0"></script>
+  <script src="config/public-config.js?v=3.60.0"></script>
+  <script src="js/supabase-config.js?v=3.60.0"></script>
+  <script src="js/activity-log.js?v=3.60.0"></script>
+  <script src="js/codes.js?v=3.60.0"></script>
+  <script src="js/auth.js?v=3.60.0"></script>
+  <script src="js/theme.js?v=3.60.0"></script>
+  <script src="js/nav.js?v=3.60.0"></script>
   <script>
     initSupabase();
     (async () => {
@@ -140,6 +141,6 @@
       autoLogPageView();
     })();
   </script>
-  <script src="js/version.js?v=3.59.0"></script>
+  <script src="js/version.js?v=3.60.0"></script>
 </body>
 </html>

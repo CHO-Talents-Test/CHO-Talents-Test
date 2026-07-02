@@ -2,9 +2,21 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.59.0',
-  date: '2026-07-01',
+  current: '3.60.0',
+  date: '2026-07-02',
   history: [
+    {
+      version: '3.60.0',
+      date: '2026-07-02',
+      title: '달란트 예외 지급 및 반환 이력 관리',
+      changes: [
+        '전도사님(90+) 이상이 사유 입력 후 이번 주 이미 지급된 항목을 예외 지급할 수 있도록 달란트 지급 모달 보강',
+        'talent_transactions override_week_limit/override_reason 컬럼과 give_talent RPC 예외 지급 검증 기준 반영',
+        'admin/talent-adjustments.html 예외 지급/반환 관리 페이지 추가 및 네비게이션/페이지 접근 설정 연동',
+        '내 달란트, 달란트 상세, 달란트 항목 관리에서 예외 지급 배지와 통계 표시',
+        'README, 사용자 안내서, 아키텍처 문서, 권한/로그/작업 이력 룰, 역할별 가이드, 작업 가드레일을 최신 소스 기준으로 동기화'
+      ]
+    },
     {
       version: '3.59.0',
       date: '2026-07-01',

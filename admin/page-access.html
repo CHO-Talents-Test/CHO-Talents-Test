@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>페이지 접근 관리 - 달란트 마을</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.59.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -38,14 +38,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.59.0"></script>
-  <script src="../js/supabase-config.js?v=3.59.0"></script>
-  <script src="../js/activity-log.js?v=3.59.0"></script>
-  <script src="../js/codes.js?v=3.59.0"></script>
-  <script src="../js/auth.js?v=3.59.0"></script>
-  <script src="../js/theme.js?v=3.59.0"></script>
-  <script src="../js/nav.js?v=3.59.0"></script>
-  <script src="../js/user-mgmt.js?v=3.59.0"></script>
+  <script src="../config/public-config.js?v=3.60.0"></script>
+  <script src="../js/supabase-config.js?v=3.60.0"></script>
+  <script src="../js/activity-log.js?v=3.60.0"></script>
+  <script src="../js/codes.js?v=3.60.0"></script>
+  <script src="../js/auth.js?v=3.60.0"></script>
+  <script src="../js/theme.js?v=3.60.0"></script>
+  <script src="../js/nav.js?v=3.60.0"></script>
+  <script src="../js/user-mgmt.js?v=3.60.0"></script>
   <script>
     initSupabase();
     let session;
@@ -85,6 +85,7 @@
       { id: 'admin-departments', name: '부서 관리', path: 'admin/departments.html', elements: ['dept-table', 'member-modal'] },
       { id: 'admin-managers', name: '관리자 관리', path: 'admin/managers.html', elements: ['manager-table'] },
       { id: 'admin-talents', name: '달란트 관리', path: 'admin/talents.html', elements: ['talent-table', 'talent-modal', 'detail-modal'] },
+      { id: 'admin-talent-adjustments', name: '예외 지급/반환 관리', path: 'admin/talent-adjustments.html', elements: ['exception-list', 'return-list', 'dept-filter'] },
       { id: 'admin-talent-stats', name: '달란트 통계', path: 'admin/talent-stats.html', elements: ['stats-chart', 'dept-filter', 'user-filter'] },
       { id: 'admin-talent-qr', name: '달란트 QR 관리', path: 'admin/talent-qr.html', elements: ['qr-table', 'qr-create-form', 'print-btn'] },
       { id: 'admin-shop', name: '상품 관리', path: 'admin/shop.html', elements: ['product-table'] },
@@ -203,6 +204,6 @@
 
     document.getElementById('accessModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeAccessModal(); });
   </script>
-  <script src="../js/version.js?v=3.59.0"></script>
+  <script src="../js/version.js?v=3.60.0"></script>
 </body>
 </html>

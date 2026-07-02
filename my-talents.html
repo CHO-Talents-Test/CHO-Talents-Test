@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>내 달란트 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.60.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -19,17 +19,26 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.59.0"></script>
-  <script src="js/supabase-config.js?v=3.59.0"></script>
-  <script src="js/activity-log.js?v=3.59.0"></script>
-  <script src="js/codes.js?v=3.59.0"></script>
-  <script src="js/auth.js?v=3.59.0"></script>
-  <script src="js/theme.js?v=3.59.0"></script>
-  <script src="js/nav.js?v=3.59.0"></script>
+  <script src="config/public-config.js?v=3.60.0"></script>
+  <script src="js/supabase-config.js?v=3.60.0"></script>
+  <script src="js/activity-log.js?v=3.60.0"></script>
+  <script src="js/codes.js?v=3.60.0"></script>
+  <script src="js/auth.js?v=3.60.0"></script>
+  <script src="js/theme.js?v=3.60.0"></script>
+  <script src="js/nav.js?v=3.60.0"></script>
   <script src="js/talent.js"></script>
   <script>
     initSupabase();
     let session;
+
+    function getMyTalentHistoryTypeMeta(t) {
+      const isReturn = t.type === 'use' && t.description && t.description.startsWith('반환:');
+      const isException = t.type === 'earn' && t.override_week_limit === true;
+      if (isReturn) return { label: '반환', className: 'return', amtColor: '#c2255c', amtPrefix: '-' };
+      if (isException) return { label: '예외', className: 'exception', amtColor: '#e67700', amtPrefix: '+' };
+      if (t.type === 'earn') return { label: '적립', className: 'earn', amtColor: '#2b8a3e', amtPrefix: '+' };
+      return { label: '사용', className: 'use', amtColor: '#e03131', amtPrefix: '-' };
+    }
     (async () => {
       await navInit();
       session = await initPage(20, 'login.html');
@@ -55,6 +64,7 @@
       } catch (e) { /* pending_talent column may not exist */ }
       const available = summary.balance - pendingTalent;
       const { data: history } = await fetchTalentHistory(session.id, { limit: 50 });
+      const exceptionTalent = (history || []).filter(t => t.type === 'earn' && t.override_week_limit === true).reduce((s, t) => s + (t.amount || 0), 0);
 
       let deliveryCount = 0;
       try {
@@ -92,6 +102,11 @@
             <div class="summary-card-label">반환 달란트</div>
             <div class="summary-card-value" style="color:#c2255c;">${fmtNum(summary.returned)}</div>
           </div>
+          <div class="summary-card" style="background:#fff3bf;">
+            <div class="summary-card-icon">⚠️</div>
+            <div class="summary-card-label">예외 달란트</div>
+            <div class="summary-card-value" style="color:#e67700;">${fmtNum(exceptionTalent)}</div>
+          </div>
           <div class="summary-card earn">
             <div class="summary-card-icon">📈</div>
             <div class="summary-card-label">누적 적립 달란트</div>
@@ -109,21 +124,13 @@
         html += '<tr><td colspan="5" class="empty-state">아직 달란트 내역이 없습니다.</td></tr>';
       } else {
         html += history.map(t => {
-          const isReturn = t.type === 'use' && t.description && t.description.startsWith('반환:');
+          const meta = getMyTalentHistoryTypeMeta(t);
           const srcBadge = t.type === 'earn' && t.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : '';
-          let typeLabel, typeClass, amtColor, amtPrefix;
-          if (isReturn) {
-            typeLabel = '반환'; typeClass = 'return'; amtColor = '#c2255c'; amtPrefix = '-';
-          } else if (t.type === 'earn') {
-            typeLabel = '적립'; typeClass = 'earn'; amtColor = '#2b8a3e'; amtPrefix = '+';
-          } else {
-            typeLabel = '사용'; typeClass = 'use'; amtColor = '#e03131'; amtPrefix = '-';
-          }
           const desc = (t.description || '-').replace(/\[[0-9a-f-]{36}\]\s*/gi, '').replace(/^반환:\s*/, '');
           return `<tr>
             <td>${formatKSTShort(t.created_at)}</td>
-            <td><span class="type-badge ${typeClass}" ${isReturn ? 'style="background:#fff0f6;color:#c2255c;"' : ''}>${typeLabel}</span>${srcBadge}</td>
-            <td style="font-weight:700;color:${amtColor}">${amtPrefix}${fmtNum(t.amount)}</td>
+            <td><span class="type-badge ${meta.className}" ${meta.label === '반환' ? 'style="background:#fff0f6;color:#c2255c;"' : meta.label === '예외' ? 'style="background:#fff3bf;color:#e67700;"' : ''}>${meta.label}</span>${srcBadge}</td>
+            <td style="font-weight:700;color:${meta.amtColor}">${meta.amtPrefix}${fmtNum(t.amount)}</td>
             <td>${desc}</td>
             <td>${fmtNum(t.balance_after)}</td>
           </tr>`;
@@ -185,6 +192,6 @@
         }).join('') + `</div></div>`;
     }
   </script>
-  <script src="js/version.js?v=3.59.0"></script>
+  <script src="js/version.js?v=3.60.0"></script>
 </body>
 </html>

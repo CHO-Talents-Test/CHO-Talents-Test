@@ -4,8 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>CHO-Talents 페이지별 권한 설정 정리</title>
-<link rel="stylesheet" href="../css/themes.css?v=3.59.0">
-<link rel="stylesheet" href="../css/admin.css?v=3.59.0">
+<link rel="stylesheet" href="../css/themes.css?v=3.60.0">
+<link rel="stylesheet" href="../css/admin.css?v=3.60.0">
 <style>
   body.permission-rules-body { padding-top:54px; }
   .container { max-width:1080px; margin:0 auto; padding:2rem 1.5rem 4rem; }
@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.59.0 / 2026-06-30. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.60.0 / 2026-07-02. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -82,7 +82,7 @@
         <tr><td>소개</td><td>가이드 자동 라우팅</td><td><span class="badge b-public">공개</span></td></tr>
         <tr><td>달란트</td><td>내 달란트, 달란트 수령</td><td><span class="badge b-20">로그인</span></td></tr>
         <tr><td>달란트</td><td>달란트 관리</td><td><span class="badge b-40">40</span></td></tr>
-        <tr><td>달란트</td><td>달란트 항목 관리, 달란트 통계</td><td><span class="badge b-60">60</span></td></tr>
+        <tr><td>달란트</td><td>예외 지급/반환 관리, 달란트 항목 관리, 달란트 통계</td><td><span class="badge b-60">60</span></td></tr>
         <tr><td>달란트</td><td>달란트 QR 관리</td><td><span class="badge b-90">90</span></td></tr>
         <tr><td>상품</td><td>상품 구매</td><td><span class="badge b-public">공개</span></td></tr>
         <tr><td>상품</td><td>내 구매 상품</td><td><span class="badge b-20">로그인</span></td></tr>
@@ -101,7 +101,8 @@
     <table>
       <thead><tr><th>파일</th><th>페이지명</th><th>최소 권한</th><th>핵심 스코핑</th></tr></thead>
       <tbody>
-        <tr><td><code>admin/talents.html</code></td><td>달란트 관리</td><td><span class="badge b-40">40</span></td><td>일반 교사는 같은 부서+반, 부서 담당은 담당 부서, 80+는 더 넓은 조회. 상세 팝업 상단에 <strong>누적적립·총사용·총반환·잔여</strong> 4칸 요약과 이력 페이징/페이지당 항목 수 선택 표시</td></tr>
+        <tr><td><code>admin/talents.html</code></td><td>달란트 관리</td><td><span class="badge b-40">40</span></td><td>일반 교사는 같은 부서+반, 부서 담당은 담당 부서, 80+는 더 넓은 조회. 전도사님(90+) 이상은 사유 입력 후 주간 제한 예외 지급 가능. 상세 팝업 상단에 <strong>누적적립·총사용·총반환·잔여</strong> 4칸 요약과 이력 페이징/페이지당 항목 수 선택 표시</td></tr>
+        <tr><td><code>admin/talent-adjustments.html</code></td><td>예외 지급/반환 관리</td><td><span class="badge b-60">60</span></td><td>부서 담당 교사는 담당 부서 이력만, 부장 교사 이상은 전체 부서 이력 조회. 예외 지급(`override_week_limit=true`)과 반환(`type='use'`, `반환:`)을 분리 표시하고 처리자/대상자/사유/처리 시각을 확인</td></tr>
         <tr><td><code>admin/index.html</code></td><td>대시보드</td><td><span class="badge b-60">60</span></td><td>통계 카드와 이슈 로그 테이블만 표시. v3.50.0: 바로가기(quickLinks) 박스 제거. 최근 이슈 로그는 100+만 표시</td></tr>
         <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>60+는 담당 부서 중심, 80+는 요청 처리 범위 확대, 90+ 전체 처리. v3.50.0: 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
         <tr><td><code>admin/departments.html</code></td><td>부서 관리</td><td><span class="badge b-60">60</span></td><td>생성/수정 80+, 삭제/비활성화 90+ 성격. 부서명 오름차순 기본 정렬과 페이지당 항목 수 선택 지원</td></tr>
@@ -129,7 +130,7 @@
     <table>
       <thead><tr><th>파일</th><th>페이지명</th><th>최소 권한</th><th>v3.48.0 변경</th></tr></thead>
       <tbody>
-        <tr><td><code>my-talents.html</code></td><td>내 달란트</td><td><span class="badge b-20">로그인</span></td><td>요약 영역에 <strong>반환 달란트</strong> 박스 추가. <strong>사용 완료</strong>는 실제 상품 구매(차감)만 집계하며, 잘못 지급 반환 건은 별도 <strong>반환</strong> 유형으로 표시</td></tr>
+        <tr><td><code>my-talents.html</code></td><td>내 달란트</td><td><span class="badge b-20">로그인</span></td><td>요약 영역에 <strong>반환 달란트</strong>, <strong>예외 달란트</strong> 박스 표시. <strong>사용 완료</strong>는 실제 상품 구매(차감)만 집계하며, 잘못 지급 반환 건은 별도 <strong>반환</strong>, 주간 제한 예외 지급은 <strong>예외</strong> 유형으로 표시</td></tr>
       </tbody>
     </table>
   </div>
@@ -152,11 +153,14 @@
     </table>
   </div>
 
-  <h2>8. v3.59.0 변경 요약</h2>
+  <h2>8. v3.60.0 변경 요약</h2>
   <div class="rule-card">
     <table>
       <thead><tr><th>대상</th><th>변경 내용</th></tr></thead>
       <tbody>
+        <tr><td><code>admin/talents.html</code></td><td>90등급 이상 예외 지급 UI 추가. 이미 이번 주 지급된 항목도 사유 입력 후 다시 선택 가능</td></tr>
+        <tr><td><code>admin/talent-adjustments.html</code></td><td>60등급 이상 예외 지급/반환 이력 분리 조회. 부서 담당 교사는 담당 부서 스코핑, 부장 교사 이상은 전체 조회</td></tr>
+        <tr><td><code>talent_transactions</code></td><td><code>override_week_limit</code>, <code>override_reason</code>으로 예외 지급 여부와 사유 저장</td></tr>
         <tr><td><code>js/codes.js</code></td><td>권한, 사용자 유형, 구매 상태, 상품 카테고리, 로그 액션 라벨을 공통 코드북으로 관리</td></tr>
         <tr><td><code>code_groups</code>, <code>code_items</code></td><td>DB 코드 마스터 추가. <code>profiles.permission_level</code> rank/라벨은 <code>code_items.meta</code> 우선</td></tr>
         <tr><td><code>js/auth.js</code></td><td><code>getCodeRank('profiles.permission_level')</code> 기반 권한 비교 폴백 추가</td></tr>
@@ -169,17 +173,17 @@
     </table>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.59.0 · 실제 소스 코드 기준 권한 설정 · 2026-06-30 작성</p>
+  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.60.0 · 실제 소스 코드 기준 권한 설정 · 2026-07-02 작성</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../config/public-config.js?v=3.59.0"></script>
-<script src="../js/supabase-config.js?v=3.59.0"></script>
-<script src="../js/activity-log.js?v=3.59.0"></script>
-  <script src="../js/codes.js?v=3.59.0"></script>
-<script src="../js/auth.js?v=3.59.0"></script>
-<script src="../js/theme.js?v=3.59.0"></script>
-<script src="../js/nav.js?v=3.59.0"></script>
+<script src="../config/public-config.js?v=3.60.0"></script>
+<script src="../js/supabase-config.js?v=3.60.0"></script>
+<script src="../js/activity-log.js?v=3.60.0"></script>
+  <script src="../js/codes.js?v=3.60.0"></script>
+<script src="../js/auth.js?v=3.60.0"></script>
+<script src="../js/theme.js?v=3.60.0"></script>
+<script src="../js/nav.js?v=3.60.0"></script>
 <script>
 initSupabase();
 (async () => {
@@ -191,6 +195,6 @@ initSupabase();
   autoLogPageView();
 })();
 </script>
-<script src="../js/version.js?v=3.59.0"></script>
+<script src="../js/version.js?v=3.60.0"></script>
 </body>
 </html>

@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-06-30 KST 현재 코드 기준 (v3.59.0)
+작성 기준: 2026-07-02 KST 현재 코드 기준 (v3.60.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -92,15 +92,16 @@ flowchart LR
 | `earn-talents.html` | 달란트 적립 방법 안내. 항목 카드 그리드(모바일 3열, PC 5열)와 `talent_items` 활성 항목 지급 수량 배지 표시. 로그인 사용자의 `user_type`에 따라 학생/교사 탭 기본 선택 |
 | `shop.html` | 상점 조회 + 구매 신청 + 대리 구매. 비로그인은 학생용, 교사는 교사용 기본 필터 |
 | `talent-receive.html` | 로그인 사용자 QR 달란트 수령. 카메라 스캔 또는 코드 입력, 대상/기간/시간/반복/위치 조건 검증, 최근 수령 내역 페이징. 카메라 스캔 결과 메시지는 카메라 영역 위에 표시하며 위치 권한 차단 시 alert와 `QR_LOCATION_PERMISSION_BLOCKED` 로그를 남김 |
-| `my-talents.html` | 로그인 사용자 본인의 사용 가능 달란트/상품 수령 예정/사용 대기/사용 완료/반환/누적 적립 달란트, 달란트 내역(적립·사용·반환 3종 배지), 구매 내역. `fetchTalentSummary()`의 `returned` 필드로 반환 요약 표시. 지급 취소 이력의 트랜잭션 ID는 숨김 |
+| `my-talents.html` | 로그인 사용자 본인의 사용 가능 달란트/상품 수령 예정/사용 대기/사용 완료/반환/예외/누적 적립 달란트, 달란트 내역(적립·예외·사용·반환 배지), 구매 내역. `fetchTalentSummary()`의 `returned` 필드와 `override_week_limit` 이력으로 반환/예외 요약 표시. 지급 취소 이력의 트랜잭션 ID는 숨김 |
 | `my-orders.html` | 로그인 사용자 본인의 구매 신청 내역과 4단계 상태 조회. 공통 페이징과 페이지당 항목 수 설정 |
 | `admin/index.html` | 60등급 이상 대시보드. 사용자/부서/보고서/가입대기 통계 카드. 미확인 ERROR+ 카드는 100등급 이상만 표시(클릭→로그). 최근 이슈 로그 테이블(100등급+) |
 | `admin/users.html` | 60등급 이상 사용자 관리. 상단 통계 카드(전체/관리자/부서 담당/교사/학생) 클릭 필터. 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher. 교사/학생 그룹별 분리(학생은 권한 열 제거). 관리 드롭다운. 가입 신청/부서 이동 요청/승인 처리. 공통 페이징(PC 20/모바일 10) |
 | `admin/departments.html` | 60등급 이상 부서 관리. 부서명 오름차순 정렬, 공통 페이징과 페이지당 항목 수 설정. 관리 드롭다운(소속보기/수정/삭제). 부서별 인원(교사 전체 포함)/담당자 확인. 소속보기에서 100등급+는 마지막 로그인 일시 표시 |
 | `admin/managers.html` | 80등급 이상 관리자 계열 권한 관리. 수정만 가능. 구매 담당 교사 역할명 표시. 공통 페이징(PC 20/모바일 10) |
-| `admin/talents.html` | 40등급 이상 달란트 처리. 출석 버튼+관리 드롭다운(달란트 지급/상세). 잔여 달란트→달란트 명칭 변경. 사용/누적 달란트 모바일 숨김. 목록과 상세 모달 이력 모두 공통 페이징/페이지당 항목 수 설정 사용. 지급 취소 항목 트랜잭션 ID는 100등급+만 표시. 수동 적립은 100등급(관리자)만 표시 |
+| `admin/talents.html` | 40등급 이상 달란트 처리. 출석 버튼+관리 드롭다운(달란트 지급/상세). 90등급 이상은 이번 주 제한 예외 지급 가능(사유 필수). 잔여 달란트→달란트 명칭 변경. 사용/누적 달란트 모바일 숨김. 목록과 상세 모달 이력 모두 공통 페이징/페이지당 항목 수 설정 사용. 지급 취소 항목 트랜잭션 ID는 100등급+만 표시. 수동 적립은 100등급(관리자)만 표시 |
+| `admin/talent-adjustments.html` | 60등급 이상 예외 지급/반환 관리. 부서 담당 교사는 담당 부서 이력만, 부장 교사 이상은 전체 부서 이력 조회. 예외 지급(`override_week_limit=true`)과 반환(`type='use'`, `description`이 `반환:`)을 분리 표시하고 처리자/대상자/사유/처리 시각을 확인 |
 | `admin/talent-stats.html` | 60등급 이상 달란트 누적적립 통계. 반환(`type='use'`, `description`이 `반환:`)된 달란트를 원 지급 건에서 차감해 실제 지급 달란트로 집계. 부서별 기본 정렬: 달란트 DESC → 인원 ASC → 항목 ASC → 부서 ASC. 사용자별 기본 정렬: 달란트 DESC → 항목 ASC → 부서 ASC → 이름 ASC. 사용자별 목록 공통 페이징과 페이지당 항목 수 설정. 라디오 필터, 부서 필터, 기간 프리셋 |
-| `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
+| `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). QR 목록과 수령자 팝업 모두 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
 | `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 상품 등록/수정 모달에서 `products.category` 새 카테고리 추가 가능. 관리 드롭다운(수정/삭제). 삭제는 소프트 삭제 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
@@ -219,6 +220,7 @@ flowchart TD
   Home --> Departments["admin/departments.html<br/>60+"]
   Home --> Managers["admin/managers.html<br/>80+"]
   Home --> Talents["admin/talents.html<br/>40+"]
+  Home --> TalentAdjustments["admin/talent-adjustments.html<br/>60+"]
   Home --> TalentItems["admin/talent-items.html<br/>60+"]
   Home --> AdminShop["admin/shop.html<br/>60+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
@@ -429,10 +431,12 @@ flowchart TD
   TalentPage --> Scope["권한별 부서/반 스코핑"]
   Scope --> Target["학생/교사 탭에서 대상 선택"]
   Target --> ItemCheck["달란트 항목 체크박스 선택"]
+  Target --> Override["이번 주 제한 예외 지급<br/>(90등급+, 사유 필수)"]
   Target --> ManualGive["수동 적립 (금액/사유 입력)"]
   Target --> ManualUse["수동 사용 (금액/사유 입력)"]
   ItemCheck --> Confirm["✅ 지급 확정 버튼 → 일괄 처리"]
-  Confirm --> GiveRPC["give_talent RPC<br/>(p_talent_item_id 포함)"]
+  Override --> Confirm
+  Confirm --> GiveRPC["give_talent RPC<br/>(p_talent_item_id, p_override_week_limit 포함)"]
   ManualGive --> GiveTalent["give_talent RPC<br/>(수동)"]
   ManualUse --> UseTalent["use_talent RPC"]
   GiveRPC --> Tx["talent_transactions 기록"]
@@ -447,9 +451,9 @@ flowchart TD
   ReturnRPC --> Tx
 ```
 
-### 달란트 반환 구분 (v3.48.0)
+### 달란트 예외 지급/반환 구분 (v3.60.0)
 
-반환 트랜잭션은 DB상 `type='use'`로 저장되며, `description`이 `반환:`으로 시작한다. `fetchTalentSummary()`가 `used`와 `returned`를 프론트엔드에서 분리 집계한다. **DB 스키마/RPC 변경 없음.**
+예외 지급 트랜잭션은 `type='earn'`, `override_week_limit=true`, `override_reason` 사유로 저장한다. 반환 트랜잭션은 DB상 `type='use'`로 저장되며, `description`이 `반환:`으로 시작한다. `fetchTalentSummary()`가 `used`와 `returned`를 프론트엔드에서 분리 집계하고, `my-talents.html`은 최근 이력의 `override_week_limit` 값을 합산해 예외 달란트를 표시한다.
 
 ```mermaid
 flowchart LR
@@ -457,18 +461,23 @@ flowchart LR
   Filter -->|예| Returned["returned += amount"]
   Filter -->|아니오| Used["used += amount"]
   EarnQuery["type = earn"] --> Earned["earned 합산"]
+  EarnQuery --> Exception{"override_week_limit = true?"}
+  Exception -->|예| ExceptionSum["exception 합산"]
   Returned --> Summary["fetchTalentSummary()<br/>{ earned, used, returned, balance }"]
   Used --> Summary
   Earned --> Summary
-  Summary --> MyTalents["my-talents.html<br/>반환 요약 박스 + 3종 배지"]
+  ExceptionSum --> MyTalents
+  Summary --> MyTalents["my-talents.html<br/>반환/예외 요약 박스 + 4종 배지"]
   Summary --> AdminDetail["admin/talents.html<br/>상세: 누적적립/총사용/총반환/잔여"]
+  Summary --> Adjustments["admin/talent-adjustments.html<br/>예외 지급/반환 분리 조회"]
   Summary --> QRScan["admin/talent-qr.html<br/>수령자 목록 반환 배지"]
 ```
 
 | 화면 | 반환 표시 |
 |---|---|
-| `my-talents.html` | 반환 요약 박스, 내역 테이블 `반환` 배지, 사용 완료는 실제 상품 구매만 |
-| `admin/talents.html` | 상세 모달 4칸(누적적립/총사용/총반환/잔여) |
+| `my-talents.html` | 반환/예외 요약 박스, 내역 테이블 `반환`/`예외` 배지, 사용 완료는 실제 상품 구매만 |
+| `admin/talents.html` | 상세 모달 4칸(누적적립/총사용/총반환/잔여), 예외 지급 이력 배지 |
+| `admin/talent-adjustments.html` | 예외 지급과 반환을 별도 테이블로 조회, 처리자/대상자/사유/처리 시각 확인 |
 | `admin/talent-qr.html` | 수령자 팝업: 개별 스캔 단위 `반환` 배지 (talent_item_id + 시간 근접 매칭), 페이징, 표시 개수 설정 |
 
 반환 기록 시 `use_talent` RPC의 `p_description`은 `'반환: ' + description` 형식으로 저장한다.
@@ -480,6 +489,7 @@ flowchart LR
 | 지급 방식 | 체크박스 선택 + 일괄 확정 |
 | 출석 버튼 | 테이블 각 행에 '출석' 버튼 → 클릭 즉시 출석 달란트 지급 (주간 중복 방지) |
 | 이미 지급된 항목 | 이번 주(월~일) 지급 여부 자동 표시 |
+| 예외 지급 | 전도사님(90등급) 이상, 이미 지급된 항목 재지급 가능, 사유 필수 |
 | 반환 | 80등급(부장 교사) 이상, 사유 필수, 잔여 > 0일 때만 |
 | 지급자 기록 | `created_by` 필드에 지급자 ID 저장, 상세 모달에서 확인 |
 | 에러 처리 | RPC 성공/실패/거부 모두 activity_logs에 기록 |
@@ -672,7 +682,7 @@ flowchart TD
 | `registration_requests` | 가입 신청/승인/거부 |
 | `department_transfer_requests` | 부서 이동 요청/승인/거부 |
 | `talent_items` | 달란트 지급 항목 (학생용/교사용 구분), 지급 규칙(`giving_rule`), 지급 설명(`giving_description`) |
-| `talent_transactions` | 달란트 적립/사용/반환 내역. `created_by`로 지급자 추적 |
+| `talent_transactions` | 달란트 적립/사용/반환 내역. `created_by`로 지급자 추적. 예외 지급은 `override_week_limit`, `override_reason`으로 표시 |
 | `products` | 상점 상품. `target_role`, `category`는 코드 마스터 기준 구분값 |
 | `product_orders` | 구매 신청/4단계 상태 관리/담당자 기록. `status`는 코드 마스터 기준 |
 | `qna` | FAQ, 사용자 질문, 답변, 공개 여부, 소프트 삭제 |
@@ -702,7 +712,7 @@ flowchart TD
 | `admin_delete_user` | 사용자 삭제 |
 | `admin_reset_password` | 비밀번호 `1234` 초기화 |
 | `change_my_password` | 본인 비밀번호 변경 및 최초 로그인 해제 |
-| `give_talent` | 달란트 적립. 수동 지급과 `p_talent_item_id` 기반 항목 지급에 사용 |
+| `give_talent` | 달란트 적립. 수동 지급, `p_talent_item_id` 기반 항목 지급, `p_override_week_limit`/`p_override_reason` 기반 예외 지급에 사용 |
 | `use_talent` | 달란트 사용 및 반환 사유 기록 |
 | `request_product_order` | 상품 구매 신청 (사용 대기 달란트 관리) |
 | `confirm_product_purchase` | 상품 구매 확정 (실제 달란트 차감) |
@@ -727,20 +737,22 @@ flowchart TD
 11. `my-orders.html`에서 본인 구매 신청 상태만 조회되는지 확인한다.
 12. `admin/purchases.html`에서 4단계 구매 흐름이 정상 작동하는지 확인한다.
 13. 40등급 이상이 `admin/talents.html`에서 체크박스 일괄 지급이 되는지 확인한다.
-14. 80등급 이상만 달란트 반환이 가능한지 확인한다.
-14. 부서 이동이 수정 모달이 아닌 부서 이동 버튼으로만 되는지 확인한다.
-15. 60등급 이상이 `admin/users.html`, `admin/shop.html`, `admin/purchases.html`을 사용할 수 있는지 확인한다.
-16. 60등급 이상이 대시보드를, 80등급 이상이 관리자, 보고서, 버전 화면을 사용할 수 있는지 확인한다.
-17. 100등급 이상만 `admin/page-access.html`, `admin/page-features.html`, `admin/audit.html`, `admin/logs.html`에 접근 가능한지 확인한다.
-18. 80등급 이상이 `docs/page-permission-rules.html`, `admin/log-rules.html`, `admin/slack-rules.html`, `admin/audit-rules.html`에 접근 가능한지 확인한다.
-19. 소개 메뉴에 `가이드` 항목 하나만 표시되고, 비로그인은 학생 가이드, 로그인 사용자는 권한별 가이드(교사/부서 담당/구매 담당/부장/전도사님/관리자)로 연결되는지 확인한다.
-20. `qna.html`에서 공개 FAQ, 로그인 질문 등록, 60등급 이상 댓글(답변)/FAQ 등록/직접 FAQ 추가, 90등급 이상 삭제가 동작하는지 확인한다.
-21. 아이디가 관리자에게만 표시되고 일반 사용자는 본인 것만 보이는지 확인한다.
-22. 에러 메시지가 한글로 변환되어 표시되는지 확인한다.
-23. 주요 기능의 성공/실패/거부가 활동 로그에 기록되는지 확인하고, DB insert 실패가 콘솔 오류로 노출되는지 확인한다.
-24. `my-talents.html`에서 반환 달란트 요약과 적립/사용/반환 3종 배지가 올바르게 표시되는지 확인한다.
-25. 24시간 유휴 후(또는 `cho_last_activity` 수동 조작) 세션 만료 시 alert와 로그아웃 리다이렉트가 동작하는지 확인한다.
-26. 모바일 뷰에서 `#navHeaderActions` 내부 햄버거가 테마·로그아웃·사용자명과 함께 우측에 배치되는지 확인한다.
+14. 90등급 이상이 사유 입력 후 이미 이번 주 지급된 항목을 예외 지급할 수 있고, 90등급 미만은 예외 지급 UI가 숨겨지는지 확인한다.
+15. 60등급 이상이 `admin/talent-adjustments.html`에서 예외 지급/반환 이력을 조회하고, 부서 담당 교사는 담당 부서만 보이는지 확인한다.
+16. 80등급 이상만 달란트 반환이 가능한지 확인한다.
+17. 부서 이동이 수정 모달이 아닌 부서 이동 버튼으로만 되는지 확인한다.
+18. 60등급 이상이 `admin/users.html`, `admin/shop.html`, `admin/purchases.html`을 사용할 수 있는지 확인한다.
+19. 60등급 이상이 대시보드를, 80등급 이상이 관리자, 보고서, 버전 화면을 사용할 수 있는지 확인한다.
+20. 100등급 이상만 `admin/page-access.html`, `admin/page-features.html`, `admin/audit.html`, `admin/logs.html`에 접근 가능한지 확인한다.
+21. 80등급 이상이 `docs/page-permission-rules.html`, `admin/log-rules.html`, `admin/slack-rules.html`, `admin/audit-rules.html`에 접근 가능한지 확인한다.
+22. 소개 메뉴에 `가이드` 항목 하나만 표시되고, 비로그인은 학생 가이드, 로그인 사용자는 권한별 가이드(교사/부서 담당/구매 담당/부장/전도사님/관리자)로 연결되는지 확인한다.
+23. `qna.html`에서 공개 FAQ, 로그인 질문 등록, 60등급 이상 댓글(답변)/FAQ 등록/직접 FAQ 추가, 90등급 이상 삭제가 동작하는지 확인한다.
+24. 아이디가 관리자에게만 표시되고 일반 사용자는 본인 것만 보이는지 확인한다.
+25. 에러 메시지가 한글로 변환되어 표시되는지 확인한다.
+26. 주요 기능의 성공/실패/거부가 활동 로그에 기록되는지 확인하고, DB insert 실패가 콘솔 오류로 노출되는지 확인한다.
+27. `my-talents.html`에서 반환/예외 달란트 요약과 적립/예외/사용/반환 배지가 올바르게 표시되는지 확인한다.
+28. 24시간 유휴 후(또는 `cho_last_activity` 수동 조작) 세션 만료 시 alert와 로그아웃 리다이렉트가 동작하는지 확인한다.
+29. 모바일 뷰에서 `#navHeaderActions` 내부 햄버거가 테마·로그아웃·사용자명과 함께 우측에 배치되는지 확인한다.
 
 ## 18. 다음 작업자가 먼저 볼 파일
 
@@ -769,7 +781,8 @@ flowchart TD
 | 18 | `docs/TASK-052_super_admin_update_fix.sql` | v3.45.0: admin_update_user RPC에서 is_super_admin 호출자 rank 110 처리 |
 | 19 | `docs/TASK-057_code_master.sql` | v3.50.0: `code_groups`/`code_items`, 코드 컬럼 검증 트리거, `get_permission_rank()` 코드화 |
 | 20 | `docs/TASK-059_announcements.sql` | v3.59.0: 공지 관리 `announcements`, `announcement_dismissals` 테이블/RLS 및 공지 로그 액션 코드 |
-| 21 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 21 | `docs/TASK-060_change_report.md` | v3.60.0: 예외 지급/반환 관리 변경 요약과 검증 결과 |
+| 22 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
 
 ## 19. 개발 주의사항
 

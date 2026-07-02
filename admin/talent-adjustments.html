@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>달란트 예외 지급/반환 관리 - CHO Talents</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
+  <style>
+    .page-shell { display:flex; flex-direction:column; gap:1rem; }
+    .summary-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.75rem; }
+    .summary-card, .section {
+      background:var(--admin-card, #fff);
+      border:1px solid var(--admin-border, #dee2e6);
+      border-radius:8px;
+      box-shadow:var(--admin-shadow, 0 2px 6px rgba(0,0,0,0.05));
+    }
+    .summary-card { padding:0.9rem 1rem; }
+    .summary-label { font-size:0.78rem; color:var(--admin-text-muted, #6c757d); margin-bottom:0.25rem; font-weight:700; }
+    .summary-value { font-size:1.35rem; font-weight:800; color:var(--admin-text, #212529); }
+    .summary-sub { font-size:0.75rem; color:var(--admin-text-muted, #6c757d); margin-top:0.2rem; line-height:1.4; }
+    .section { overflow:hidden; }
+    .section-head {
+      padding:0.9rem 1rem;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:0.75rem;
+      flex-wrap:wrap;
+      border-bottom:1px solid var(--admin-border, #dee2e6);
+      background:rgba(0,0,0,0.01);
+    }
+    .section-title { display:flex; flex-direction:column; gap:0.2rem; }
+    .section-title strong { font-size:0.98rem; }
+    .section-title span { font-size:0.8rem; color:var(--admin-text-muted, #6c757d); }
+    .note-box {
+      padding:0.85rem 1rem;
+      border:1px solid #d3f9d8;
+      background:#f8fff9;
+      border-radius:8px;
+      color:#2b8a3e;
+      font-size:0.84rem;
+      line-height:1.6;
+    }
+    .filters-bar { display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; }
+    .page-size-slot { margin-left:auto; display:flex; align-items:center; gap:0.4rem; }
+    .table-wrap { overflow-x:auto; }
+    .adj-table { width:100%; border-collapse:collapse; font-size:0.84rem; }
+    .adj-table th, .adj-table td {
+      padding:0.6rem 0.7rem;
+      border-bottom:1px solid var(--admin-border, #e9ecef);
+      text-align:left;
+      vertical-align:top;
+      line-height:1.45;
+    }
+    .adj-table th { background:#fafbfc; font-weight:800; white-space:nowrap; }
+    .adj-table tbody tr:hover { background:#f8f9fa; }
+    .badge {
+      display:inline-flex;
+      align-items:center;
+      gap:0.2rem;
+      padding:0.14rem 0.45rem;
+      border-radius:999px;
+      font-size:0.72rem;
+      font-weight:800;
+      white-space:nowrap;
+    }
+    .badge.override { background:#fff3bf; color:#e67700; }
+    .badge.source { background:#f1f3f5; color:#495057; }
+    .small-muted { font-size:0.74rem; color:var(--admin-text-muted, #6c757d); line-height:1.35; }
+    .reason-cell { max-width:360px; }
+    .reason-text { white-space:normal; word-break:break-word; }
+    .pagination-wrap {
+      display:flex;
+      justify-content:center;
+      align-items:center;
+      gap:0.3rem;
+      flex-wrap:wrap;
+      padding:0.75rem 1rem;
+      border-top:1px solid var(--admin-border, #e9ecef);
+    }
+    [data-theme="dark"] .summary-card,
+    [data-theme="dark"] .section { background:#111827; border-color:#374151; }
+    [data-theme="dark"] .section-head,
+    [data-theme="dark"] .adj-table th {
+      background:#1f2937;
+      color:#e9ecef;
+      border-bottom-color:#374151;
+    }
+    [data-theme="dark"] .adj-table tbody tr:hover { background:#1f2937; }
+    [data-theme="dark"] .summary-label,
+    [data-theme="dark"] .summary-sub,
+    [data-theme="dark"] .section-title span,
+    [data-theme="dark"] .small-muted { color:#adb5bd; }
+    @media (max-width: 900px) { .summary-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
+    @media (max-width: 768px) {
+      .summary-grid { grid-template-columns:1fr; }
+      .page-size-slot { width:100%; margin-left:0; justify-content:flex-start; }
+      .adj-table { font-size:0.8rem; }
+      .reason-cell { max-width:220px; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <div class="page-shell">
+      <div>
+        <h2 style="margin-bottom:0.35rem;">달란트 예외 지급/반환 관리</h2>
+      </div>
+
+      <div class="note-box">
+        부서 담당 교사는 담당 부서 이력만 보고, 부장 교사 이상은 전체 부서 이력을 볼 수 있습니다. 예외 지급과 반환은 각각 분리해서 표시합니다.
+      </div>
+
+      <div class="filters-bar">
+        <input type="date" class="filter-input" id="dateFrom" />
+        <span style="font-size:0.8rem;color:#adb5bd;">~</span>
+        <input type="date" class="filter-input" id="dateTo" />
+        <input type="text" class="filter-input" id="userSearch" placeholder="사용자 이름 / ID 검색" style="min-width:220px;" oninput="onSearchChange(this.value)" />
+        <select id="deptFilter" class="filter-input" style="min-width:180px;display:none;"></select>
+        <span style="display:inline-flex;gap:0.2rem;flex-wrap:wrap;">
+          <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('today')">오늘</button>
+          <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('week')">1주</button>
+          <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('month')">1달</button>
+          <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('year')">1년</button>
+        </span>
+        <button class="filter-btn" onclick="reloadAll()">조회</button>
+        <div class="page-size-slot">
+          <span style="font-size:0.78rem;font-weight:700;color:#495057;">페이지당 항목 수</span>
+          <span id="pageSizeWrap"></span>
+        </div>
+      </div>
+
+      <div class="summary-grid">
+        <div class="summary-card">
+          <div class="summary-label">예외 지급</div>
+          <div class="summary-value" id="summaryExceptionCount">0</div>
+          <div class="summary-sub">조회 조건에 포함된 예외 지급 건수</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">반환</div>
+          <div class="summary-value" id="summaryReturnCount">0</div>
+          <div class="summary-sub">조회 조건에 포함된 반환 건수</div>
+        </div>
+        <div class="summary-card">
+          <div class="summary-label">전체 처리</div>
+          <div class="summary-value" id="summaryTotalCount">0</div>
+          <div class="summary-sub">예외 지급과 반환의 합계</div>
+        </div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">
+            <strong>예외 지급 내역</strong>
+            <span>처리자, 대상자, 사유, 지급 항목, 처리 시각을 확인합니다.</span>
+          </div>
+          <div class="small-muted" id="exceptionSectionMeta">0건</div>
+        </div>
+        <div class="table-wrap">
+          <table class="adj-table">
+            <thead>
+              <tr>
+                <th>처리 시각</th>
+                <th>대상자</th>
+                <th>처리자</th>
+                <th>항목</th>
+                <th style="text-align:right;">금액</th>
+                <th>예외 사유</th>
+                <th>출처</th>
+              </tr>
+            </thead>
+            <tbody id="exceptionList">
+              <tr><td colspan="7" class="empty-state">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-wrap" id="exceptionPaging"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-head">
+          <div class="section-title">
+            <strong>달란트 반환 내역</strong>
+            <span>반환 사유, 처리자, 대상자, 처리 시각을 확인합니다.</span>
+          </div>
+          <div class="small-muted" id="returnSectionMeta">0건</div>
+        </div>
+        <div class="table-wrap">
+          <table class="adj-table">
+            <thead>
+              <tr>
+                <th>처리 시각</th>
+                <th>대상자</th>
+                <th>처리자</th>
+                <th style="text-align:right;">금액</th>
+                <th>반환 사유</th>
+                <th>원본 지급</th>
+                <th>출처</th>
+              </tr>
+            </thead>
+            <tbody id="returnList">
+              <tr><td colspan="7" class="empty-state">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-wrap" id="returnPaging"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js?v=3.60.0"></script>
+  <script src="../js/supabase-config.js?v=3.60.0"></script>
+  <script src="../js/activity-log.js?v=3.60.0"></script>
+  <script src="../js/codes.js?v=3.60.0"></script>
+  <script src="../js/auth.js?v=3.60.0"></script>
+  <script src="../js/theme.js?v=3.60.0"></script>
+  <script src="../js/nav.js?v=3.60.0"></script>
+  <script src="../js/page-size.js?v=3.60.0"></script>
+  <script>
+    initSupabase();
+
+    const PAGE_KEY = 'talent_adjustments';
+    const MAX_ROWS = 5000;
+    let session = null;
+    let pageSize = 20;
+    let exceptionPage = 1;
+    let returnPage = 1;
+    let rawExceptionRows = [];
+    let rawReturnRows = [];
+    let exceptionRows = [];
+    let returnRows = [];
+    let exceptionTotal = 0;
+    let returnTotal = 0;
+    let selectedDeptId = '';
+    let searchKeyword = '';
+    let departmentRows = [];
+    let profilesMap = {};
+    let talentItemsMap = {};
+
+    function escapeHtml(value) {
+      return String(value == null ? '-' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    function isDeptScopeOnly() {
+      const rank = session?.permissionRank || 0;
+      return rank >= 60 && rank < 80;
+    }
+
+    function canChooseDept() {
+      return (session?.permissionRank || 0) >= 80;
+    }
+
+    function getScopedDeptId() {
+      return session?.managedDeptId || session?.departmentId || '';
+    }
+
+    function getFilterDateRange() {
+      const from = document.getElementById('dateFrom').value;
+      const to = document.getElementById('dateTo').value;
+      return {
+        from: from ? from + 'T00:00:00+09:00' : null,
+        to: to ? to + 'T23:59:59+09:00' : null
+      };
+    }
+
+    function setPeriod(type, shouldReload = true) {
+      const today = new Date();
+      const todayStr = today.toISOString().slice(0, 10);
+      let fromStr = todayStr;
+      if (type === 'week') {
+        const d = new Date(today);
+        d.setDate(d.getDate() - 6);
+        fromStr = d.toISOString().slice(0, 10);
+      } else if (type === 'month') {
+        fromStr = todayStr.slice(0, 8) + '01';
+      } else if (type === 'year') {
+        fromStr = todayStr.slice(0, 4) + '-01-01';
+      }
+      document.getElementById('dateFrom').value = fromStr;
+      document.getElementById('dateTo').value = todayStr;
+      exceptionPage = 1;
+      returnPage = 1;
+      if (shouldReload) reloadAll();
+    }
+
+    function getUserLabel(profile) {
+      if (!profile) return '-';
+      return profile.display_name || profile.username || '-';
+    }
+
+    function getProfile(id) {
+      return id ? profilesMap[id] || null : null;
+    }
+
+    function getItemName(id) {
+      if (!id) return '-';
+      return talentItemsMap[id] || '-';
+    }
+
+    function getSelectedDeptLabel() {
+      if (selectedDeptId) {
+        const found = departmentRows.find(d => d.id === selectedDeptId);
+        return found ? found.name : '';
+      }
+      if (isDeptScopeOnly()) {
+        const scoped = getScopedDeptId();
+        const found = departmentRows.find(d => d.id === scoped);
+        return found ? found.name : '';
+      }
+      return '';
+    }
+
+    function applyDeptFilter(rows) {
+      const deptId = selectedDeptId || (isDeptScopeOnly() ? getScopedDeptId() : '');
+      if (isDeptScopeOnly() && !deptId) return [];
+      if (!deptId) return rows;
+      return rows.filter(row => {
+        const target = getProfile(row.user_id);
+        return target && target.department_id === deptId;
+      });
+    }
+
+    function applySearchFilter(rows) {
+      const kw = (searchKeyword || '').trim().toLowerCase();
+      if (!kw) return rows;
+      return rows.filter(row => {
+        const target = getProfile(row.user_id);
+        const actor = getProfile(row.created_by);
+        const values = [
+          row.user_id,
+          target?.username,
+          target?.display_name,
+          actor?.username,
+          actor?.display_name
+        ].filter(Boolean).map(v => String(v).toLowerCase());
+        return values.some(v => v.includes(kw));
+      });
+    }
+
+    function applyClientFilters() {
+      exceptionRows = applySearchFilter(applyDeptFilter(rawExceptionRows));
+      returnRows = applySearchFilter(applyDeptFilter(rawReturnRows));
+      exceptionTotal = exceptionRows.length;
+      returnTotal = returnRows.length;
+    }
+
+    async function loadDepartments() {
+      const sel = document.getElementById('deptFilter');
+      if (!sel) return;
+      if (!canChooseDept()) {
+        sel.style.display = 'none';
+        sel.innerHTML = '';
+        return;
+      }
+      const { data } = await _sb.from('departments').select('id, name').order('name');
+      departmentRows = data || [];
+      sel.innerHTML = '<option value="">전체 부서</option>' + departmentRows.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+      sel.style.display = '';
+      sel.value = selectedDeptId || '';
+      sel.onchange = () => {
+        selectedDeptId = sel.value || '';
+        exceptionPage = 1;
+        returnPage = 1;
+        reloadAll();
+      };
+    }
+
+    async function loadProfilesByIds(ids) {
+      const need = [...new Set(ids)].filter(id => id && !profilesMap[id]);
+      if (need.length === 0) return;
+      const { data } = await _sb.from('profiles').select('id, username, display_name, department_id').in('id', need);
+      (data || []).forEach(p => { profilesMap[p.id] = p; });
+    }
+
+    async function loadItemsByIds(ids) {
+      const need = [...new Set(ids)].filter(id => id && !talentItemsMap[id]);
+      if (need.length === 0) return;
+      const { data } = await _sb.from('talent_items').select('id, name').in('id', need);
+      (data || []).forEach(item => { talentItemsMap[item.id] = item.name; });
+    }
+
+    function parseReturnReason(description) {
+      const raw = String(description || '');
+      const reason = raw.replace(/^반환:\s*/, '').trim().replace(/^\[[^\]]+\]\s*/, '');
+      return { reason: reason || '-', hasLink: false };
+    }
+
+    function formatTxnSource(row) {
+      const chips = [];
+      if (row.source) chips.push(`<span class="badge source">${escapeHtml(row.source)}</span>`);
+      if (row.override_week_limit) chips.push('<span class="badge override">예외</span>');
+      return chips.join(' ');
+    }
+
+    function normalizeRow(row) {
+      return {
+        ...row,
+        created_at: row.created_at || '',
+        amount: Number(row.amount || 0)
+      };
+    }
+
+    async function loadBaseRows() {
+      const { from, to } = getFilterDateRange();
+      const columns = 'id,user_id,type,amount,description,balance_after,created_by,talent_item_id,source,override_week_limit,override_reason,created_at';
+      const [exRes, retRes] = await Promise.all([
+        _sb.from('talent_transactions').select(columns)
+          .eq('type', 'earn')
+          .eq('override_week_limit', true)
+          .gte('created_at', from || '1900-01-01T00:00:00+09:00')
+          .lte('created_at', to || '2999-12-31T23:59:59+09:00')
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .limit(MAX_ROWS),
+        _sb.from('talent_transactions').select(columns)
+          .eq('type', 'use')
+          .like('description', '반환:%')
+          .gte('created_at', from || '1900-01-01T00:00:00+09:00')
+          .lte('created_at', to || '2999-12-31T23:59:59+09:00')
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: false })
+          .limit(MAX_ROWS)
+      ]);
+
+      if (exRes.error) throw exRes.error;
+      if (retRes.error) throw retRes.error;
+
+      rawExceptionRows = (exRes.data || []).map(normalizeRow);
+      rawReturnRows = (retRes.data || []).map(normalizeRow);
+      const profileIds = [];
+      rawExceptionRows.forEach(r => { profileIds.push(r.user_id, r.created_by); });
+      rawReturnRows.forEach(r => { profileIds.push(r.user_id, r.created_by); });
+      await loadProfilesByIds(profileIds.filter(Boolean));
+      await loadItemsByIds(rawExceptionRows.map(r => r.talent_item_id).filter(Boolean));
+
+      applyClientFilters();
+    }
+
+    function renderPaging(kind, totalPages) {
+      const page = kind === 'exception' ? exceptionPage : returnPage;
+      const target = document.getElementById(kind === 'exception' ? 'exceptionPaging' : 'returnPaging');
+      target.innerHTML = buildPagingButtons(page, totalPages, kind === 'exception' ? 'goExceptionPage(__PAGE__)' : 'goReturnPage(__PAGE__)');
+    }
+
+    function renderExceptionRows() {
+      const tbody = document.getElementById('exceptionList');
+      const totalPages = Math.max(1, Math.ceil(exceptionRows.length / pageSize));
+      if (exceptionPage > totalPages) exceptionPage = totalPages;
+      const rows = exceptionRows.slice((exceptionPage - 1) * pageSize, exceptionPage * pageSize);
+
+      document.getElementById('exceptionSectionMeta').textContent = `${exceptionRows.length}건`;
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">해당 조건의 예외 지급 내역이 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(row => {
+          const target = getUserLabel(getProfile(row.user_id));
+          const actor = getUserLabel(getProfile(row.created_by));
+          const itemName = getItemName(row.talent_item_id);
+          const reason = escapeHtml(row.override_reason || '-');
+          return `<tr>
+            <td>${escapeHtml(formatKST(row.created_at))}</td>
+            <td>${escapeHtml(target)}</td>
+            <td>${escapeHtml(actor)}</td>
+            <td>${escapeHtml(itemName)}</td>
+            <td style="text-align:right;font-weight:700;color:#2b8a3e;">${escapeHtml(fmtNum(row.amount))}</td>
+            <td class="reason-cell"><div class="reason-text">${reason}</div></td>
+            <td>${formatTxnSource(row)}</td>
+          </tr>`;
+        }).join('');
+      }
+      renderPaging('exception', totalPages);
+    }
+
+    function renderReturnRows() {
+      const tbody = document.getElementById('returnList');
+      const totalPages = Math.max(1, Math.ceil(returnRows.length / pageSize));
+      if (returnPage > totalPages) returnPage = totalPages;
+      const rows = returnRows.slice((returnPage - 1) * pageSize, returnPage * pageSize);
+
+      document.getElementById('returnSectionMeta').textContent = `${returnRows.length}건`;
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">해당 조건의 반환 내역이 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(row => {
+          const target = getUserLabel(getProfile(row.user_id));
+          const actor = getUserLabel(getProfile(row.created_by));
+          const parsed = parseReturnReason(row.description);
+          return `<tr>
+            <td>${escapeHtml(formatKST(row.created_at))}</td>
+            <td>${escapeHtml(target)}</td>
+            <td>${escapeHtml(actor)}</td>
+            <td style="text-align:right;font-weight:700;color:#c92a2a;">${escapeHtml(fmtNum(row.amount))}</td>
+            <td class="reason-cell"><div class="reason-text">${escapeHtml(parsed.reason)}</div></td>
+            <td><div style="font-weight:700;">기록됨</div><div class="small-muted">원본 지급 ID는 숨김 처리</div></td>
+            <td>${formatTxnSource(row)}</td>
+          </tr>`;
+        }).join('');
+      }
+      renderPaging('return', totalPages);
+    }
+
+    function goExceptionPage(page) {
+      exceptionPage = page;
+      renderExceptionRows();
+    }
+
+    function goReturnPage(page) {
+      returnPage = page;
+      renderReturnRows();
+    }
+
+    async function reloadAll() {
+      const sizeWrap = document.getElementById('pageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector(PAGE_KEY, pageSize, 'onPageSizeChange(this.value)');
+
+      await loadBaseRows();
+      document.getElementById('summaryExceptionCount').textContent = fmtNum(exceptionTotal);
+      document.getElementById('summaryReturnCount').textContent = fmtNum(returnTotal);
+      document.getElementById('summaryTotalCount').textContent = fmtNum(exceptionTotal + returnTotal);
+      renderExceptionRows();
+      renderReturnRows();
+    }
+
+    async function onPageSizeChange(val) {
+      pageSize = parseInt(val, 10) || 20;
+      await savePageSize(PAGE_KEY, pageSize);
+      exceptionPage = 1;
+      returnPage = 1;
+      renderExceptionRows();
+      renderReturnRows();
+    }
+
+    function onSearchChange(val) {
+      searchKeyword = val || '';
+      exceptionPage = 1;
+      returnPage = 1;
+      applyClientFilters();
+      document.getElementById('summaryExceptionCount').textContent = fmtNum(exceptionTotal);
+      document.getElementById('summaryReturnCount').textContent = fmtNum(returnTotal);
+      document.getElementById('summaryTotalCount').textContent = fmtNum(exceptionTotal + returnTotal);
+      renderExceptionRows();
+      renderReturnRows();
+    }
+
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      pageSize = await loadPageSize(PAGE_KEY, 20);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      setPeriod('week', false);
+      if (isDeptScopeOnly()) selectedDeptId = getScopedDeptId();
+      await loadDepartments();
+      await reloadAll();
+    })();
+  </script>
+  <script src="../js/version.js?v=3.60.0"></script>
+</body>
+</html>

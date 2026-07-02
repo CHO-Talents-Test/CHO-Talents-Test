@@ -411,6 +411,7 @@ function detectCurrentPageId() {
   if (path.includes('admin/departments.html')) return 'admin-departments';
   if (path.includes('admin/managers.html')) return 'admin-managers';
   if (path.includes('admin/talents.html')) return 'admin-talents';
+  if (path.includes('admin/talent-adjustments.html')) return 'admin-talent-adjustments';
   if (path.includes('admin/talent-stats.html')) return 'admin-talent-stats';
   if (path.includes('admin/talent-qr.html')) return 'admin-talent-qr';
   if (path.includes('admin/shop.html')) return 'admin-shop';
@@ -500,6 +501,7 @@ const _ERR_MAP = [
   [/function .* does not exist/i, 'DB 함수가 존재하지 않습니다. 관리자에게 문의하세요'],
   [/Could not find the function/i, 'DB 함수를 찾을 수 없습니다. 관리자에게 문의하세요'],
   [/JWT expired/i, '인증이 만료되었습니다. 다시 로그인해주세요'],
+  [/JWT issued at future/i, '기기 시간이 서버보다 앞서 있습니다. 자동 날짜/시간을 켠 뒤 다시 로그인해주세요'],
   [/JWT/i, '인증 오류가 발생했습니다. 다시 로그인해주세요'],
   [/network/i, '네트워크 오류가 발생했습니다. 인터넷 연결을 확인해주세요'],
   [/timeout/i, '요청 시간이 초과되었습니다. 다시 시도해주세요'],

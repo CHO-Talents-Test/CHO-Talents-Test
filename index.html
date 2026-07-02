@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 마을 - CHO Talents</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.59.0" />
-  <link rel="stylesheet" href="css/style.css?v=3.59.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.60.0" />
+  <link rel="stylesheet" href="css/style.css?v=3.60.0" />
   <style>
     .announcement-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.45); z-index: 2000; display: flex; align-items: center; justify-content: center; padding: 1rem; }
     .announcement-overlay.hidden { display: none; }
@@ -131,14 +131,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.59.0"></script>
-  <script src="js/supabase-config.js?v=3.59.0"></script>
-  <script src="js/activity-log.js?v=3.59.0"></script>
-  <script src="js/codes.js?v=3.59.0"></script>
-  <script src="js/auth.js?v=3.59.0"></script>
-  <script src="js/theme.js?v=3.59.0"></script>
-  <script src="js/nav.js?v=3.59.0"></script>
-  <script src="js/app.js?v=3.59.0"></script>
+  <script src="config/public-config.js?v=3.60.0"></script>
+  <script src="js/supabase-config.js?v=3.60.0"></script>
+  <script src="js/activity-log.js?v=3.60.0"></script>
+  <script src="js/codes.js?v=3.60.0"></script>
+  <script src="js/auth.js?v=3.60.0"></script>
+  <script src="js/theme.js?v=3.60.0"></script>
+  <script src="js/nav.js?v=3.60.0"></script>
+  <script src="js/app.js?v=3.60.0"></script>
   <script>
     const ALL_SHORTCUTS = [
       { id:'earn-talents',  href:'earn-talents.html',        icon:'💰', title:'달란트 적립',   desc:'열심히 활동하고 달란트를 모아요!',           color:'var(--accent)',  minRank:0 },
@@ -152,6 +152,7 @@
       { id:'admin-guide',   href:'admin-guide.html',         icon:'🛠️', title:'관리자 가이드', desc:'관리자 전용 사용 가이드',                     color:'#d63031',       minRank:60 },
       { id:'admin-dash',    href:'admin/index.html',         icon:'📊', title:'대시보드',      desc:'관리 현황을 한눈에 확인!',                    color:'#6c5ce7',       minRank:60 },
       { id:'admin-talents', href:'admin/talents.html',       icon:'🎯', title:'달란트 관리',   desc:'달란트를 지급하고 관리해요!',                 color:'#fdcb6e',       minRank:40 },
+      { id:'admin-adjust',  href:'admin/talent-adjustments.html', icon:'🔁', title:'예외/반환 관리', desc:'예외 지급과 반환 내역을 확인해요!',        color:'#f59f00',       minRank:60 },
       { id:'admin-stats',   href:'admin/talent-stats.html',  icon:'📈', title:'달란트 통계',   desc:'달란트 통계를 확인해요!',                     color:'#55efc4',       minRank:60 },
       { id:'admin-users',   href:'admin/users.html',         icon:'👥', title:'사용자 관리',   desc:'사용자를 관리해요!',                          color:'#74b9ff',       minRank:60 },
       { id:'admin-purch',   href:'admin/purchases.html',     icon:'💳', title:'구매 관리',     desc:'구매 요청을 처리해요!',                       color:'#ffeaa7',       minRank:60 },
@@ -485,6 +486,6 @@
       await initTheme();
     })();
   </script>
-  <script src="js/version.js?v=3.59.0"></script>
+  <script src="js/version.js?v=3.60.0"></script>
 </body>
 </html>

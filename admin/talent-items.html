@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 항목 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.59.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.59.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -26,8 +26,8 @@
         <div class="admin-table-title" id="tableTitle">학생용 항목</div>
       </div>
       <table class="admin-table">
-        <thead><tr><th>순서</th><th>항목명</th><th>지급 달란트</th><th>상태</th><th>관리</th></tr></thead>
-        <tbody id="itemList"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
+        <thead><tr><th>순서</th><th>항목명</th><th>지급 달란트</th><th>통계</th><th>상태</th><th>관리</th></tr></thead>
+        <tbody id="itemList"><tr><td colspan="6" class="empty-state">로딩 중...</td></tr></tbody>
       </table>
       <div id="itemPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
     </div>
@@ -74,15 +74,15 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.59.0"></script>
-  <script src="../js/supabase-config.js?v=3.59.0"></script>
-  <script src="../js/activity-log.js?v=3.59.0"></script>
-  <script src="../js/codes.js?v=3.59.0"></script>
-  <script src="../js/auth.js?v=3.59.0"></script>
-  <script src="../js/theme.js?v=3.59.0"></script>
-  <script src="../js/page-size.js?v=3.59.0"></script>
-  <script src="../js/nav.js?v=3.59.0"></script>
-  <script src="../js/talent.js?v=3.59.0"></script>
+  <script src="../config/public-config.js?v=3.60.0"></script>
+  <script src="../js/supabase-config.js?v=3.60.0"></script>
+  <script src="../js/activity-log.js?v=3.60.0"></script>
+  <script src="../js/codes.js?v=3.60.0"></script>
+  <script src="../js/auth.js?v=3.60.0"></script>
+  <script src="../js/theme.js?v=3.60.0"></script>
+  <script src="../js/page-size.js?v=3.60.0"></script>
+  <script src="../js/nav.js?v=3.60.0"></script>
+  <script src="../js/talent.js?v=3.60.0"></script>
   <script>
     initSupabase();
     let session;
@@ -91,6 +91,17 @@
     let currentTab = 'student';
     function getItemPageSize() { return window.innerWidth <= 768 ? 10 : 20; }
     let itemPage = 1;
+    let itemStatsMap = {};
+
+    function getWeekStartKST() {
+      const now = new Date();
+      const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+      const day = kst.getUTCDay();
+      const diff = day === 0 ? 6 : day - 1;
+      kst.setUTCDate(kst.getUTCDate() - diff);
+      kst.setUTCHours(0, 0, 0, 0);
+      return new Date(kst.getTime() - 9 * 60 * 60 * 1000);
+    }
 
     (async () => {
       await navInit();
@@ -113,9 +124,40 @@
     }
 
     async function loadItems() {
-      const { data } = await fetchAllTalentItems();
+      const [itemRes] = await Promise.all([fetchAllTalentItems(), loadItemStats()]);
+      const { data } = itemRes;
       allItems = data || [];
       renderItems();
+    }
+
+    async function loadItemStats() {
+      itemStatsMap = {};
+      let { data, error } = await _sb
+        .from('talent_transactions')
+        .select('talent_item_id, created_at, override_week_limit')
+        .eq('type', 'earn')
+        .not('talent_item_id', 'is', null);
+      if (error && /column .*override_week_limit.*does not exist|schema cache/i.test(error.message || '')) {
+        const fallback = await _sb
+          .from('talent_transactions')
+          .select('talent_item_id, created_at')
+          .eq('type', 'earn')
+          .not('talent_item_id', 'is', null);
+        data = fallback.data;
+        error = fallback.error;
+      }
+      if (error || !data) return;
+
+      const weekStart = getWeekStartKST();
+      data.forEach(row => {
+        const itemId = row.talent_item_id;
+        if (!itemId) return;
+        const current = itemStatsMap[itemId] || { total: 0, week: 0, override: 0 };
+        current.total += 1;
+        if (row.override_week_limit) current.override += 1;
+        if (row.created_at && new Date(row.created_at) >= weekStart) current.week += 1;
+        itemStatsMap[itemId] = current;
+      });
     }
 
     function renderItems() {
@@ -125,7 +167,7 @@
       const tbody = document.getElementById('itemList');
 
       if (list.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="5" class="empty-state">등록된 항목이 없습니다.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="6" class="empty-state">등록된 항목이 없습니다.</td></tr>`;
         document.getElementById('itemPaging').innerHTML = '';
         return;
       }
@@ -138,10 +180,16 @@
 
       tbody.innerHTML = pageData.map(i => {
         const isQuick = i.is_quick_button === true;
+        const stats = itemStatsMap[i.id] || { total: 0, week: 0, override: 0 };
         return `<tr${!i.is_active ? ' style="opacity:0.5;"' : ''}>
         <td>${i.sort_order}</td>
         <td><strong>${i.name}</strong>${isQuick ? ' <span style="font-size:0.7rem;background:#e7f5ff;color:#1971c2;padding:0.1rem 0.4rem;border-radius:4px;">⚡퀵</span>' : ''}</td>
         <td style="font-weight:700;color:#2b8a3e;">+${i.talent_amount}</td>
+        <td style="font-size:0.82rem;line-height:1.4;">
+          <div>총 ${stats.total}회</div>
+          <div style="color:#1971c2;">이번 주 ${stats.week}회</div>
+          ${stats.override > 0 ? `<div style="color:#e67700;">예외 ${stats.override}회</div>` : ''}
+        </td>
         <td>${i.is_active ? '<span class="level-badge INFO">활성</span>' : '<span class="level-badge FATAL">비활성</span>'}</td>
         <td>
           <button class="filter-btn" onclick='openEditModal(${JSON.stringify(i).replace(/'/g,"&#39;")})'>수정</button>
@@ -261,6 +309,6 @@
 
     document.getElementById('itemModal').addEventListener('click', e => { if (e.target.classList.contains('modal-overlay')) closeModal(); });
   </script>
-  <script src="../js/version.js?v=3.59.0"></script>
+  <script src="../js/version.js?v=3.60.0"></script>
 </body>
 </html>
