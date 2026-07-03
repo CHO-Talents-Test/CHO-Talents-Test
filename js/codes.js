@@ -78,7 +78,8 @@ const CODE_ITEMS = {
   ],
   'talent_transactions.source': [
     { key: 'admin', value: '관리자 지급', emoji: '🧑‍💻', order: 10 },
-    { key: 'qr', value: 'QR 수령', emoji: '📱', order: 20 }
+    { key: 'qr', value: 'QR 수령', emoji: '📱', order: 20 },
+    { key: 'override', value: '예외 지급', emoji: '⚠️', order: 30 }
   ],
   'qna.status': [
     { key: 'pending', value: '답변 대기', emoji: '❓', order: 10 },
