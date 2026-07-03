@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Talent Module - 달란트 조회/적립/사용 공통 모듈
  * profiles 테이블 기반 (admin_users 사용 안 함)
  */
@@ -111,6 +111,55 @@ async function giveTalentByItem(userId, talentItemId, createdBy, options = {}) {
   } catch (err) {
     await logError('TALENT_GIVE_ITEM_ERROR', { userId, talentItemId, 오류: String(err) });
     return { success: false, error: String(err) };
+  }
+}
+
+async function createTalentExceptionRequest(requestData) {
+  if (!_sb) return { data: null, error: 'Supabase not initialized' };
+  try {
+    const row = Object.assign({
+      status: 'pending',
+      requested_at: new Date().toISOString()
+    }, requestData || {});
+    const { data, error } = await _sb
+      .from('talent_exception_requests')
+      .insert(row)
+      .select()
+      .single();
+    if (error) {
+      await logError('TALENT_EXCEPTION_REQUEST_FAIL', { userId: row.user_id, talentItemId: row.talent_item_id, 오류: error.message });
+      return { data: null, error: error.message };
+    }
+    await logInfo('TALENT_EXCEPTION_REQUEST', {
+      userId: row.user_id,
+      talentItemId: row.talent_item_id,
+      금액: row.amount,
+      사유: row.override_reason
+    });
+    return { data, error: null };
+  } catch (err) {
+    await logError('TALENT_EXCEPTION_REQUEST_ERROR', { 오류: String(err) });
+    return { data: null, error: String(err) };
+  }
+}
+
+async function updateTalentExceptionRequest(id, updates) {
+  if (!_sb) return { data: null, error: 'Supabase not initialized' };
+  try {
+    const { data, error } = await _sb
+      .from('talent_exception_requests')
+      .update(updates)
+      .eq('id', id)
+      .select()
+      .single();
+    if (error) {
+      await logError('TALENT_EXCEPTION_REQUEST_UPDATE_FAIL', { id, 오류: error.message });
+      return { data: null, error: error.message };
+    }
+    return { data, error: null };
+  } catch (err) {
+    await logError('TALENT_EXCEPTION_REQUEST_UPDATE_ERROR', { id, 오류: String(err) });
+    return { data: null, error: String(err) };
   }
 }
 

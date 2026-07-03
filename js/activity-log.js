@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Activity Log Module
  * 모든 페이지에서 사용하는 공통 로그 기록/조회 모듈
  */
@@ -103,6 +103,14 @@ const ACTION_LABELS = {
   TALENT_GIVE_ITEM_DENIED: '달란트 항목 지급 거부',
   TALENT_GIVE_ITEM_ERROR: '달란트 항목 지급 오류',
   TALENT_GIVE_ITEMS: '달란트 일괄 지급',
+  TALENT_EXCEPTION_REQUEST: '예외 지급 요청',
+  TALENT_EXCEPTION_REQUEST_FAIL: '예외 지급 요청 실패',
+  TALENT_EXCEPTION_REQUEST_ERROR: '예외 지급 요청 오류',
+  TALENT_EXCEPTION_APPROVE: '예외 지급 승인',
+  TALENT_EXCEPTION_APPROVE_FAIL: '예외 지급 승인 실패',
+  TALENT_EXCEPTION_REJECT: '예외 지급 거부',
+  TALENT_EXCEPTION_REQUEST_UPDATE_FAIL: '예외 지급 요청 수정 실패',
+  TALENT_EXCEPTION_REQUEST_UPDATE_ERROR: '예외 지급 요청 수정 오류',
   TALENT_MANUAL_GIVE: '달란트 수동 지급',
   TALENT_MANUAL_GIVE_FAIL: '달란트 수동 지급 실패',
   TALENT_MANUAL_GIVE_ERROR: '달란트 수동 지급 오류',
@@ -140,6 +148,9 @@ const ACTION_LABELS = {
   PRODUCT_UPDATE: '상품 수정',
   PRODUCT_UPDATE_FAIL: '상품 수정 실패',
   PRODUCT_UPDATE_ERROR: '상품 수정 오류',
+  PRODUCT_IMAGE_UPDATE: '상품 이미지 연결',
+  PRODUCT_IMAGE_UPDATE_FAIL: '상품 이미지 연결 실패',
+  PRODUCT_IMAGE_UPDATE_ERROR: '상품 이미지 연결 오류',
   PRODUCT_DELETE: '상품 삭제',
   PRODUCT_DELETE_FAIL: '상품 삭제 실패',
   PRODUCT_DELETE_ERROR: '상품 삭제 오류',
@@ -148,6 +159,7 @@ const ACTION_LABELS = {
   PRODUCT_DEACTIVATE_ERROR: '상품 비활성화 오류',
   PRODUCT_SOFT_DELETE: '상품 비활성화',
   IMAGE_UPLOAD: '이미지 업로드',
+  IMAGE_COMPRESS_FAIL: '이미지 압축 실패',
   IMAGE_UPLOAD_FAIL: '이미지 업로드 실패',
   IMAGE_UPLOAD_ERROR: '이미지 업로드 오류',
   IMAGE_DELETE_FAIL: '이미지 삭제 실패',

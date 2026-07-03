@@ -1,11 +1,11 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko" data-theme="default">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 예외 지급/반환 관리 - CHO Talents</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.63.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.63.0" />
   <style>
     .page-shell { display:flex; flex-direction:column; gap:1rem; }
     .summary-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.75rem; }
@@ -44,6 +44,12 @@
     }
     .filters-bar { display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; }
     .page-size-slot { margin-left:auto; display:flex; align-items:center; gap:0.4rem; }
+    .section-tools { margin-left:auto; display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; }
+    .request-badges { display:flex; flex-wrap:wrap; gap:0.35rem; }
+    .request-badge { background:#f1f3f5; color:#495057; }
+    .request-badge strong { font-size:0.82rem; }
+    .request-bulk-col { width:32px; text-align:center; }
+    .request-bulk-col input { width:16px; height:16px; cursor:pointer; }
     .table-wrap { overflow-x:auto; }
     .adj-table { width:100%; border-collapse:collapse; font-size:0.84rem; }
     .adj-table th, .adj-table td {
@@ -67,6 +73,10 @@
     }
     .badge.override { background:#fff3bf; color:#e67700; }
     .badge.source { background:#f1f3f5; color:#495057; }
+    .badge.pending { background:#fff3bf; color:#e67700; }
+    .badge.approved { background:#d3f9d8; color:#2b8a3e; }
+    .badge.rejected { background:#ffe3e3; color:#c92a2a; }
+    .request-actions { display:flex; gap:0.35rem; flex-wrap:wrap; }
     .small-muted { font-size:0.74rem; color:var(--admin-text-muted, #6c757d); line-height:1.35; }
     .reason-cell { max-width:360px; }
     .reason-text { white-space:normal; word-break:break-word; }
@@ -123,41 +133,54 @@
         <span style="display:inline-flex;gap:0.2rem;flex-wrap:wrap;">
           <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('today')">오늘</button>
           <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('week')">1주</button>
-          <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('month')">1달</button>
+          <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('month')">1개월</button>
           <button class="filter-btn" style="padding:0.2rem 0.5rem;font-size:0.72rem;" onclick="setPeriod('year')">1년</button>
         </span>
         <button class="filter-btn" onclick="reloadAll()">조회</button>
-        <div class="page-size-slot">
-          <span style="font-size:0.78rem;font-weight:700;color:#495057;">페이지당 항목 수</span>
-          <span id="pageSizeWrap"></span>
-        </div>
       </div>
 
-      <div class="summary-grid">
-        <div class="summary-card">
-          <div class="summary-label">예외 지급</div>
-          <div class="summary-value" id="summaryExceptionCount">0</div>
-          <div class="summary-sub">조회 조건에 포함된 예외 지급 건수</div>
+      <div class="section" id="exceptionRequestSection">
+        <div class="section-head">
+          <div class="section-title">
+            <strong>예외 지급 요청</strong>
+            <span>부서 담당 교사 이상이 요청한 예외 지급을 확인합니다. 승인과 거부는 전도사님 이상만 가능합니다.</span>
+            <div class="request-badges" id="requestBadges"></div>
+          </div>
+          <div class="section-tools">
+            <button class="filter-btn" id="btnBulkApproveSelected" style="background:#51cf66;color:#fff;border-color:#51cf66;display:none;" onclick="bulkApproveExceptionRequests('selected')">선택 일괄 승인</button>
+            <button class="filter-btn" id="btnBulkApproveAll" style="background:#339af0;color:#fff;border-color:#339af0;display:none;" onclick="bulkApproveExceptionRequests('all')">전체 일괄 승인</button>
+            <div class="page-size-slot" style="margin-left:0;">
+              <span style="font-size:0.78rem;font-weight:700;color:#495057;">페이지당 항목 수</span>
+              <span id="requestPageSizeWrap"></span>
+            </div>
+          </div>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">반환</div>
-          <div class="summary-value" id="summaryReturnCount">0</div>
-          <div class="summary-sub">조회 조건에 포함된 반환 건수</div>
+        <div class="table-wrap">
+          <table class="adj-table">
+            <thead>
+              <tr id="requestTableHead"></tr>
+            </thead>
+            <tbody id="requestList">
+              <tr><td colspan="8" class="empty-state">불러오는 중...</td></tr>
+            </tbody>
+          </table>
         </div>
-        <div class="summary-card">
-          <div class="summary-label">전체 처리</div>
-          <div class="summary-value" id="summaryTotalCount">0</div>
-          <div class="summary-sub">예외 지급과 반환의 합계</div>
-        </div>
+        <div class="pagination-wrap" id="requestPaging"></div>
       </div>
 
       <div class="section">
         <div class="section-head">
           <div class="section-title">
             <strong>예외 지급 내역</strong>
-            <span>처리자, 대상자, 사유, 지급 항목, 처리 시각을 확인합니다.</span>
+            <span>처리된 대상자, 사유, 지급 항목, 처리 시각을 확인합니다.</span>
           </div>
-          <div class="small-muted" id="exceptionSectionMeta">0건</div>
+          <div class="section-tools">
+            <div class="page-size-slot" style="margin-left:0;">
+              <span style="font-size:0.78rem;font-weight:700;color:#495057;">페이지당 항목 수</span>
+              <span id="exceptionPageSizeWrap"></span>
+            </div>
+            <div class="small-muted" id="exceptionSectionMeta">0건</div>
+          </div>
         </div>
         <div class="table-wrap">
           <table class="adj-table">
@@ -186,7 +209,13 @@
             <strong>달란트 반환 내역</strong>
             <span>반환 사유, 처리자, 대상자, 처리 시각을 확인합니다.</span>
           </div>
-          <div class="small-muted" id="returnSectionMeta">0건</div>
+          <div class="section-tools">
+            <div class="page-size-slot" style="margin-left:0;">
+              <span style="font-size:0.78rem;font-weight:700;color:#495057;">페이지당 항목 수</span>
+              <span id="returnPageSizeWrap"></span>
+            </div>
+            <div class="small-muted" id="returnSectionMeta">0건</div>
+          </div>
         </div>
         <div class="table-wrap">
           <table class="adj-table">
@@ -210,36 +239,48 @@
       </div>
     </div>
   </div>
-
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.60.0"></script>
-  <script src="../js/supabase-config.js?v=3.60.0"></script>
-  <script src="../js/activity-log.js?v=3.60.0"></script>
-  <script src="../js/codes.js?v=3.60.0"></script>
-  <script src="../js/auth.js?v=3.60.0"></script>
-  <script src="../js/theme.js?v=3.60.0"></script>
-  <script src="../js/nav.js?v=3.60.0"></script>
-  <script src="../js/page-size.js?v=3.60.0"></script>
+  <script src="../config/public-config.js?v=3.63.0"></script>
+  <script src="../js/supabase-config.js?v=3.63.0"></script>
+  <script src="../js/activity-log.js?v=3.63.0"></script>
+  <script src="../js/codes.js?v=3.63.0"></script>
+  <script src="../js/auth.js?v=3.63.0"></script>
+  <script src="../js/theme.js?v=3.63.0"></script>
+  <script src="../js/nav.js?v=3.63.0"></script>
+  <script src="../js/page-size.js?v=3.63.0"></script>
+  <script src="../js/talent.js?v=3.63.0"></script>
   <script>
     initSupabase();
 
-    const PAGE_KEY = 'talent_adjustments';
+    const PAGE_KEYS = {
+      request: 'talent_adjustments_request',
+      exception: 'talent_adjustments_exception',
+      return: 'talent_adjustments_return'
+    };
     const MAX_ROWS = 5000;
     let session = null;
-    let pageSize = 20;
+    let requestPageSize = 20;
+    let exceptionPageSize = 20;
+    let returnPageSize = 20;
+    let requestPage = 1;
     let exceptionPage = 1;
     let returnPage = 1;
+    let rawRequestRows = [];
     let rawExceptionRows = [];
     let rawReturnRows = [];
+    let requestRows = [];
     let exceptionRows = [];
     let returnRows = [];
+    let requestTotal = 0;
     let exceptionTotal = 0;
     let returnTotal = 0;
     let selectedDeptId = '';
     let searchKeyword = '';
+    let requestLoadError = '';
     let departmentRows = [];
     let profilesMap = {};
     let talentItemsMap = {};
+    let requestBulkVisible = false;
 
     function escapeHtml(value) {
       return String(value == null ? '-' : value)
@@ -257,6 +298,10 @@
 
     function canChooseDept() {
       return (session?.permissionRank || 0) >= 80;
+    }
+
+    function canApproveExceptionRequests() {
+      return (session?.permissionRank || 0) >= 90;
     }
 
     function getScopedDeptId() {
@@ -287,6 +332,7 @@
       }
       document.getElementById('dateFrom').value = fromStr;
       document.getElementById('dateTo').value = todayStr;
+      requestPage = 1;
       exceptionPage = 1;
       returnPage = 1;
       if (shouldReload) reloadAll();
@@ -325,7 +371,7 @@
       if (!deptId) return rows;
       return rows.filter(row => {
         const target = getProfile(row.user_id);
-        return target && target.department_id === deptId;
+        return (target && target.department_id === deptId) || row.department_id === deptId;
       });
     }
 
@@ -334,21 +380,37 @@
       if (!kw) return rows;
       return rows.filter(row => {
         const target = getProfile(row.user_id);
-        const actor = getProfile(row.created_by);
+        const actor = getProfile(row.created_by || row.requested_by);
+        const reviewer = getProfile(row.reviewed_by);
         const values = [
           row.user_id,
           target?.username,
           target?.display_name,
+          row.user_display_name,
+          row.talent_item_name,
+          row.override_reason,
           actor?.username,
-          actor?.display_name
+          actor?.display_name,
+          row.requested_by_name,
+          reviewer?.username,
+          reviewer?.display_name,
+          row.reviewed_by_name
         ].filter(Boolean).map(v => String(v).toLowerCase());
         return values.some(v => v.includes(kw));
       });
     }
 
     function applyClientFilters() {
+      requestRows = applySearchFilter(applyDeptFilter(rawRequestRows));
+      requestRows.sort((a, b) => {
+        const ap = (a.status || 'pending') === 'pending' ? 0 : 1;
+        const bp = (b.status || 'pending') === 'pending' ? 0 : 1;
+        if (ap !== bp) return ap - bp;
+        return String(b.requested_at || b.created_at || '').localeCompare(String(a.requested_at || a.created_at || ''));
+      });
       exceptionRows = applySearchFilter(applyDeptFilter(rawExceptionRows));
       returnRows = applySearchFilter(applyDeptFilter(rawReturnRows));
+      requestTotal = requestRows.length;
       exceptionTotal = exceptionRows.length;
       returnTotal = returnRows.length;
     }
@@ -397,7 +459,7 @@
     function formatTxnSource(row) {
       const chips = [];
       if (row.source) chips.push(`<span class="badge source">${escapeHtml(row.source)}</span>`);
-      if (row.override_week_limit) chips.push('<span class="badge override">예외</span>');
+      if (row.override_week_limit) chips.push('<span class="badge override">?덉쇅</span>');
       return chips.join(' ');
     }
 
@@ -412,7 +474,10 @@
     async function loadBaseRows() {
       const { from, to } = getFilterDateRange();
       const columns = 'id,user_id,type,amount,description,balance_after,created_by,talent_item_id,source,override_week_limit,override_reason,created_at';
-      const [exRes, retRes] = await Promise.all([
+      const [reqRes, exRes, retRes] = await Promise.all([
+        _sb.from('talent_exception_requests').select('*')
+          .order('requested_at', { ascending: false })
+          .limit(MAX_ROWS),
         _sb.from('talent_transactions').select(columns)
           .eq('type', 'earn')
           .eq('override_week_limit', true)
@@ -431,33 +496,180 @@
           .limit(MAX_ROWS)
       ]);
 
+      requestLoadError = reqRes.error ? reqRes.error.message : '';
       if (exRes.error) throw exRes.error;
       if (retRes.error) throw retRes.error;
 
+      rawRequestRows = reqRes.error ? [] : (reqRes.data || []).map(normalizeRow);
       rawExceptionRows = (exRes.data || []).map(normalizeRow);
       rawReturnRows = (retRes.data || []).map(normalizeRow);
       const profileIds = [];
+      rawRequestRows.forEach(r => { profileIds.push(r.user_id, r.requested_by, r.reviewed_by); });
       rawExceptionRows.forEach(r => { profileIds.push(r.user_id, r.created_by); });
       rawReturnRows.forEach(r => { profileIds.push(r.user_id, r.created_by); });
       await loadProfilesByIds(profileIds.filter(Boolean));
-      await loadItemsByIds(rawExceptionRows.map(r => r.talent_item_id).filter(Boolean));
+      await loadItemsByIds(rawExceptionRows.map(r => r.talent_item_id).concat(rawRequestRows.map(r => r.talent_item_id)).filter(Boolean));
 
       applyClientFilters();
     }
 
     function renderPaging(kind, totalPages) {
-      const page = kind === 'exception' ? exceptionPage : returnPage;
-      const target = document.getElementById(kind === 'exception' ? 'exceptionPaging' : 'returnPaging');
-      target.innerHTML = buildPagingButtons(page, totalPages, kind === 'exception' ? 'goExceptionPage(__PAGE__)' : 'goReturnPage(__PAGE__)');
+      const page = kind === 'request' ? requestPage : (kind === 'exception' ? exceptionPage : returnPage);
+      const target = document.getElementById(kind === 'request' ? 'requestPaging' : (kind === 'exception' ? 'exceptionPaging' : 'returnPaging'));
+      const fn = kind === 'request' ? 'goRequestPage(__PAGE__)' : (kind === 'exception' ? 'goExceptionPage(__PAGE__)' : 'goReturnPage(__PAGE__)');
+      target.innerHTML = buildPagingButtons(page, totalPages, fn);
+    }
+
+    function getPageSizeFor(kind) {
+      if (kind === 'request') return requestPageSize;
+      if (kind === 'exception') return exceptionPageSize;
+      return returnPageSize;
+    }
+
+    function setPageSizeFor(kind, value) {
+      const next = parseInt(value, 10) || 20;
+      if (kind === 'request') requestPageSize = next;
+      else if (kind === 'exception') exceptionPageSize = next;
+      else returnPageSize = next;
+      return next;
+    }
+
+    function renderPageSizeControls() {
+      const requestWrap = document.getElementById('requestPageSizeWrap');
+      const exceptionWrap = document.getElementById('exceptionPageSizeWrap');
+      const returnWrap = document.getElementById('returnPageSizeWrap');
+      if (requestWrap) requestWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.request, requestPageSize, 'onRequestPageSizeChange(this.value)');
+      if (exceptionWrap) exceptionWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.exception, exceptionPageSize, 'onExceptionPageSizeChange(this.value)');
+      if (returnWrap) returnWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.return, returnPageSize, 'onReturnPageSizeChange(this.value)');
+    }
+
+    function renderRequestBadges() {
+      const wrap = document.getElementById('requestBadges');
+      if (!wrap) return;
+      const totalProcessed = exceptionTotal + returnTotal;
+      wrap.innerHTML = [
+        { label: '예외 지급', value: exceptionTotal },
+        { label: '반환', value: returnTotal },
+        { label: '전체 처리', value: totalProcessed },
+        { label: '예외 지급 요청', value: requestTotal }
+      ].map(item => `<span class="badge request-badge">${item.label} <strong>${escapeHtml(fmtNum(item.value))}</strong>건</span>`).join('');
+    }
+
+    function renderRequestHead() {
+      const head = document.getElementById('requestTableHead');
+      if (!head) return;
+      requestBulkVisible = canApproveExceptionRequests();
+      const cols = [];
+      if (requestBulkVisible) {
+        cols.push('<th class="request-bulk-col" style="width:32px;"><input type="checkbox" id="requestChkAll" onchange="toggleAllRequestChecks(this)"></th>');
+      }
+      cols.push('<th>요청 시각</th>');
+      cols.push('<th>대상자</th>');
+      cols.push('<th>요청자</th>');
+      cols.push('<th>항목</th>');
+      cols.push('<th style="text-align:right;">금액</th>');
+      cols.push('<th>사유</th>');
+      cols.push('<th>상태</th>');
+      cols.push('<th>처리</th>');
+      head.innerHTML = cols.join('');
+      const btnSelected = document.getElementById('btnBulkApproveSelected');
+      const btnAll = document.getElementById('btnBulkApproveAll');
+      if (btnSelected) btnSelected.style.display = requestBulkVisible ? '' : 'none';
+      if (btnAll) btnAll.style.display = requestBulkVisible ? '' : 'none';
+    }
+
+    function requestStatusBadge(status) {
+      const s = status || 'pending';
+      const label = s === 'approved' ? '승인' : (s === 'rejected' ? '거부' : '대기');
+      return `<span class="badge ${escapeHtml(s)}">${label}</span>`;
+    }
+
+    function requestColspan() {
+      return requestBulkVisible ? 9 : 8;
+    }
+
+    function syncRequestBulkHeader() {
+      const header = document.getElementById('requestChkAll');
+      if (!header || !requestBulkVisible) return;
+      const checks = [...document.querySelectorAll('.request-chk')];
+      const selectable = checks.filter(chk => !chk.disabled);
+      header.checked = selectable.length > 0 && selectable.every(chk => chk.checked);
+      header.indeterminate = selectable.some(chk => chk.checked) && !header.checked;
+    }
+
+    function toggleAllRequestChecks(chk) {
+      document.querySelectorAll('.request-chk').forEach(c => {
+        if (!c.disabled) c.checked = chk.checked;
+      });
+      syncRequestBulkHeader();
+    }
+
+    function renderRequestRows() {
+      renderRequestHead();
+      const tbody = document.getElementById('requestList');
+      if (!tbody) return;
+      if (requestLoadError) {
+        tbody.innerHTML = `<tr><td colspan="${requestColspan()}" class="empty-state" style="color:#d63031;">예외 지급 요청 목록을 불러오지 못했습니다. docs/TASK-061_talent_exception_requests.sql 적용 여부를 확인해주세요.<br>${escapeHtml(tErr(requestLoadError))}</td></tr>`;
+        renderPaging('request', 1);
+        renderRequestBadges();
+        return;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(requestRows.length / requestPageSize));
+      if (requestPage > totalPages) requestPage = totalPages;
+      const rows = requestRows.slice((requestPage - 1) * requestPageSize, requestPage * requestPageSize);
+
+      if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="${requestColspan()}" class="empty-state">대기 중인 예외 지급 요청이 없습니다.</td></tr>`;
+      } else {
+        tbody.innerHTML = rows.map(row => {
+          const targetProfile = getProfile(row.user_id);
+          const requesterProfile = getProfile(row.requested_by);
+          const reviewerProfile = getProfile(row.reviewed_by);
+          const target = targetProfile ? getUserLabel(targetProfile) : (row.user_display_name || '-');
+          const requester = requesterProfile ? getUserLabel(requesterProfile) : (row.requested_by_name || '-');
+          const reviewer = reviewerProfile ? getUserLabel(reviewerProfile) : (row.reviewed_by_name || '');
+          const itemName = row.talent_item_name || getItemName(row.talent_item_id);
+          const status = row.status || 'pending';
+          const canAct = status === 'pending' && canApproveExceptionRequests();
+          const actionHtml = canAct
+            ? `<div class="request-actions">
+                <button class="filter-btn" style="background:#51cf66;color:#fff;border-color:#51cf66;" onclick="approveExceptionRequest('${row.id}')">승인</button>
+                <button class="btn-ack" onclick="rejectExceptionRequest('${row.id}')">거부</button>
+              </div>`
+            : `<div class="small-muted">${status === 'pending' ? '조회만 가능' : (reviewer ? '처리자 ' + escapeHtml(reviewer) : '-')}</div>`;
+          const bulkCell = requestBulkVisible
+            ? (status === 'pending'
+              ? `<td class="request-bulk-col"><input type="checkbox" class="request-chk" value="${row.id}" onchange="syncRequestBulkHeader()"></td>`
+              : '<td class="request-bulk-col"></td>')
+            : '';
+          return `<tr>
+            ${bulkCell}
+            <td>${escapeHtml(formatKST(row.requested_at || row.created_at))}</td>
+            <td>${escapeHtml(target)}</td>
+            <td>${escapeHtml(requester)}</td>
+            <td>${escapeHtml(itemName)}</td>
+            <td style="text-align:right;font-weight:700;color:#2b8a3e;">${escapeHtml(fmtNum(row.amount))}</td>
+            <td class="reason-cell"><div class="reason-text">${escapeHtml(row.override_reason || '-')}</div></td>
+            <td>${requestStatusBadge(status)}</td>
+            <td>${actionHtml}</td>
+          </tr>`;
+        }).join('');
+      }
+      syncRequestBulkHeader();
+      renderPaging('request', totalPages);
+      renderRequestBadges();
     }
 
     function renderExceptionRows() {
       const tbody = document.getElementById('exceptionList');
-      const totalPages = Math.max(1, Math.ceil(exceptionRows.length / pageSize));
+      if (!tbody) return;
+      const totalPages = Math.max(1, Math.ceil(exceptionRows.length / exceptionPageSize));
       if (exceptionPage > totalPages) exceptionPage = totalPages;
-      const rows = exceptionRows.slice((exceptionPage - 1) * pageSize, exceptionPage * pageSize);
+      const rows = exceptionRows.slice((exceptionPage - 1) * exceptionPageSize, exceptionPage * exceptionPageSize);
 
-      document.getElementById('exceptionSectionMeta').textContent = `${exceptionRows.length}건`;
+      const meta = document.getElementById('exceptionSectionMeta');
+      if (meta) meta.textContent = `${exceptionRows.length}건`;
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="empty-state">해당 조건의 예외 지급 내역이 없습니다.</td></tr>';
       } else {
@@ -482,11 +694,13 @@
 
     function renderReturnRows() {
       const tbody = document.getElementById('returnList');
-      const totalPages = Math.max(1, Math.ceil(returnRows.length / pageSize));
+      if (!tbody) return;
+      const totalPages = Math.max(1, Math.ceil(returnRows.length / returnPageSize));
       if (returnPage > totalPages) returnPage = totalPages;
-      const rows = returnRows.slice((returnPage - 1) * pageSize, returnPage * pageSize);
+      const rows = returnRows.slice((returnPage - 1) * returnPageSize, returnPage * returnPageSize);
 
-      document.getElementById('returnSectionMeta').textContent = `${returnRows.length}건`;
+      const meta = document.getElementById('returnSectionMeta');
+      if (meta) meta.textContent = `${returnRows.length}건`;
       if (rows.length === 0) {
         tbody.innerHTML = '<tr><td colspan="7" class="empty-state">해당 조건의 반환 내역이 없습니다.</td></tr>';
       } else {
@@ -500,12 +714,17 @@
             <td>${escapeHtml(actor)}</td>
             <td style="text-align:right;font-weight:700;color:#c92a2a;">${escapeHtml(fmtNum(row.amount))}</td>
             <td class="reason-cell"><div class="reason-text">${escapeHtml(parsed.reason)}</div></td>
-            <td><div style="font-weight:700;">기록됨</div><div class="small-muted">원본 지급 ID는 숨김 처리</div></td>
+            <td><div style="font-weight:700;">기록됨</div><div class="small-muted">원본 지급 ID와 함께 처리</div></td>
             <td>${formatTxnSource(row)}</td>
           </tr>`;
         }).join('');
       }
       renderPaging('return', totalPages);
+    }
+
+    function goRequestPage(page) {
+      requestPage = page;
+      renderRequestRows();
     }
 
     function goExceptionPage(page) {
@@ -518,35 +737,169 @@
       renderReturnRows();
     }
 
-    async function reloadAll() {
-      const sizeWrap = document.getElementById('pageSizeWrap');
-      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector(PAGE_KEY, pageSize, 'onPageSizeChange(this.value)');
+    function getRequestById(id) {
+      return rawRequestRows.find(r => r.id === id) || null;
+    }
 
+    async function processExceptionRequestApproval(row, options = {}) {
+      if (!canApproveExceptionRequests()) {
+        return { ok: false, error: '예외 지급 승인 권한은 전도사님 이상에게만 있습니다.' };
+      }
+      if (!row || row.status !== 'pending') {
+        return { ok: false, skipped: true };
+      }
+
+      const targetProfile = getProfile(row.user_id);
+      const target = row.user_display_name || (targetProfile ? getUserLabel(targetProfile) : '-');
+      const itemName = row.talent_item_name || getItemName(row.talent_item_id);
+      if (!options.silent) {
+        const ok = confirm(`"${target}"의 "${itemName}" 예외 지급 요청을 승인하시겠습니까?\n승인 즉시 달란트가 지급됩니다.`);
+        if (!ok) return { ok: false, cancelled: true };
+      }
+
+      const giveResult = await giveTalentByItem(row.user_id, row.talent_item_id, session.id, {
+        overrideWeekLimit: true,
+        overrideReason: row.override_reason || '예외 지급 승인'
+      });
+      if (giveResult && giveResult.success === false) {
+        await logError('TALENT_EXCEPTION_APPROVE_FAIL', { requestId: row.id, userId: row.user_id, itemId: row.talent_item_id, error: giveResult.error });
+        return { ok: false, error: giveResult.error };
+      }
+
+      const update = await updateTalentExceptionRequest(row.id, {
+        status: 'approved',
+        reviewed_by: session.id,
+        reviewed_by_name: session.displayName || session.username || null,
+        reviewed_at: new Date().toISOString(),
+        review_note: '승인됨',
+        approved_transaction_id: giveResult?.txn_id || giveResult?.id || null
+      });
+      if (update.error) {
+        return { ok: false, error: update.error };
+      }
+
+      await logInfo('TALENT_EXCEPTION_APPROVE', { requestId: row.id, userId: row.user_id, itemId: row.talent_item_id, target, itemName });
+      return { ok: true };
+    }
+
+    async function approveExceptionRequest(id) {
+      if (!canApproveExceptionRequests()) {
+        alert('예외 지급 승인 권한은 전도사님 이상에게만 있습니다.');
+        return;
+      }
+      const row = getRequestById(id);
+      const result = await processExceptionRequestApproval(row, { silent: false });
+      if (!result.ok && !result.cancelled && !result.skipped) {
+        alert('승인 처리 실패: ' + tErr(result.error));
+        return;
+      }
+      if (result.ok) await reloadAll();
+    }
+
+    async function rejectExceptionRequest(id) {
+      if (!canApproveExceptionRequests()) {
+        alert('예외 지급 거부 권한은 전도사님 이상에게만 있습니다.');
+        return;
+      }
+      const row = getRequestById(id);
+      if (!row || row.status !== 'pending') return;
+      const note = prompt('예외 지급 요청 거부 사유를 입력해주세요:', '');
+      if (note === null) return;
+      const update = await updateTalentExceptionRequest(id, {
+        status: 'rejected',
+        reviewed_by: session.id,
+        reviewed_by_name: session.displayName || session.username || null,
+        reviewed_at: new Date().toISOString(),
+        review_note: note || '거부'
+      });
+      if (update.error) {
+        alert('거부 처리 실패: ' + tErr(update.error));
+        return;
+      }
+      await logInfo('TALENT_EXCEPTION_REJECT', { requestId: id, userId: row.user_id, reason: note || '거부' });
+      await reloadAll();
+    }
+
+    async function bulkApproveExceptionRequests(mode) {
+      if (!canApproveExceptionRequests()) {
+        alert('예외 지급 승인 권한은 전도사님 이상에게만 있습니다.');
+        return;
+      }
+
+      const pendingRows = requestRows.filter(row => row.status === 'pending');
+      let targets = [];
+      if (mode === 'selected') {
+        const ids = [...document.querySelectorAll('.request-chk:checked')].map(c => c.value);
+        targets = ids.map(id => getRequestById(id)).filter(row => row && row.status === 'pending');
+        if (targets.length === 0) {
+          alert('선택된 승인 대상이 없습니다.');
+          return;
+        }
+      } else {
+        targets = pendingRows;
+        if (targets.length === 0) {
+          alert('승인할 예외 지급 요청이 없습니다.');
+          return;
+        }
+      }
+
+      const confirmMsg = mode === 'selected'
+        ? `${targets.length}건의 선택된 예외 지급 요청을 승인하시겠습니까?\n승인 즉시 달란트가 지급됩니다.`
+        : `${targets.length}건의 예외 지급 요청을 모두 승인하시겠습니까?\n선택 여부와 관계없이 현재 목록의 대기 요청을 모두 처리합니다.`;
+      if (!confirm(confirmMsg)) return;
+
+      let successCount = 0;
+      let failCount = 0;
+      for (const row of targets) {
+        const result = await processExceptionRequestApproval(row, { silent: true });
+        if (result.ok) successCount += 1;
+        else if (!result.skipped) failCount += 1;
+      }
+
+      await reloadAll();
+      if (failCount > 0) {
+        alert(`일괄 승인 완료: 성공 ${successCount}건, 실패 ${failCount}건`);
+      }
+    }
+
+    async function reloadAll() {
+      renderPageSizeControls();
       await loadBaseRows();
-      document.getElementById('summaryExceptionCount').textContent = fmtNum(exceptionTotal);
-      document.getElementById('summaryReturnCount').textContent = fmtNum(returnTotal);
-      document.getElementById('summaryTotalCount').textContent = fmtNum(exceptionTotal + returnTotal);
+      renderRequestBadges();
+      renderRequestRows();
       renderExceptionRows();
       renderReturnRows();
     }
 
-    async function onPageSizeChange(val) {
-      pageSize = parseInt(val, 10) || 20;
-      await savePageSize(PAGE_KEY, pageSize);
+    async function onRequestPageSizeChange(val) {
+      setPageSizeFor('request', val);
+      await savePageSize(PAGE_KEYS.request, requestPageSize);
+      requestPage = 1;
+      renderRequestRows();
+    }
+
+    async function onExceptionPageSizeChange(val) {
+      setPageSizeFor('exception', val);
+      await savePageSize(PAGE_KEYS.exception, exceptionPageSize);
       exceptionPage = 1;
-      returnPage = 1;
       renderExceptionRows();
+    }
+
+    async function onReturnPageSizeChange(val) {
+      setPageSizeFor('return', val);
+      await savePageSize(PAGE_KEYS.return, returnPageSize);
+      returnPage = 1;
       renderReturnRows();
     }
 
     function onSearchChange(val) {
       searchKeyword = val || '';
+      requestPage = 1;
       exceptionPage = 1;
       returnPage = 1;
       applyClientFilters();
-      document.getElementById('summaryExceptionCount').textContent = fmtNum(exceptionTotal);
-      document.getElementById('summaryReturnCount').textContent = fmtNum(returnTotal);
-      document.getElementById('summaryTotalCount').textContent = fmtNum(exceptionTotal + returnTotal);
+      renderRequestBadges();
+      renderRequestRows();
       renderExceptionRows();
       renderReturnRows();
     }
@@ -557,7 +910,9 @@
       if (!session) return;
       navUpdateAuth(session);
       autoLogPageView();
-      pageSize = await loadPageSize(PAGE_KEY, 20);
+      requestPageSize = await loadPageSize(PAGE_KEYS.request, 20);
+      exceptionPageSize = await loadPageSize(PAGE_KEYS.exception, 20);
+      returnPageSize = await loadPageSize(PAGE_KEYS.return, 20);
       updatePendingBadge();
       updateNavOrderBadge();
       updateLogBadge();
@@ -567,6 +922,13 @@
       await reloadAll();
     })();
   </script>
-  <script src="../js/version.js?v=3.60.0"></script>
+  <div id="version-container"></div>
+  <script src="../js/version.js?v=3.63.0"></script>
 </body>
 </html>
+
+
+
+
+
+

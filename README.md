@@ -12,12 +12,25 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v3.60.0` (`js/version.js` 기준, 2026-07-02) |
+| 현재 버전 | `v3.62.0` (`js/version.js` 기준, 2026-07-03) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
 
-- `APP_VERSION.current`는 `3.60.0`으로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `3.62.0`으로 갱신되어 있습니다.
+- **v3.62.0 주요 변경 사항**:
+  - 사용자 관리의 `사용자 등록` 모달에 아이디 중복확인을 추가하고, 중복확인 완료 후에만 등록되도록 제한했습니다.
+  - 부서 담당 교사(60+) 이상도 예외 지급을 요청할 수 있게 하되, 전도사님(90+) 이상 승인 후 실제 지급되도록 `talent_exception_requests` 승인 흐름을 추가했습니다.
+  - `예외 지급/반환 관리` 상단에 예외 지급 요청 목록을 표시하고, 90+만 승인/거부할 수 있게 했습니다.
+  - 부장 교사 미만은 예외 지급 요청 조회를 본인 담당/소속 부서 기준으로 제한했습니다.
+  - 신규 SQL `docs/TASK-061_talent_exception_requests.sql`과 초기 설치 SQL을 동기화했습니다.
+  - 현재 작업 반영을 위해 전체 HTML 캐시 버스팅 참조를 `v3.62.0`으로 갱신했습니다.
+- **v3.61.0 주요 변경 사항**:
+  - 공지 사항 메뉴를 `소개 > 공지 사항`으로 이동하고, 일반 교사(40+) 조회 / 전도사님(90+) 관리 권한으로 분리했습니다.
+  - 상품/공지 이미지 업로드를 공통 압축 업로드 함수로 통합하고, 상품 ID/공지 ID 기반 Storage 네이밍 규칙을 적용했습니다.
+  - 모든 HTML 하단에 `version-container`를 연결하고 `js/version.js`가 공통 버전 footer를 렌더링하도록 통합했습니다.
+  - 사용자 관리의 `사용자 등록` 모달에서 관리자 외 권한자도 아이디를 직접 입력할 수 있도록 보완했습니다.
+  - 현재 작업 반영을 위해 전체 HTML 캐시 버스팅 참조를 `v3.61.0`으로 갱신했습니다.
 - **v3.60.0 주요 변경 사항**:
   - 달란트 관리에서 전도사님(90+) 이상이 이번 주 이미 지급된 항목을 사유 입력 후 예외 지급할 수 있습니다.
   - `talent_transactions`에 `override_week_limit`, `override_reason`을 추가하고 `give_talent` RPC가 예외 지급 권한과 사유를 검증합니다.
@@ -414,7 +427,7 @@ CHO-Talents/
 │   ├── log-rules.html             # 로그 작성 룰 문서 (80+)
 │   ├── slack-rules.html           # Slack 알림 룰 문서 (80+)
 │   ├── audit-rules.html           # 작업 이력 작성 룰 문서 (80+)
-│   ├── notices.html               # 공지 관리 (90+)
+│   ├── notices.html               # 공지 사항 (40+ 조회, 90+ 관리)
 │   ├── versions.html              # 버전 이력
 │   ├── page-access.html           # 권한별 페이지 접근/요소 가시성 관리 (100+)
 │   ├── page-features.html         # 권한별 페이지 기능 설정 관리 (100+)
@@ -436,8 +449,9 @@ CHO-Talents/
 │   ├── table-sort.js              # 그리드 헤더 클릭 정렬 공통 유틸리티
 │   ├── slack-notify.js            # Slack 알림 공통 유틸리티 (Edge Function slack-notify 호출)
 │   ├── talent.js                  # 달란트 잔액/내역/지급/사용/반환
-│   ├── product.js                 # 상품 조회/등록/수정/삭제/비활성화/이미지 업로드/카테고리 추가
-│   └── version.js                 # 버전 정보와 변경 이력
+│   ├── product.js                 # 상품 조회/등록/수정/삭제/비활성화/카테고리 추가
+│   ├── image-upload.js            # 상품/공지 이미지 압축 업로드와 ID 기반 Storage 파일명 생성
+│   └── version.js                 # 버전 정보, 변경 이력, 공통 하단 버전 footer
 └── docs/                          # 작업 보고서, SQL, 구성 문서, 사용자 안내서, 역할별 가이드
 ```
 
@@ -500,7 +514,7 @@ CHO-Talents/
 |---|---|---:|---|---|
 | 최고 관리자 | `admin` + `is_super_admin` | 110 | `index.html` | 관리자 포함 전체 사용자 관리, 보고서 초기화, 페이지 접근/기능/감사/로그 관리 |
 | 관리자 | `admin` | 100 | `index.html` | 전체 관리, 페이지 접근/기능/감사/로그 관리, 로그 삭제 대기 처리 |
-| 전도사님 | `evangelist` | 90 | `index.html` | 달란트 항목 관리, QR/공지 관리, 상품 삭제, 부서 즉시 이동, 전체 구매 처리 |
+| 전도사님 | `evangelist` | 90 | `index.html` | 달란트 항목 관리, QR/공지 사항 관리, 상품 삭제, 부서 즉시 이동, 전체 구매 처리 |
 | 부장 교사 | `chief` | 80 | `index.html` | 대시보드, 부서/관리자/보고서/버전, 달란트 반환 처리 (사용자/관리자 관리는 조회 전용) |
 | 구매 담당 교사 | `purchase_teacher` | 70 | `index.html` | 부서 담당 교사와 동일 접근, 구매 관리에서 전체 부서 주문 처리 |
 | 부서 담당 교사 | `dept_teacher` | 60 | `index.html` | 담당 부서 중심 사용자/부서/달란트/상품/구매/Q&A 답변 관리 |
@@ -542,7 +556,7 @@ flowchart TD
   Home --> AdminShop["admin/shop.html<br/>60+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
   Home --> Reports["admin/reports.html<br/>80+"]
-  Home --> Notices["admin/notices.html<br/>90+"]
+  Home --> Notices["admin/notices.html<br/>40+ 조회 / 90+ 관리"]
   Home --> Versions["admin/versions.html<br/>80+"]
   Home --> PageAccess["admin/page-access.html<br/>100+"]
   Home --> PageFeatures["admin/page-features.html<br/>100+"]
@@ -580,7 +594,7 @@ flowchart TD
 | `admin/talent-qr.html` | 90 | QR 코드 생성(qrcode.js 이미지), 수정(새 코드 재생성), 비활성화. 지정일 날짜+시간 또는 기간(from~to datetime) 설정, 위치 반경 100m~5km(기본 500m). 수령자 목록에 반환된 달란트 "반환" 배지 표시 |
 | `admin/shop.html` | 60 | 학생용/교사용 상품 등록, 수정, 이미지 업로드, 상품 카테고리 추가. 삭제 버튼(90+)은 소프트 삭제(삭제 대기=비활성화)로 목록에서 숨김 |
 | `admin/purchases.html` | 60 | 구매 관리: 4단계 처리, 모든 상태 탭에 부서/기간 필터(기본 오늘) + 기간 프리셋, 구매 확정 시 달란트 차감 |
-| `admin/notices.html` | 90 | 공지 등록/조회/수정, 공지 활성 토글. 활성 공지는 로그인 후 메인 화면에 팝업 표시되고 계정별 다시 열지 않음 상태를 저장 |
+| `admin/notices.html` | 40 | 공지 사항 조회. 일반 교사는 활성 공지만 볼 수 있고, 전도사님(90+) 이상은 공지 등록/수정/삭제와 활성 토글을 처리합니다. 목록 행 선택 시 보기 모달이 열리며, 활성 공지는 로그인 후 메인 화면에 팝업 표시되고 계정별 다시 열지 않음 상태를 저장 |
 | `admin/reports.html` | 80 | 작업 보고서 유형별 조회, 상세 보기, 등록/수정, 선택 삭제 |
 | `admin/logs.html` | 100 | 활동 로그 필터링(기본 1년) + 기간 프리셋, 상세 보기, 한글 액션 라벨 표시, 오류 로그 확인 처리, 소프트 삭제(삭제 대기) |
 | `admin/versions.html` | 80 | 배포 버전과 변경 이력 확인 |
@@ -681,7 +695,7 @@ flowchart TD
 ```mermaid
 flowchart TD
   AdminShop["admin/shop.html"] --> ProductCRUD["products 등록/수정/삭제"]
-  ProductCRUD --> Storage["이미지 업로드: Talents_Items Storage"]
+  ProductCRUD --> Storage["공통 압축 이미지 업로드<br/>Talents_Items Storage"]
   ProductCRUD --> PublicShop["shop.html"]
   PublicShop --> StudentGoods["학생용 상품"]
   PublicShop --> TeacherGoods["교사용 상품<br/>교사/60등급 이상 조회"]
@@ -723,7 +737,8 @@ flowchart TD
 | 부서 | `departments` | 부서명, 설명, 반 개수, 활성 상태 |
 | 가입 신청 | `registration_requests` | 계정 신청과 승인/거부 상태 |
 | 부서 이동 | `department_transfer_requests` | 부서 이동 요청, 승인/거부, 처리 기록 |
-| 달란트 | `talent_transactions` | 적립/사용/반환 거래 내역. 예외 지급은 `override_week_limit=true`, `override_reason`으로 사유 저장 |
+| 달란트 | `talent_transactions` | 적립/사용/반환 거래 내역. 승인 완료된 예외 지급은 `override_week_limit=true`, `override_reason`으로 사유 저장 |
+| 예외 지급 요청 | `talent_exception_requests` | 부서 담당 교사(60+) 이상 예외 지급 요청과 전도사님(90+) 이상 승인/거부 상태 |
 | 달란트 항목 | `talent_items` | 지급 항목, 달란트 금액, 지급 규칙(`giving_rule`), 지급 설명(`giving_description`) |
 | 상품 | `products` | 상점 상품, 가격, 대상(`products.target_role`), 카테고리(`products.category`), 이미지, 활성 상태 |
 | 상품 주문 | `product_orders` | 구매 신청, 코드화된 4단계 상태(`product_orders.status`) 관리, 담당자 기록 |
@@ -737,7 +752,7 @@ flowchart TD
 | 페이지 권한 | `page_permissions` | 페이지별 조회/관리 권한 설정 (레거시) |
 | 권한별 접근 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
 | 권한별 기능 | `role_page_features` | 권한 등급별 페이지 기능 설정값 |
-| 이미지 | `Talents_Items` Storage | 상품 이미지 업로드/공개 URL |
+| 이미지 | `Talents_Items` Storage | 상품/공지 이미지 압축 업로드와 공개 URL. 파일명은 대상 상품 ID 또는 공지 ID 기반으로 생성 |
 
 | RPC | 목적 | 주요 호출 |
 |---|---|---|
@@ -751,7 +766,7 @@ flowchart TD
 | `admin_delete_user` | 사용자 삭제 | `user-mgmt.js` |
 | `admin_reset_password` | 비밀번호 `1234` 초기화 | `user-mgmt.js` |
 | `change_my_password` | 본인 비밀번호 변경, 최초 로그인 해제 | `auth.js` |
-| `give_talent` | 달란트 적립 (항목별 또는 수동), 전도사님 이상 예외 지급 검증 | `talent.js` |
+| `give_talent` | 달란트 적립 (항목별 또는 수동), 전도사님 이상 예외 지급 검증. 60~89 예외 지급은 요청 후 승인 시 호출 | `talent.js` |
 | `use_talent` | 달란트 사용/반환 | `talent.js` |
 | `request_product_order` | 상품 구매 신청 (사용 대기 달란트 관리) | `shop.html` |
 | `confirm_product_purchase` | 상품 구매 확정 (실제 달란트 차감) | `admin/purchases.html` |
@@ -798,6 +813,7 @@ SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실�
 | `docs/TASK-058_product_category_policy.sql` | v3.54.0: 60등급 이상 상품 관리자가 상품 등록 모달에서 `products.category` 코드 항목을 추가할 수 있도록 RLS INSERT 정책 보강 |
 | `docs/TASK-059_announcements.sql` | v3.59.0: 공지 관리용 `announcements`, `announcement_dismissals` 테이블과 RLS, 공지 로그 액션 코드 |
 | `docs/TASK-060_change_report.md` | v3.60.0: 달란트 주간 제한 예외 지급/반환 관리와 문서 동기화 변경 보고 |
+| `docs/TASK-061_talent_exception_requests.sql` | v3.62.0: 예외 지급 요청/승인용 `talent_exception_requests` 테이블과 RLS 정책 |
 
 ## 관련 문서
 

@@ -191,26 +191,41 @@ async function updateProduct(id, updates) {
   }
 }
 
-async function uploadProductImage(file) {
-  if (!_sb) return { url: null, error: 'Supabase not initialized' };
+async function updateProductImageUrl(id, imageUrl) {
+  if (!_sb) return { data: null, error: 'Supabase not initialized' };
   try {
-    const ext = file.name.split('.').pop().toLowerCase();
-    const fileName = `product_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-    const { data, error } = await _sb.storage.from('Talents_Items').upload(fileName, file, {
-      cacheControl: '3600',
-      upsert: false
-    });
+    const { data, error } = await _sb.from('products').update({ image_url: imageUrl }).eq('id', id).select();
     if (error) {
-      await logError('IMAGE_UPLOAD_FAIL', { 오류: error.message });
-      return { url: null, error: error.message };
+      await logError('PRODUCT_IMAGE_UPDATE_FAIL', { id, 오류: error.message });
+      return { data: null, error: error.message };
     }
-    const { data: urlData } = _sb.storage.from('Talents_Items').getPublicUrl(data.path);
-    await logInfo('IMAGE_UPLOAD', { path: data.path });
-    return { url: urlData.publicUrl, error: null };
+    await logInfo('PRODUCT_IMAGE_UPDATE', { id, 이미지: !!imageUrl });
+    return { data: data && data[0] ? data[0] : null, error: null };
   } catch (err) {
-    await logError('IMAGE_UPLOAD_ERROR', { 오류: String(err) });
-    return { url: null, error: String(err) };
+    await logError('PRODUCT_IMAGE_UPDATE_ERROR', { id, 오류: String(err) });
+    return { data: null, error: String(err) };
   }
+}
+
+async function uploadProductImage(file, options = {}) {
+  if (typeof uploadManagedImage !== 'function') {
+    const message = '이미지 업로드 모듈을 불러오지 못했습니다.';
+    if (typeof logError === 'function') await logError('IMAGE_UPLOAD_ERROR', { 구분: '상품', 오류: message });
+    return { url: null, error: message };
+  }
+  const opts = (options && typeof options === 'object') ? options : { entityId: options };
+  const entityId = opts.entityId || opts.productId || opts.itemId;
+  if (!entityId) {
+    const message = '상품 ID를 확인한 뒤 이미지를 업로드해주세요.';
+    if (typeof logError === 'function') await logError('IMAGE_UPLOAD_ERROR', { 구분: '상품', 오류: message });
+    return { url: null, error: message };
+  }
+  return uploadManagedImage(file, Object.assign({}, opts, {
+    folder: opts.folder || 'talent-items',
+    prefix: opts.prefix || 'talent_item',
+    entityId,
+    context: opts.context || '상품'
+  }));
 }
 
 async function deleteProductImage(imageUrl) {
