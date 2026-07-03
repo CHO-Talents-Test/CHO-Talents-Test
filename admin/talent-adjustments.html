@@ -4,20 +4,37 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 예외 지급/반환 관리 - CHO Talents</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.63.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.63.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.64.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.64.0" />
   <style>
     .page-shell { display:flex; flex-direction:column; gap:1rem; }
-    .summary-grid { display:grid; grid-template-columns:repeat(3, minmax(0, 1fr)); gap:0.75rem; }
-    .summary-card, .section {
+    .summary-grid { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:1rem; }
+    .summary-card {
+      background:var(--admin-card, #fff);
+      border-radius:var(--admin-radius, 12px);
+      padding:1rem 0.9rem;
+      box-shadow:var(--admin-shadow, 0 2px 6px rgba(0,0,0,0.05));
+      border-left:4px solid var(--summary-color, var(--admin-primary, #6c5ce7));
+      min-width:0;
+      overflow:hidden;
+    }
+    .section {
       background:var(--admin-card, #fff);
       border:1px solid var(--admin-border, #dee2e6);
       border-radius:8px;
       box-shadow:var(--admin-shadow, 0 2px 6px rgba(0,0,0,0.05));
     }
-    .summary-card { padding:0.9rem 1rem; }
-    .summary-label { font-size:0.78rem; color:var(--admin-text-muted, #6c757d); margin-bottom:0.25rem; font-weight:700; }
-    .summary-value { font-size:1.35rem; font-weight:800; color:var(--admin-text, #212529); }
+    .summary-label {
+      font-size:0.75rem;
+      color:var(--admin-text-muted, #6c757d);
+      margin-bottom:0.25rem;
+      font-weight:700;
+      letter-spacing:0.3px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .summary-value { font-size:1.8rem; font-weight:800; color:var(--admin-text, #212529); line-height:1.1; }
     .summary-sub { font-size:0.75rem; color:var(--admin-text-muted, #6c757d); margin-top:0.2rem; line-height:1.4; }
     .section { overflow:hidden; }
     .section-head {
@@ -45,9 +62,6 @@
     .filters-bar { display:flex; flex-wrap:wrap; gap:0.45rem; align-items:center; }
     .page-size-slot { margin-left:auto; display:flex; align-items:center; gap:0.4rem; }
     .section-tools { margin-left:auto; display:flex; flex-wrap:wrap; align-items:center; gap:0.5rem; }
-    .request-badges { display:flex; flex-wrap:wrap; gap:0.35rem; }
-    .request-badge { background:#f1f3f5; color:#495057; }
-    .request-badge strong { font-size:0.82rem; }
     .request-bulk-col { width:32px; text-align:center; }
     .request-bulk-col input { width:16px; height:16px; cursor:pointer; }
     .table-wrap { overflow-x:auto; }
@@ -124,6 +138,29 @@
         부서 담당 교사는 담당 부서 이력만 보고, 부장 교사 이상은 전체 부서 이력을 볼 수 있습니다. 예외 지급과 반환은 각각 분리해서 표시합니다.
       </div>
 
+      <div class="summary-grid" aria-label="예외 지급 및 반환 처리 현황">
+        <div class="summary-card" style="--summary-color:#51cf66;">
+          <div class="summary-label">예외 지급</div>
+          <div class="summary-value" id="summaryExceptionCount">-</div>
+          <div class="summary-sub">처리된 예외 지급</div>
+        </div>
+        <div class="summary-card" style="--summary-color:#c2255c;">
+          <div class="summary-label">반환</div>
+          <div class="summary-value" id="summaryReturnCount">-</div>
+          <div class="summary-sub">달란트 반환 처리</div>
+        </div>
+        <div class="summary-card" style="--summary-color:#339af0;">
+          <div class="summary-label">전체 처리</div>
+          <div class="summary-value" id="summaryProcessedCount">-</div>
+          <div class="summary-sub">예외 지급 + 반환</div>
+        </div>
+        <div class="summary-card" style="--summary-color:#e67700;">
+          <div class="summary-label">예외 지급 요청</div>
+          <div class="summary-value" id="summaryRequestCount">-</div>
+          <div class="summary-sub">조회 조건 내 요청</div>
+        </div>
+      </div>
+
       <div class="filters-bar">
         <input type="date" class="filter-input" id="dateFrom" />
         <span style="font-size:0.8rem;color:#adb5bd;">~</span>
@@ -144,7 +181,6 @@
           <div class="section-title">
             <strong>예외 지급 요청</strong>
             <span>부서 담당 교사 이상이 요청한 예외 지급을 확인합니다. 승인과 거부는 전도사님 이상만 가능합니다.</span>
-            <div class="request-badges" id="requestBadges"></div>
           </div>
           <div class="section-tools">
             <button class="filter-btn" id="btnBulkApproveSelected" style="background:#51cf66;color:#fff;border-color:#51cf66;display:none;" onclick="bulkApproveExceptionRequests('selected')">선택 일괄 승인</button>
@@ -240,15 +276,15 @@
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.63.0"></script>
-  <script src="../js/supabase-config.js?v=3.63.0"></script>
-  <script src="../js/activity-log.js?v=3.63.0"></script>
-  <script src="../js/codes.js?v=3.63.0"></script>
-  <script src="../js/auth.js?v=3.63.0"></script>
-  <script src="../js/theme.js?v=3.63.0"></script>
-  <script src="../js/nav.js?v=3.63.0"></script>
-  <script src="../js/page-size.js?v=3.63.0"></script>
-  <script src="../js/talent.js?v=3.63.0"></script>
+  <script src="../config/public-config.js?v=3.64.0"></script>
+  <script src="../js/supabase-config.js?v=3.64.0"></script>
+  <script src="../js/activity-log.js?v=3.64.0"></script>
+  <script src="../js/codes.js?v=3.64.0"></script>
+  <script src="../js/auth.js?v=3.64.0"></script>
+  <script src="../js/theme.js?v=3.64.0"></script>
+  <script src="../js/nav.js?v=3.64.0"></script>
+  <script src="../js/page-size.js?v=3.64.0"></script>
+  <script src="../js/talent.js?v=3.64.0"></script>
   <script>
     initSupabase();
 
@@ -458,8 +494,13 @@
 
     function formatTxnSource(row) {
       const chips = [];
-      if (row.source) chips.push(`<span class="badge source">${escapeHtml(row.source)}</span>`);
-      if (row.override_week_limit) chips.push('<span class="badge override">?덉쇅</span>');
+      if (row.source) {
+        const label = typeof getCodeLabel === 'function'
+          ? getCodeLabel('talent_transactions.source', row.source, row.source)
+          : row.source;
+        chips.push(`<span class="badge source">${escapeHtml(label)}</span>`);
+      }
+      if (row.override_week_limit) chips.push('<span class="badge override">예외</span>');
       return chips.join(' ');
     }
 
@@ -544,15 +585,17 @@
     }
 
     function renderRequestBadges() {
-      const wrap = document.getElementById('requestBadges');
-      if (!wrap) return;
       const totalProcessed = exceptionTotal + returnTotal;
-      wrap.innerHTML = [
-        { label: '예외 지급', value: exceptionTotal },
-        { label: '반환', value: returnTotal },
-        { label: '전체 처리', value: totalProcessed },
-        { label: '예외 지급 요청', value: requestTotal }
-      ].map(item => `<span class="badge request-badge">${item.label} <strong>${escapeHtml(fmtNum(item.value))}</strong>건</span>`).join('');
+      const values = {
+        summaryExceptionCount: exceptionTotal,
+        summaryReturnCount: returnTotal,
+        summaryProcessedCount: totalProcessed,
+        summaryRequestCount: requestTotal
+      };
+      Object.keys(values).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = fmtNum(values[id]);
+      });
     }
 
     function renderRequestHead() {
@@ -923,10 +966,9 @@
     })();
   </script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.63.0"></script>
+  <script src="../js/version.js?v=3.64.0"></script>
 </body>
 </html>
-
 
 
 

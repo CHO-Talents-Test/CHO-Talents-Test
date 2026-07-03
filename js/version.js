@@ -2,9 +2,21 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.63.0',
-  date: '2026-07-03',
+  current: '3.64.0',
+  date: '2026-07-04',
   history: [
+    {
+      version: '3.64.0',
+      date: '2026-07-04',
+      title: '버전 표시 인코딩 복구 + 예외 지급/반환 관리 요약 카드',
+      changes: [
+        '모든 페이지 하단 버전 표시의 깨진 한글 문구를 정상 한글로 복구',
+        '버전 이력 페이지에서 누락된 버전 API를 복원하여 이력 목록이 다시 표시되도록 수정',
+        '예외 지급/반환 관리의 처리 현황을 대시보드형 네모 카드로 이동',
+        '예외 지급 내역 출처의 깨진 예외 배지를 정상 표시하도록 수정',
+        'GitHub Pages 배포 워크플로를 명시적으로 추가'
+      ]
+    },
     {
       version: '3.63.0',
       date: '2026-07-03',
@@ -41,6 +53,10 @@ const APP_VERSION = {
     }
   ]
 };
+
+function getVersion() { return APP_VERSION.current; }
+function getVersionHistory() { return APP_VERSION.history; }
+
 function _versionBasePath() {
   const path = window.location.pathname;
   if (path.includes('/admin/') || path.endsWith('/admin') ||
@@ -102,12 +118,12 @@ function renderVersionFooter(containerId = 'version-container') {
   }
   const historyHref = _versionBasePath() + 'admin/versions.html';
   container.innerHTML = `
-    <footer class="version-footer" aria-label="踰꾩쟾 ?뺣낫">
+    <footer class="version-footer" aria-label="버전 정보">
       <span class="version-footer-brand">CHO Talents</span>
-      <span class="version-badge" title="理쒖쥌 ?낅뜲?댄듃: ${APP_VERSION.date}">v${APP_VERSION.current}</span>
-      <span>理쒖쥌 ?낅뜲?댄듃 ${APP_VERSION.date}</span>
-      <span aria-hidden="true">쨌</span>
-      <a href="${historyHref}">踰꾩쟾 ?대젰</a>
+      <span class="version-badge" title="최종 업데이트: ${APP_VERSION.date}">v${APP_VERSION.current}</span>
+      <span>최종 업데이트 ${APP_VERSION.date}</span>
+      <span aria-hidden="true">·</span>
+      <a href="${historyHref}">버전 이력</a>
     </footer>
   `;
 }
@@ -116,7 +132,7 @@ function renderVersionBadge() {
   renderVersionFooter();
   document.querySelectorAll('.version-badge').forEach(el => {
     el.textContent = `v${APP_VERSION.current}`;
-    el.title = `理쒖쥌 ?낅뜲?댄듃: ${APP_VERSION.date}`;
+    el.title = `최종 업데이트: ${APP_VERSION.date}`;
   });
 }
 
@@ -125,6 +141,5 @@ if (document.readyState === 'loading') {
 } else {
   renderVersionFooter();
 }
-
 
 
