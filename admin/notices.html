@@ -3,15 +3,17 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>공지 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
+  <title>공지 사항 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css?v=3.62.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.62.0" />
   <style>
     .notice-toolbar { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
     .notice-toolbar-left, .notice-toolbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
     .notice-summary { color: var(--admin-text-muted); font-size: 0.85rem; }
     table.admin-table.notice-table { table-layout: auto; }
     table.admin-table.notice-table th, table.admin-table.notice-table td { padding-left: 0.45rem; padding-right: 0.45rem; }
+    table.admin-table.notice-table tbody tr.notice-row { cursor: pointer; }
+    table.admin-table.notice-table tbody tr.notice-row:hover { background: var(--t-hover-bg, rgba(108,92,231,0.06)); }
     .notice-active-col { width: 72px; text-align: center; }
     .notice-title-cell { font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 0; }
     .notice-content-col { width: auto; min-width: 0; }
@@ -80,13 +82,13 @@
   <div id="nav-container"></div>
 
   <div class="admin-container">
-    <h2 style="margin-bottom:0.5rem;">공지 관리</h2>
-    <p style="color:var(--admin-text-muted);margin-bottom:1.2rem;">전도사님 이상의 권한자가 공지를 등록하고, 활성 공지는 로그인한 사용자의 메인 화면에 표시합니다.</p>
+    <h2 style="margin-bottom:0.5rem;">공지 사항</h2>
+    <p style="color:var(--admin-text-muted);margin-bottom:1.2rem;">일반 교사 이상은 공지를 확인할 수 있고, 전도사님 이상은 공지 등록과 활성 상태를 관리합니다.</p>
 
     <div class="notice-toolbar">
       <div class="notice-toolbar-left">
         <div class="notice-summary" id="noticeSummary">공지 목록을 불러오는 중입니다.</div>
-        <label class="notice-filter-switch" title="활성 공지만 표시하거나 전체를 봅니다.">
+        <label class="notice-filter-switch" id="noticeActiveOnlyFilter" title="활성 공지만 표시하거나 전체를 봅니다.">
           <span>활성 공지만 보기</span>
           <span class="notice-switch">
             <input type="checkbox" id="noticeActiveOnlySwitch" checked onchange="onNoticeFilterChange(this.checked)" />
@@ -95,7 +97,7 @@
         </label>
       </div>
       <div class="notice-toolbar-right">
-        <button class="btn-confirm" onclick="openNoticeEditor()">공지 등록</button>
+        <button class="btn-confirm" id="noticeCreateBtn" onclick="openNoticeEditor()">공지 등록</button>
       </div>
     </div>
 
@@ -127,7 +129,7 @@
       <div class="notice-modal-header">
         <h3 class="modal-title" id="viewNoticeTitle">공지</h3>
         <div style="display:flex;gap:0.4rem;flex-wrap:wrap;">
-          <button class="filter-btn" onclick="editCurrentNotice()">수정</button>
+          <button class="filter-btn" id="noticeEditCurrentBtn" onclick="editCurrentNotice()">수정</button>
           <button class="btn-cancel" onclick="closeNoticeView()">닫기</button>
         </div>
       </div>
@@ -193,16 +195,18 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.60.0"></script>
-  <script src="../js/supabase-config.js?v=3.60.0"></script>
-  <script src="../js/activity-log.js?v=3.60.0"></script>
-  <script src="../js/codes.js?v=3.60.0"></script>
-  <script src="../js/auth.js?v=3.60.0"></script>
-  <script src="../js/theme.js?v=3.60.0"></script>
-  <script src="../js/nav.js?v=3.60.0"></script>
-  <script src="../js/page-size.js?v=3.60.0"></script>
+  <script src="../config/public-config.js?v=3.62.0"></script>
+  <script src="../js/supabase-config.js?v=3.62.0"></script>
+  <script src="../js/activity-log.js?v=3.62.0"></script>
+  <script src="../js/codes.js?v=3.62.0"></script>
+  <script src="../js/auth.js?v=3.62.0"></script>
+  <script src="../js/theme.js?v=3.62.0"></script>
+  <script src="../js/nav.js?v=3.62.0"></script>
+  <script src="../js/page-size.js?v=3.62.0"></script>
+  <script src="../js/image-upload.js?v=3.62.0"></script>
   <script>
     initSupabase();
+    const NOTICE_MANAGE_MIN_RANK = 90;
     let session;
     let notices = [];
     let noticePage = 1;
@@ -218,7 +222,7 @@
 
     (async () => {
       await navInit();
-      session = await initPage(90, '../login.html');
+      session = await initPage(40, '../login.html');
       if (!session) return;
       navUpdateAuth(session);
       await initTheme();
@@ -226,9 +230,31 @@
       updatePendingBadge();
       updateNavOrderBadge();
       updateLogBadge();
+      applyNoticePermissions();
       noticePageSize = await loadPageSize('notices', 20);
       await loadNotices();
     })();
+
+    function canManageNotices() {
+      return (session && (session.permissionRank || 0) >= NOTICE_MANAGE_MIN_RANK) || false;
+    }
+
+    function requireNoticeManager(actionLabel) {
+      if (canManageNotices()) return true;
+      alert((actionLabel || '공지 사항 관리') + ' 권한은 전도사님 이상에게만 있습니다.');
+      return false;
+    }
+
+    function applyNoticePermissions() {
+      const canManage = canManageNotices();
+      const createBtn = document.getElementById('noticeCreateBtn');
+      const editBtn = document.getElementById('noticeEditCurrentBtn');
+      const activeFilter = document.getElementById('noticeActiveOnlyFilter');
+      if (createBtn) createBtn.style.display = canManage ? '' : 'none';
+      if (editBtn) editBtn.style.display = canManage ? '' : 'none';
+      if (activeFilter) activeFilter.style.display = canManage ? '' : 'none';
+      if (!canManage) noticeShowActiveOnly = true;
+    }
 
     function escapeHtml(value) {
       return String(value || '').replace(/[&<>"']/g, ch => ({
@@ -249,28 +275,6 @@
         return path && path !== url ? decodeURIComponent(path) : null;
       } catch (e) {
         return null;
-      }
-    }
-
-    async function uploadNoticeImage(file) {
-      if (!_sb) return { url: null, error: 'Supabase not initialized' };
-      try {
-        const ext = (file.name.split('.').pop() || 'png').toLowerCase();
-        const fileName = `announcement_${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-        const { data, error } = await _sb.storage.from('Talents_Items').upload(fileName, file, {
-          cacheControl: '3600',
-          upsert: false
-        });
-        if (error) {
-          await logError('IMAGE_UPLOAD_FAIL', { 구분: '공지', 오류: error.message });
-          return { url: null, error: error.message };
-        }
-        const { data: urlData } = _sb.storage.from('Talents_Items').getPublicUrl(data.path);
-        await logInfo('IMAGE_UPLOAD', { 구분: '공지', path: data.path });
-        return { url: urlData.publicUrl, error: null, path: data.path };
-      } catch (err) {
-        await logError('IMAGE_UPLOAD_ERROR', { 구분: '공지', 오류: String(err) });
-        return { url: null, error: String(err) };
       }
     }
 
@@ -413,6 +417,7 @@
 
     function getVisibleNotices() {
       const base = notices.filter(n => n.is_deleted !== true);
+      if (!canManageNotices()) return base.filter(n => n.is_active);
       return noticeShowActiveOnly ? base.filter(n => n.is_active) : base;
     }
 
@@ -423,13 +428,16 @@
         .from('announcements')
         .select('*')
         .order('created_at', { ascending: false });
-      const { data, error } = await baseQuery.or('is_deleted.is.null,is_deleted.eq.false');
+      let query = baseQuery.or('is_deleted.is.null,is_deleted.eq.false');
+      if (!canManageNotices()) query = query.eq('is_active', true);
+      const { data, error } = await query;
 
       if (error && /is_deleted|column|does not exist/i.test(error.message || '')) {
-        const fallback = await _sb
+        let fallbackQuery = _sb
           .from('announcements')
-          .select('*')
-          .order('created_at', { ascending: false });
+          .select('*');
+        if (!canManageNotices()) fallbackQuery = fallbackQuery.eq('is_active', true);
+        const fallback = await fallbackQuery.order('created_at', { ascending: false });
         if (fallback.error) {
           await logError('ANNOUNCEMENT_LOAD_FAIL', { 오류: fallback.error.message });
           tbody.innerHTML = '<tr><td colspan="5" class="empty-state" style="color:#d63031;">공지 목록을 불러오지 못했습니다. docs/TASK-059_announcements.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(fallback.error.message)) + '</td></tr>';
@@ -451,6 +459,8 @@
     }
 
     function renderNotices() {
+      applyNoticePermissions();
+      const canManage = canManageNotices();
       const visibleNotices = getVisibleNotices();
       const activeCount = notices.filter(n => n.is_deleted !== true && n.is_active).length;
       document.getElementById('noticeSummary').textContent =
@@ -472,20 +482,29 @@
 
       tbody.innerHTML = pageData.map(n => {
         const checked = n.is_active ? 'checked' : '';
-        return `<tr>
-          <td class="notice-active-col"><label class="notice-switch" title="공지 활성화"><input type="checkbox" ${checked} onchange="toggleNoticeActive('${n.id}', ${!!n.is_active})" /><span class="notice-slider"></span></label></td>
+        const activeCell = canManage
+          ? `<label class="notice-switch" title="공지 활성화" onclick="event.stopPropagation()"><input type="checkbox" ${checked} onchange="toggleNoticeActive('${n.id}', ${!!n.is_active})" /><span class="notice-slider"></span></label>`
+          : `<span class="notice-status-pill ${n.is_active ? 'active' : 'inactive'}">${n.is_active ? '활성' : '비활성'}</span>`;
+        const menuItems = [
+          `<button type="button" onclick="closeNoticeMenus(); openNoticeView('${n.id}')">보기</button>`
+        ];
+        if (canManage) {
+          menuItems.push(`<button type="button" onclick="closeNoticeMenus(); openNoticeEditor('${n.id}')">수정</button>`);
+          menuItems.push(`<button type="button" class="danger" onclick="closeNoticeMenus(); deleteNotice('${n.id}')">삭제</button>`);
+        }
+        const actionCell = canManage
+          ? `<div class="notice-mgmt-dropdown">
+              <button class="filter-btn notice-mgmt-toggle" onclick="toggleNoticeMgmtMenu(event, this)">관리</button>
+              <div class="notice-mgmt-menu">${menuItems.join('')}</div>
+            </div>`
+          : `<button type="button" class="filter-btn" onclick="openNoticeView('${n.id}')">보기</button>`;
+        return `<tr class="notice-row" tabindex="0" role="button" onclick="openNoticeView('${n.id}')" onkeydown="handleNoticeRowKey(event, '${n.id}')">
+          <td class="notice-active-col">${activeCell}</td>
           <td class="notice-title-cell">${escapeHtml(n.title)}</td>
           <td class="notice-content-col"><div class="notice-content-preview">${escapeHtml(compactText(n.content, 160))}</div></td>
           <td class="notice-author-cell">${escapeHtml(noticeAuthor(n))}</td>
-          <td class="notice-management-col">
-            <div class="notice-mgmt-dropdown">
-              <button class="filter-btn notice-mgmt-toggle" onclick="toggleNoticeMgmtMenu(event, this)">관리</button>
-              <div class="notice-mgmt-menu">
-                <button type="button" onclick="closeNoticeMenus(); openNoticeView('${n.id}')">보기</button>
-                <button type="button" onclick="closeNoticeMenus(); openNoticeEditor('${n.id}')">수정</button>
-                <button type="button" class="danger" onclick="closeNoticeMenus(); deleteNotice('${n.id}')">삭제</button>
-              </div>
-            </div>
+          <td class="notice-management-col" onclick="event.stopPropagation()">
+            ${actionCell}
           </td>
         </tr>`;
       }).join('');
@@ -495,9 +514,20 @@
     }
 
     function onNoticeFilterChange(checked) {
+      if (!canManageNotices()) {
+        noticeShowActiveOnly = true;
+        renderNotices();
+        return;
+      }
       noticeShowActiveOnly = checked;
       noticePage = 1;
       renderNotices();
+    }
+
+    function handleNoticeRowKey(event, id) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openNoticeView(id);
     }
 
     async function onNoticePageSizeChange(value) {
@@ -517,6 +547,8 @@
       const notice = getNoticeById(id);
       if (!notice) return;
       viewingNoticeId = id;
+      const editBtn = document.getElementById('noticeEditCurrentBtn');
+      if (editBtn) editBtn.style.display = canManageNotices() ? '' : 'none';
       document.getElementById('viewNoticeTitle').textContent = notice.title;
       document.getElementById('viewNoticeMeta').innerHTML =
         '<span class="notice-status-pill ' + (notice.is_active ? 'active' : 'inactive') + '">' + (notice.is_active ? '활성 공지' : '비활성') + '</span>' +
@@ -552,11 +584,13 @@
 
     function editCurrentNotice() {
       if (!viewingNoticeId) return;
+      if (!requireNoticeManager('공지 수정')) return;
       closeNoticeView();
       openNoticeEditor(viewingNoticeId);
     }
 
     function openNoticeEditor(id) {
+      if (!requireNoticeManager(id ? '공지 수정' : '공지 등록')) return;
       closeNoticeMenus();
       editingNoticeId = id || null;
       const notice = editingNoticeId ? getNoticeById(editingNoticeId) : null;
@@ -592,6 +626,7 @@
     }
 
     async function saveNotice() {
+      if (!requireNoticeManager('공지 저장')) return;
       closeNoticeMenus();
       const errEl = document.getElementById('noticeError');
       const title = document.getElementById('noticeTitleInput').value.trim();
@@ -608,13 +643,20 @@
       saveBtn.textContent = '저장 중...';
 
       const writerName = session.displayName || session.username;
-      const previousImageUrl = editingNoticeId ? (getNoticeById(editingNoticeId)?.image_url || null) : null;
+      const wasEditingNotice = !!editingNoticeId;
+      const previousImageUrl = wasEditingNotice ? (getNoticeById(editingNoticeId)?.image_url || null) : null;
       let imageUrl = noticeImageRemoved ? null : (editingNoticeImageUrl || null);
       let uploadedImagePath = null;
       const typedImageUrl = urlInput ? urlInput.value.trim() : '';
+      const selectedFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
 
-      if (fileInput && fileInput.files && fileInput.files[0]) {
-        const { url, error, path } = await uploadNoticeImage(fileInput.files[0]);
+      if (editingNoticeId && selectedFile) {
+        const { url, error, path } = await uploadManagedImage(selectedFile, {
+          folder: 'announcements',
+          prefix: 'announcement',
+          entityId: editingNoticeId,
+          context: '공지'
+        });
         if (error) {
           errEl.textContent = tErr(error);
           errEl.classList.add('show');
@@ -624,7 +666,7 @@
         }
         imageUrl = url;
         uploadedImagePath = path || null;
-      } else if (typedImageUrl) {
+      } else if (!selectedFile && typedImageUrl) {
         imageUrl = typedImageUrl;
       }
 
@@ -640,16 +682,17 @@
 
       try {
         let result;
-        if (editingNoticeId) {
+        if (wasEditingNotice) {
           result = await _sb.from('announcements').update(row).eq('id', editingNoticeId);
         } else {
           row.created_by = session.id;
           row.created_by_name = writerName;
-          result = await _sb.from('announcements').insert(row);
+          if (selectedFile) row.image_url = null;
+          result = await _sb.from('announcements').insert(row).select('id').single();
         }
 
         if (result.error) {
-          await logError(editingNoticeId ? 'ANNOUNCEMENT_UPDATE_FAIL' : 'ANNOUNCEMENT_CREATE_FAIL', { 제목: title, 오류: result.error.message });
+          await logError(wasEditingNotice ? 'ANNOUNCEMENT_UPDATE_FAIL' : 'ANNOUNCEMENT_CREATE_FAIL', { 제목: title, 오류: result.error.message });
           errEl.textContent = tErr(result.error.message);
           errEl.classList.add('show');
           if (uploadedImagePath) {
@@ -658,7 +701,45 @@
           return;
         }
 
-      await logInfo(editingNoticeId ? 'ANNOUNCEMENT_UPDATE' : 'ANNOUNCEMENT_CREATE', { 제목: title, 활성: isActive, 이미지: !!imageUrl });
+        if (!wasEditingNotice && selectedFile) {
+          const newNoticeId = result.data && result.data.id;
+          if (!newNoticeId) {
+            errEl.textContent = '공지 ID를 확인하지 못해 이미지 업로드를 진행할 수 없습니다.';
+            errEl.classList.add('show');
+            return;
+          }
+          editingNoticeId = newNoticeId;
+          const { url, error, path } = await uploadManagedImage(selectedFile, {
+            folder: 'announcements',
+            prefix: 'announcement',
+            entityId: newNoticeId,
+            context: '공지'
+          });
+          if (error) {
+            errEl.textContent = '공지 본문은 저장됐지만 이미지 업로드에 실패했습니다. 다시 저장하면 같은 공지 ID로 재시도합니다: ' + tErr(error);
+            errEl.classList.add('show');
+            saveBtn.textContent = '저장';
+            return;
+          }
+          imageUrl = url;
+          uploadedImagePath = path || null;
+          const imageUpdate = await _sb.from('announcements').update({
+            image_url: imageUrl,
+            updated_by: session.id,
+            updated_by_name: writerName,
+            updated_at: new Date().toISOString()
+          }).eq('id', newNoticeId);
+          if (imageUpdate.error) {
+            if (uploadedImagePath) {
+              try { await _sb.storage.from('Talents_Items').remove([uploadedImagePath]); } catch (e) {}
+            }
+            errEl.textContent = '공지 본문은 저장됐지만 이미지 연결에 실패했습니다: ' + tErr(imageUpdate.error.message);
+            errEl.classList.add('show');
+            return;
+          }
+        }
+
+      await logInfo(wasEditingNotice ? 'ANNOUNCEMENT_UPDATE' : 'ANNOUNCEMENT_CREATE', { 제목: title, 활성: isActive, 이미지: !!imageUrl });
         if (previousImageUrl && previousImageUrl !== imageUrl && storagePathFromUrl(previousImageUrl)) {
           await deleteNoticeImage(previousImageUrl);
         }
@@ -678,6 +759,10 @@
     }
 
     async function toggleNoticeActive(id, currentActive) {
+      if (!requireNoticeManager('공지 활성 처리')) {
+        renderNotices();
+        return;
+      }
       closeNoticeMenus();
       const notice = getNoticeById(id);
       if (!notice) return;
@@ -704,6 +789,7 @@
     }
 
     async function deleteNotice(id) {
+      if (!requireNoticeManager('공지 삭제')) return;
       const notice = getNoticeById(id);
       if (!notice) return;
       if (!confirm(`'${notice.title}' 공지를 삭제 처리하시겠습니까?\n이 항목은 목록에서 숨겨집니다.`)) return;
@@ -741,6 +827,7 @@
       if (e.target.classList.contains('modal-overlay')) closeNoticeEditor();
     });
   </script>
-  <script src="../js/version.js?v=3.60.0"></script>
+  <div id="version-container"></div>
+  <script src="../js/version.js?v=3.62.0"></script>
 </body>
 </html>

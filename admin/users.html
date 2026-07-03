@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>사용자 관리 - 관리자</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.60.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.60.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.62.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.62.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -84,7 +84,11 @@
       <div class="form-error" id="modalError"></div>
       <div style="margin-bottom:0.8rem;" id="usernameWrap">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">아이디</label>
-        <input type="text" id="mUsername" data-testid="user-form-username" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+        <div style="display:flex;gap:0.45rem;align-items:center;">
+          <input type="text" id="mUsername" data-testid="user-form-username" style="flex:1;min-width:0;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+          <button type="button" class="filter-btn" id="btnModalIdCheck" onclick="checkUserModalDuplicate()" style="white-space:nowrap;">중복확인</button>
+        </div>
+        <div id="modalIdCheckResult" style="font-size:0.78rem;margin-top:0.35rem;min-height:1.1rem;color:var(--admin-text-muted);"></div>
       </div>
       <div style="margin-bottom:0.8rem;">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이름 (표시명)</label>
@@ -187,24 +191,27 @@
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.60.0"></script>
-  <script src="../js/supabase-config.js?v=3.60.0"></script>
-  <script src="../js/activity-log.js?v=3.60.0"></script>
-  <script src="../js/codes.js?v=3.60.0"></script>
-  <script src="../js/auth.js?v=3.60.0"></script>
-  <script src="../js/theme.js?v=3.60.0"></script>
-  <script src="../js/nav.js?v=3.60.0"></script>
-  <script src="../js/page-size.js?v=3.60.0"></script>
-  <script src="../js/user-mgmt.js?v=3.60.0"></script>
-  <script src="../js/table-sort.js?v=3.60.0"></script>
-  <script src="../js/slack-notify.js?v=3.60.0"></script>
-  <script src="../js/version.js?v=3.60.0"></script>
+  <script src="../config/public-config.js?v=3.62.0"></script>
+  <script src="../js/supabase-config.js?v=3.62.0"></script>
+  <script src="../js/activity-log.js?v=3.62.0"></script>
+  <script src="../js/codes.js?v=3.62.0"></script>
+  <script src="../js/auth.js?v=3.62.0"></script>
+  <script src="../js/theme.js?v=3.62.0"></script>
+  <script src="../js/nav.js?v=3.62.0"></script>
+  <script src="../js/page-size.js?v=3.62.0"></script>
+  <script src="../js/user-mgmt.js?v=3.62.0"></script>
+  <script src="../js/table-sort.js?v=3.62.0"></script>
+  <script src="../js/slack-notify.js?v=3.62.0"></script>
+  <div id="version-container"></div>
+  <script src="../js/version.js?v=3.62.0"></script>
   <script>
     initSupabase();
     let session;
     let allUsers = [];
     let allDepts = [];
     let editingId = null;
+    let modalIdChecked = false;
+    let modalCheckedUsername = '';
     let currentFilter = 'all';
     let userTeacherPageSize = null;
     let userStudentPageSize = null;
@@ -704,10 +711,14 @@
 
     function openAddModal() {
       editingId = null;
+      modalIdChecked = false;
+      modalCheckedUsername = '';
       document.getElementById('modalTitle').textContent = '사용자 등록';
-      document.getElementById('usernameWrap').style.display = _isAdmin() ? 'block' : 'none';
+      document.getElementById('usernameWrap').style.display = 'block';
       document.getElementById('mUsername').value = '';
       document.getElementById('mUsername').disabled = false;
+      document.getElementById('btnModalIdCheck').style.display = '';
+      document.getElementById('modalIdCheckResult').innerHTML = '';
       document.getElementById('mDisplayName').value = '';
       document.getElementById('mUserType').value = 'student';
       document.getElementById('permLevelWrap').style.display = 'none';
@@ -744,6 +755,10 @@
       document.getElementById('usernameWrap').style.display = _isAdmin() ? 'block' : 'none';
       document.getElementById('mUsername').value = u.username;
       document.getElementById('mUsername').disabled = true;
+      document.getElementById('btnModalIdCheck').style.display = 'none';
+      document.getElementById('modalIdCheckResult').innerHTML = '';
+      modalIdChecked = true;
+      modalCheckedUsername = u.username;
       document.getElementById('mDisplayName').value = u.display_name || '';
       document.getElementById('mUserType').value = u.user_type || 'student';
       document.getElementById('mUserType').disabled = isSA ? false : (myRank < 80);
@@ -774,6 +789,40 @@
 
     function closeModal() { document.getElementById('userModal').classList.add('hidden'); }
 
+    async function checkUserModalDuplicate() {
+      const username = document.getElementById('mUsername').value.trim();
+      const resultEl = document.getElementById('modalIdCheckResult');
+      modalIdChecked = false;
+      modalCheckedUsername = '';
+
+      if (editingId) return;
+      if (!username) {
+        resultEl.innerHTML = '<span style="color:#e03131;">아이디를 입력해주세요.</span>';
+        return;
+      }
+      if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+        resultEl.innerHTML = '<span style="color:#e03131;">아이디는 영문, 숫자, _, - 만 사용 가능합니다.</span>';
+        return;
+      }
+
+      resultEl.innerHTML = '<span style="color:#636e72;">확인 중...</span>';
+      const { data: available, error } = await _sb.rpc('check_username_available', { p_username: username });
+      if (error) {
+        resultEl.innerHTML = '<span style="color:#e03131;">중복확인 중 오류가 발생했습니다.</span>';
+        await logError('USER_ID_CHECK_FAIL', { 아이디: username, 오류: error.message });
+        return;
+      }
+      if (!available) {
+        resultEl.innerHTML = '<span style="color:#e03131;">이미 사용 중이거나 신청 중인 아이디입니다.</span>';
+        await logWarn('USER_ID_CHECK_DUPLICATE', { 아이디: username });
+        return;
+      }
+
+      modalIdChecked = true;
+      modalCheckedUsername = username;
+      resultEl.innerHTML = '<span style="color:#2b8a3e;">사용 가능한 아이디입니다.</span>';
+    }
+
     async function saveUser() {
       const errEl = document.getElementById('modalError');
       let username = document.getElementById('mUsername').value.trim();
@@ -787,8 +836,8 @@
 
       if (!displayName) { errEl.textContent = '이름을 입력해주세요.'; errEl.classList.add('show'); return; }
       if (!editingId && username && !/^[a-zA-Z0-9_-]+$/.test(username)) { errEl.textContent = '아이디는 영문, 숫자, _, - 만 사용 가능합니다.'; errEl.classList.add('show'); return; }
-      if (!editingId && !username) username = 'user_' + Date.now().toString(36);
-      if (_isAdmin() && !editingId && !username) { errEl.textContent = '아이디를 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!editingId && !username) { errEl.textContent = '아이디를 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!editingId && (!modalIdChecked || modalCheckedUsername !== username)) { errEl.textContent = '아이디 중복확인을 해주세요.'; errEl.classList.add('show'); return; }
       if (!deptId) { errEl.textContent = '소속 부서를 선택해주세요.'; errEl.classList.add('show'); return; }
       if (needsManagedDept && !managedDeptId) { errEl.textContent = '담당 관리 부서를 선택해주세요.'; errEl.classList.add('show'); return; }
 
@@ -909,7 +958,14 @@
     }
 
     document.getElementById('mUsername').addEventListener('input', function() {
-      this.value = this.value.replace(/[^a-zA-Z0-9_\-]/g, '');
+      const cleaned = this.value.replace(/[^a-zA-Z0-9_\-]/g, '');
+      if (cleaned !== this.value) this.value = cleaned;
+      if (!editingId) {
+        modalIdChecked = false;
+        modalCheckedUsername = '';
+        const resultEl = document.getElementById('modalIdCheckResult');
+        if (resultEl) resultEl.innerHTML = cleaned ? '<span style="color:#e67700;">아이디 중복확인이 필요합니다.</span>' : '';
+      }
     });
 
     document.getElementById('userModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });

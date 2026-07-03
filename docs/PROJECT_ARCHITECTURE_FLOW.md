@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-07-02 KST 현재 코드 기준 (v3.60.0)
+작성 기준: 2026-07-03 KST 현재 코드 기준 (v3.62.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -17,7 +17,7 @@ CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시
 | 부서 이동 관리 | 부서 변경은 요청→승인 흐름으로 처리한다 (90등급 이상은 즉시 이동). |
 | 운영 추적 | 로그인, 인증/권한 리디렉트, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
 | Slack 알림 | 부서별/유형별 채널로 구매/가입/부서이동/WARN+ 로그/Q&A 등 운영 이벤트를 Edge Function 경유 분리 전송한다. |
-| 공지 관리 | 전도사님(90+) 이상이 공지를 등록/수정/활성화하고, 활성 공지는 로그인 후 메인 화면 팝업으로 표시한다. |
+| 공지 사항 | 일반 교사(40+) 이상이 활성 공지를 확인하고, 전도사님(90+) 이상이 공지를 등록/수정/삭제/활성화한다. 활성 공지는 로그인 후 메인 화면 팝업으로 표시한다. |
 | 코드 마스터 | 권한/유형/상태/카테고리/로그 액션 같은 구분값을 `code_groups`, `code_items`, `js/codes.js`로 통합 관리한다. |
 | 에러 한글화 | 영문 DB/RPC 에러를 `tErr()` 함수로 한글 변환하여 사용자에게 표시한다. |
 | 보안 강화 | Supabase Auth, RLS, SECURITY DEFINER RPC로 민감 데이터 접근을 제한한다. |
@@ -95,18 +95,18 @@ flowchart LR
 | `my-talents.html` | 로그인 사용자 본인의 사용 가능 달란트/상품 수령 예정/사용 대기/사용 완료/반환/예외/누적 적립 달란트, 달란트 내역(적립·예외·사용·반환 배지), 구매 내역. `fetchTalentSummary()`의 `returned` 필드와 `override_week_limit` 이력으로 반환/예외 요약 표시. 지급 취소 이력의 트랜잭션 ID는 숨김 |
 | `my-orders.html` | 로그인 사용자 본인의 구매 신청 내역과 4단계 상태 조회. 공통 페이징과 페이지당 항목 수 설정 |
 | `admin/index.html` | 60등급 이상 대시보드. 사용자/부서/보고서/가입대기 통계 카드. 미확인 ERROR+ 카드는 100등급 이상만 표시(클릭→로그). 최근 이슈 로그 테이블(100등급+) |
-| `admin/users.html` | 60등급 이상 사용자 관리. 상단 통계 카드(전체/관리자/부서 담당/교사/학생) 클릭 필터. 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher. 교사/학생 그룹별 분리(학생은 권한 열 제거). 관리 드롭다운. 가입 신청/부서 이동 요청/승인 처리. 공통 페이징(PC 20/모바일 10) |
+| `admin/users.html` | 60등급 이상 사용자 관리. 상단 통계 카드(전체/관리자/부서 담당/교사/학생) 클릭 필터. 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher. 교사/학생 그룹별 분리(학생은 권한 열 제거). 관리 드롭다운. 사용자 등록 모달은 아이디 중복확인 완료 후 등록 가능. 가입 신청/부서 이동 요청/승인 처리. 공통 페이징(PC 20/모바일 10) |
 | `admin/departments.html` | 60등급 이상 부서 관리. 부서명 오름차순 정렬, 공통 페이징과 페이지당 항목 수 설정. 관리 드롭다운(소속보기/수정/삭제). 부서별 인원(교사 전체 포함)/담당자 확인. 소속보기에서 100등급+는 마지막 로그인 일시 표시 |
 | `admin/managers.html` | 80등급 이상 관리자 계열 권한 관리. 수정만 가능. 구매 담당 교사 역할명 표시. 공통 페이징(PC 20/모바일 10) |
-| `admin/talents.html` | 40등급 이상 달란트 처리. 출석 버튼+관리 드롭다운(달란트 지급/상세). 90등급 이상은 이번 주 제한 예외 지급 가능(사유 필수). 잔여 달란트→달란트 명칭 변경. 사용/누적 달란트 모바일 숨김. 목록과 상세 모달 이력 모두 공통 페이징/페이지당 항목 수 설정 사용. 지급 취소 항목 트랜잭션 ID는 100등급+만 표시. 수동 적립은 100등급(관리자)만 표시 |
-| `admin/talent-adjustments.html` | 60등급 이상 예외 지급/반환 관리. 부서 담당 교사는 담당 부서 이력만, 부장 교사 이상은 전체 부서 이력 조회. 예외 지급(`override_week_limit=true`)과 반환(`type='use'`, `description`이 `반환:`)을 분리 표시하고 처리자/대상자/사유/처리 시각을 확인 |
+| `admin/talents.html` | 40등급 이상 달란트 처리. 출석 버튼+관리 드롭다운(달란트 지급/상세). 부서 담당 교사(60+) 이상은 이번 주 제한 예외 지급을 요청할 수 있고, 전도사님(90+) 이상은 사유 입력 후 즉시 예외 지급 가능. 잔여 달란트→달란트 명칭 변경. 사용/누적 달란트 모바일 숨김. 목록과 상세 모달 이력 모두 공통 페이징/페이지당 항목 수 설정 사용. 지급 취소 항목 트랜잭션 ID는 100등급+만 표시. 수동 적립은 100등급(관리자)만 표시 |
+| `admin/talent-adjustments.html` | 60등급 이상 예외 지급/반환 관리. 상단에 예외 지급 요청 목록을 표시하고, 전도사님(90+) 이상만 승인/거부 가능. 부서 담당 교사는 담당 부서 이력/요청만, 부장 교사 이상은 전체 부서 이력/요청 조회. 예외 지급(`override_week_limit=true`)과 반환(`type='use'`, `description`이 `반환:`)을 분리 표시하고 처리자/대상자/사유/처리 시각을 확인 |
 | `admin/talent-stats.html` | 60등급 이상 달란트 누적적립 통계. 반환(`type='use'`, `description`이 `반환:`)된 달란트를 원 지급 건에서 차감해 실제 지급 달란트로 집계. 부서별 기본 정렬: 달란트 DESC → 인원 ASC → 항목 ASC → 부서 ASC. 사용자별 기본 정렬: 달란트 DESC → 항목 ASC → 부서 ASC → 이름 ASC. 사용자별 목록 공통 페이징과 페이지당 항목 수 설정. 라디오 필터, 부서 필터, 기간 프리셋 |
 | `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). QR 목록과 수령자 팝업 모두 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
 | `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 상품 등록/수정 모달에서 `products.category` 새 카테고리 추가 가능. 관리 드롭다운(수정/삭제). 삭제는 소프트 삭제 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
 | `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
-| `admin/notices.html` | 90등급 이상 공지 관리. 공지 제목/내용 등록, 기존 공지 조회/수정, 공지 컬럼 활성 토글, 공통 페이지당 항목 수 설정. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
+| `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공통 페이지당 항목 수 설정을 사용. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
 | `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`). 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
 | `admin/versions.html` | 80등급 이상 버전 이력 확인 |
@@ -225,7 +225,7 @@ flowchart TD
   Home --> AdminShop["admin/shop.html<br/>60+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
   Home --> Reports["admin/reports.html<br/>80+"]
-  Home --> Notices["admin/notices.html<br/>90+"]
+  Home --> Notices["admin/notices.html<br/>40+"]
   Home --> Versions["admin/versions.html<br/>80+"]
   Home --> PageAccess["admin/page-access.html<br/>100+"]
   Home --> PageFeatures["admin/page-features.html<br/>100+"]
@@ -327,11 +327,12 @@ flowchart TD
 - 최초 로그인 시: DB에 설정이 없고 `localStorage`에 기존 데이터가 있으면 자동 마이그레이션
 - 즐겨찾기 후보와 실제 렌더링은 네비게이션 권한 규칙과 동일하게 필터링되며, 권한 밖 항목은 자동 제외된다
 
-## 6-1. 공지 관리 및 팝업 흐름
+## 6-1. 공지 사항 및 팝업 흐름
 
 ```mermaid
 flowchart TD
-  Operator["전도사님 이상(90+)"] --> NoticePage["admin/notices.html"]
+  Viewer["일반 교사 이상(40+)"] --> NoticePage["admin/notices.html"]
+  Operator["전도사님 이상(90+)"] --> NoticePage
   NoticePage --> CreateEdit["제목/내용 등록 또는 수정"]
   NoticePage --> Toggle["공지 컬럼 활성 토글"]
   CreateEdit --> Announcements["announcements 저장"]
@@ -345,8 +346,8 @@ flowchart TD
   Popup --> Close["닫기: 이번 접속에서만 닫기"]
 ```
 
-- 공지 관리 페이지 진입은 `initPage(90, '../login.html')`로 제한한다.
-- 활성 공지는 모든 로그인 사용자가 조회할 수 있고, 비활성 공지 조회/등록/수정은 90등급 이상 RLS 정책으로 제한한다.
+- 공지 사항 페이지 진입은 `initPage(40, '../login.html')`로 제한한다.
+- 활성 공지는 일반 교사 이상이 조회할 수 있고, 비활성 공지 조회/등록/수정/삭제/활성 토글은 90등급 이상 UI 권한과 RLS 정책으로 제한한다.
 - 공지 등록, 수정, 활성 토글은 `ANNOUNCEMENT_CREATE`, `ANNOUNCEMENT_UPDATE`, `ANNOUNCEMENT_TOGGLE` 로그로 남아 작업 이력에서 확인할 수 있다.
 
 ## 7. 신규 계정 신청 흐름
@@ -416,6 +417,7 @@ flowchart TD
 | 항목 | 기준 |
 |---|---|
 | 사용자 등록/수정/삭제 | 본인보다 낮은 등급만 가능. 실제 검증은 RPC에서 수행 |
+| 사용자 등록 아이디 | `사용자 등록` 모달에서 `check_username_available` 중복확인을 통과한 아이디만 등록 가능 |
 | 부서 담당 교사(60~79) 사용자 관리 | `canManageUser()`: 담당 부서 소속 학생의 반 수정·비밀번호 초기화 가능. 삭제·부서 이동은 80+ |
 | 아이디 표시 | 관리자에게만 전체 노출. 그 외에는 본인 아이디만 표시 |
 | 동명이인 | 같은 이름/유형/부서면 `①`, `②` 번호를 붙여 구분 표시 |
@@ -431,12 +433,16 @@ flowchart TD
   TalentPage --> Scope["권한별 부서/반 스코핑"]
   Scope --> Target["학생/교사 탭에서 대상 선택"]
   Target --> ItemCheck["달란트 항목 체크박스 선택"]
-  Target --> Override["이번 주 제한 예외 지급<br/>(90등급+, 사유 필수)"]
+  Target --> Override["이번 주 제한 예외 지급<br/>(60등급+, 사유 필수)"]
   Target --> ManualGive["수동 적립 (금액/사유 입력)"]
   Target --> ManualUse["수동 사용 (금액/사유 입력)"]
   ItemCheck --> Confirm["✅ 지급 확정 버튼 → 일괄 처리"]
   Override --> Confirm
-  Confirm --> GiveRPC["give_talent RPC<br/>(p_talent_item_id, p_override_week_limit 포함)"]
+  Confirm --> RankCheck{"전도사님(90+) 이상?"}
+  RankCheck -->|예| GiveRPC["give_talent RPC<br/>(p_talent_item_id, p_override_week_limit 포함)"]
+  RankCheck -->|아니오| ExceptionReq["talent_exception_requests<br/>예외 지급 요청"]
+  ExceptionReq --> Approval["admin/talent-adjustments.html<br/>90+ 승인/거부"]
+  Approval --> GiveRPC
   ManualGive --> GiveTalent["give_talent RPC<br/>(수동)"]
   ManualUse --> UseTalent["use_talent RPC"]
   GiveRPC --> Tx["talent_transactions 기록"]
@@ -489,7 +495,8 @@ flowchart LR
 | 지급 방식 | 체크박스 선택 + 일괄 확정 |
 | 출석 버튼 | 테이블 각 행에 '출석' 버튼 → 클릭 즉시 출석 달란트 지급 (주간 중복 방지) |
 | 이미 지급된 항목 | 이번 주(월~일) 지급 여부 자동 표시 |
-| 예외 지급 | 전도사님(90등급) 이상, 이미 지급된 항목 재지급 가능, 사유 필수 |
+| 예외 지급 | 부서 담당 교사(60등급) 이상 요청 가능, 전도사님(90등급) 이상 승인/즉시 지급 가능, 이미 지급된 항목 재지급 사유 필수 |
+| 예외 지급 요청 조회 | 부서 담당/구매 담당 교사(60~79)는 담당/소속 부서만, 부장 교사(80+) 이상은 전체 조회 |
 | 반환 | 80등급(부장 교사) 이상, 사유 필수, 잔여 > 0일 때만 |
 | 지급자 기록 | `created_by` 필드에 지급자 ID 저장, 상세 모달에서 확인 |
 | 에러 처리 | RPC 성공/실패/거부 모두 activity_logs에 기록 |
@@ -500,7 +507,7 @@ flowchart LR
 flowchart TD
   Manager["60등급 이상"] --> ManageShop["admin/shop.html"]
   ManageShop --> ProductCRUD["products 등록/수정/조회"]
-  ManageShop --> Upload["Storage Talents_Items 이미지 업로드"]
+  ManageShop --> Upload["공통 압축 이미지 업로드<br/>Talents_Items Storage"]
   ProductCRUD --> PublicShop["shop.html"]
   PublicShop --> Student["학생용 상품 (공개)"]
   PublicShop --> Teacher["교사용 상품<br/>교사/60등급 이상"]
@@ -683,6 +690,7 @@ flowchart TD
 | `department_transfer_requests` | 부서 이동 요청/승인/거부 |
 | `talent_items` | 달란트 지급 항목 (학생용/교사용 구분), 지급 규칙(`giving_rule`), 지급 설명(`giving_description`) |
 | `talent_transactions` | 달란트 적립/사용/반환 내역. `created_by`로 지급자 추적. 예외 지급은 `override_week_limit`, `override_reason`으로 표시 |
+| `talent_exception_requests` | 예외 지급 요청/승인/거부. 60등급 이상 요청, 90등급 이상 승인/거부, 승인 시 `give_talent` RPC로 실제 지급 |
 | `products` | 상점 상품. `target_role`, `category`는 코드 마스터 기준 구분값 |
 | `product_orders` | 구매 신청/4단계 상태 관리/담당자 기록. `status`는 코드 마스터 기준 |
 | `qna` | FAQ, 사용자 질문, 답변, 공개 여부, 소프트 삭제 |
@@ -696,7 +704,41 @@ flowchart TD
 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
 | `role_page_features` | 권한 등급별 페이지 기능 설정값 |
 | `page_permissions` | 페이지 권한 설정 (레거시) |
-| `Talents_Items` | 상품 이미지 Storage 버킷 |
+| `Talents_Items` | 상품/공지 이미지 Storage 버킷 |
+
+## 15-1. 이미지 등록 함수 호출 규칙
+
+이미지 파일 업로드는 `js/image-upload.js`의 공통 함수만 사용한다. 상품/공지별 직접 Storage 업로드 함수를 새로 만들지 않고, 저장 대상 레코드 ID를 먼저 확보한 뒤 그 ID를 파일명 파라미터로 넘긴다.
+
+### 공통 함수
+
+| 함수 | 역할 | 호출 규칙 |
+|---|---|---|
+| `buildManagedImageFileName(options)` | Storage object path 생성 | `folder`, `prefix`, `entityId`를 필수처럼 취급한다. `linkedId`는 추가 연결 키가 필요할 때만 넘긴다. |
+| `uploadManagedImage(file, options)` | 이미지 압축 후 Storage 업로드 | `folder`, `prefix`, `entityId`, `context`를 넘긴다. 원본 파일을 직접 업로드하지 않고 1280px 이내 JPEG로 압축한다. |
+| `uploadProductImage(file, { entityId })` | 상품 이미지 업로드 래퍼 | 반드시 저장된 상품 ID를 `entityId`로 넘긴다. 내부에서 `folder='talent-items'`, `prefix='talent_item'`을 사용한다. |
+| `updateProductImageUrl(id, imageUrl)` | 상품 `image_url` 후속 연결 | 새 상품 생성 후 이미지 업로드가 끝나면 이 함수로 URL을 연결한다. |
+
+### 파일명 규칙
+
+| 대상 | 호출 예시 | Storage path |
+|---|---|---|
+| 상품 이미지 | `uploadProductImage(file, { entityId: productId })` | `Talents_Items/talent-items/talent_item_{productId}_{YYYYMMDDHHmmss}_{random}.jpg` |
+| 공지 이미지 | `uploadManagedImage(file, { folder:'announcements', prefix:'announcement', entityId: noticeId, context:'공지' })` | `Talents_Items/announcements/announcement_{noticeId}_{YYYYMMDDHHmmss}_{random}.jpg` |
+| 추가 연결 키 포함 | `uploadManagedImage(file, { folder, prefix, entityId, linkedId })` | `Talents_Items/{folder}/{prefix}_{entityId}_ref_{linkedId}_{YYYYMMDDHHmmss}_{random}.jpg` |
+
+### 저장 순서
+
+1. 새 상품 등록: `createProduct({ image_url:null, ... })`로 상품 ID를 먼저 만든다.
+2. 새 상품 이미지: `uploadProductImage(file, { entityId: createdProduct.id })`로 업로드한다.
+3. 새 상품 이미지 연결: `updateProductImageUrl(createdProduct.id, uploadedUrl)`로 `products.image_url`을 갱신한다.
+4. 상품 수정 이미지: 기존 `editingId`가 있으므로 `uploadProductImage(file, { entityId: editingId })`를 먼저 호출하고, 반환 URL을 포함해 `updateProduct(editingId, row)`를 호출한다.
+5. 새 공지 등록: `_sb.from('announcements').insert(row).select('id').single()`로 공지 ID를 먼저 만든다.
+6. 새 공지 이미지: `uploadManagedImage(file, { folder:'announcements', prefix:'announcement', entityId:newNoticeId, context:'공지' })`로 업로드한다.
+7. 새 공지 이미지 연결: `announcements.image_url`을 후속 `update`로 갱신한다.
+8. 공지 수정 이미지: 기존 `editingNoticeId`가 있으므로 같은 공지 ID를 `entityId`로 넘겨 업로드하고, 반환 URL을 포함해 공지 row를 업데이트한다.
+
+ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명과 레코드 연결이 깨지므로 금지한다. 업로드 실패 시 레코드 본문은 유지하고, 같은 ID로 다시 저장하면 동일 규칙의 새 이미지 path로 재시도한다.
 
 ## 16. 주요 RPC
 
@@ -782,7 +824,8 @@ flowchart TD
 | 19 | `docs/TASK-057_code_master.sql` | v3.50.0: `code_groups`/`code_items`, 코드 컬럼 검증 트리거, `get_permission_rank()` 코드화 |
 | 20 | `docs/TASK-059_announcements.sql` | v3.59.0: 공지 관리 `announcements`, `announcement_dismissals` 테이블/RLS 및 공지 로그 액션 코드 |
 | 21 | `docs/TASK-060_change_report.md` | v3.60.0: 예외 지급/반환 관리 변경 요약과 검증 결과 |
-| 22 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 22 | `docs/TASK-061_talent_exception_requests.sql` | v3.62.0: 예외 지급 요청/승인 `talent_exception_requests` 테이블과 RLS |
+| 23 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
 
 ## 19. 개발 주의사항
 
