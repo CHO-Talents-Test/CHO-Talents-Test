@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>로그인 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⭐</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.64.0" />
-  <link rel="stylesheet" href="css/admin.css?v=3.64.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.65.0" />
+  <link rel="stylesheet" href="css/admin.css?v=3.65.0" />
   <style>
     .login-wrapper { background: linear-gradient(135deg, #f8f5ff 0%, #e8e0ff 50%, #fce4ec 100%); }
     .login-card { max-width: 400px; }
@@ -58,12 +58,12 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.64.0"></script>
-  <script src="js/supabase-config.js?v=3.64.0"></script>
-  <script src="js/activity-log.js?v=3.64.0"></script>
-  <script src="js/codes.js?v=3.64.0"></script>
-  <script src="js/auth.js?v=3.64.0"></script>
-  <script src="js/theme.js?v=3.64.0"></script>
+  <script src="config/public-config.js?v=3.65.0"></script>
+  <script src="js/supabase-config.js?v=3.65.0"></script>
+  <script src="js/activity-log.js?v=3.65.0"></script>
+  <script src="js/codes.js?v=3.65.0"></script>
+  <script src="js/auth.js?v=3.65.0"></script>
+  <script src="js/theme.js?v=3.65.0"></script>
   <script>
     const SAVED_USERNAME_KEY = 'cho_saved_username';
 
@@ -84,6 +84,65 @@
       }
       if (redirectTarget) return redirectTarget;
       return getRoleRedirectUrl(session.permissionLevel, '');
+    }
+
+    function normalizeRegistrationApprovalInfo(data, fallbackStatus) {
+      let info = data || {};
+      if (typeof info === 'string') {
+        try { info = JSON.parse(info); }
+        catch (e) { info = { status: info }; }
+      }
+      const managers = info.managers || info.contacts || info.admins || [];
+      return {
+        status: info.status || fallbackStatus || 'not_found',
+        departmentName: info.departmentName || info.department_name || '',
+        managers: Array.isArray(managers) ? managers.filter(Boolean) : []
+      };
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    async function fetchRegistrationApprovalInfo(username) {
+      try {
+        const { data, error } = await _sb.rpc('get_registration_approval_contact', { p_username: username });
+        if (!error && data) return normalizeRegistrationApprovalInfo(data);
+      } catch (e) {}
+
+      let status = 'not_found';
+      try {
+        const { data: rpcResult } = await _sb.rpc('check_registration_status', { p_username: username });
+        if (rpcResult) status = rpcResult;
+      } catch (e) {}
+      return normalizeRegistrationApprovalInfo(null, status);
+    }
+
+    function renderPendingApprovalMessage(info) {
+      const deptLine = info.departmentName
+        ? `<div style="font-size:0.8rem;color:#636e72;margin-top:0.35rem;">신청 부서: ${escapeHtml(info.departmentName)}</div>`
+        : '';
+      const managerLine = info.managers.length
+        ? info.managers.map(escapeHtml).join(', ')
+        : '표시할 담당 관리자 정보가 없습니다.';
+      return `<div style="text-align:left;line-height:1.5;">
+        <div style="display:flex;align-items:flex-start;gap:0.6rem;justify-content:center;text-align:left;">
+          <span style="font-size:1.6rem;">&#9203;</span>
+          <div>
+            <strong>가입 승인 되지 않은 계정입니다.</strong><br>
+            <span style="font-size:0.85rem;color:#636e72;">관리자에게 문의하여 주세요.</span>
+            ${deptLine}
+            <div style="margin-top:0.5rem;padding:0.5rem 0.65rem;border-radius:8px;background:var(--t-subtle-surface,#f8f9fa);font-size:0.8rem;">
+              <strong>관리자 정보</strong><br>${managerLine}
+            </div>
+          </div>
+        </div>
+      </div>`;
     }
 
     (async () => {
@@ -115,6 +174,24 @@
         if (!rememberInput.checked) {
           localStorage.removeItem(SAVED_USERNAME_KEY);
         }
+
+        const regInfo = await fetchRegistrationApprovalInfo(username);
+        if (regInfo.status === 'pending') {
+          await logWarn('LOGIN_PENDING_APPROVAL', { username, departmentName: regInfo.departmentName, managers: regInfo.managers });
+          errEl.innerHTML = renderPendingApprovalMessage(regInfo);
+          errEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = '로그인';
+          return;
+        }
+        if (regInfo.status === 'rejected') {
+          errEl.innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;"><span style="font-size:1.6rem;">&#10060;</span><div><strong>가입 신청이 거부되었어요</strong><br><span style="font-size:0.8rem;color:#636e72;">자세한 내용은 관리자에게 문의해주세요</span></div></div>';
+          errEl.classList.add('show');
+          btn.disabled = false;
+          btn.textContent = '로그인';
+          return;
+        }
+
         const result = await login(username, password);
 
         if (result.success) {
@@ -130,17 +207,7 @@
           });
         } else {
           logWarn('LOGIN_FAIL', { username, error: result.error });
-          let regStatus = 'not_found';
-          try {
-            const { data: rpcResult } = await _sb.rpc('check_registration_status', { p_username: username });
-            if (rpcResult) regStatus = rpcResult;
-          } catch (e) { /* fallback */ }
-
-          if (regStatus === 'pending') {
-            errEl.innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;"><span style="font-size:1.6rem;">&#9203;</span><div><strong>승인 대기 중이에요</strong><br><span style="font-size:0.8rem;color:#636e72;">관리자가 승인하면 로그인할 수 있어요</span></div></div>';
-          } else if (regStatus === 'rejected') {
-            errEl.innerHTML = '<div style="display:flex;align-items:center;gap:0.6rem;justify-content:center;"><span style="font-size:1.6rem;">&#10060;</span><div><strong>가입 신청이 거부되었어요</strong><br><span style="font-size:0.8rem;color:#636e72;">자세한 내용은 관리자에게 문의해주세요</span></div></div>';
-          } else if (regStatus === 'approved') {
+          if (regInfo.status === 'approved') {
             errEl.innerHTML = '<span style="font-size:1.1rem;">&#128274;</span> 비밀번호가 일치하지 않습니다.';
           } else {
             errEl.innerHTML = '<span style="font-size:1.1rem;">&#128274;</span> 아이디 또는 비밀번호가 일치하지 않습니다.';
@@ -153,6 +220,6 @@
     })();
   </script>
   <div id="version-container"></div>
-  <script src="js/version.js?v=3.64.0"></script>
+  <script src="js/version.js?v=3.65.0"></script>
 </body>
 </html>

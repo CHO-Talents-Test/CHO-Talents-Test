@@ -370,25 +370,36 @@ async function writeLog(level, action, page, details) {
   }
   const session = getSession();
   const ci = getClientInfo();
+  const userAccount = session ? (session.username || null) : null;
   const userName = session ? (session.displayName || session.username || null) : null;
   const actionLabel = getActionLabel(action);
-  if (actionLabel && actionLabel !== action) {
-    if (!details) details = {};
-    details._actionLabel = actionLabel;
+  const baseDetails = (details && typeof details === 'object' && !Array.isArray(details))
+    ? Object.assign({}, details)
+    : {};
+  if (details && (typeof details !== 'object' || Array.isArray(details))) {
+    baseDetails.message = String(details);
   }
-  const merged = details ? Object.assign({}, details, { _client: ci, _userName: userName }) : { _client: ci, _userName: userName };
+  baseDetails._actionKey = action || null;
+  baseDetails._actionEn = action || null;
+  baseDetails._actionLabel = actionLabel || action || null;
+  baseDetails._actionKo = actionLabel || action || null;
+  baseDetails._userAccount = userAccount;
+  baseDetails._username = userAccount;
+  baseDetails._userName = userName;
+  baseDetails._displayName = userName;
+  const merged = Object.assign({}, baseDetails, { _client: ci });
   const row = {
     level,
     action,
     page: page || window.location.pathname,
     details: merged,
-    username: session ? session.username : null,
+    username: userAccount,
     user_name: userName,
     is_acknowledged: !ERROR_LEVELS.includes(level)
   };
   var result = await _insertActivityLogRow(row);
   if (SLACK_ALERT_LEVELS.includes(level)) {
-    _sendLogAlertDirect(level, action, page || window.location.pathname, details);
+    _sendLogAlertDirect(level, action, page || window.location.pathname, baseDetails);
   }
   return result;
 }
@@ -672,7 +683,11 @@ async function loadAuthSession() {
     managedDeptId: data.managed_dept_id,
     talentBalance: data.talent_balance || 0,
     departmentName: data.department_name,
-    classNumber: data.class_number
+    classNumber: data.class_number,
+    appVersion: (() => {
+      try { return localStorage.getItem('cho_session_app_version') || null; }
+      catch (e) { return null; }
+    })()
   };
   setSession(profile);
   return profile;

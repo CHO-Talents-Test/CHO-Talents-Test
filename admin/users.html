@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>사용자 관리 - 관리자</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.64.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.64.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.65.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.65.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -191,19 +191,19 @@
   </style>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.64.0"></script>
-  <script src="../js/supabase-config.js?v=3.64.0"></script>
-  <script src="../js/activity-log.js?v=3.64.0"></script>
-  <script src="../js/codes.js?v=3.64.0"></script>
-  <script src="../js/auth.js?v=3.64.0"></script>
-  <script src="../js/theme.js?v=3.64.0"></script>
-  <script src="../js/nav.js?v=3.64.0"></script>
-  <script src="../js/page-size.js?v=3.64.0"></script>
-  <script src="../js/user-mgmt.js?v=3.64.0"></script>
-  <script src="../js/table-sort.js?v=3.64.0"></script>
-  <script src="../js/slack-notify.js?v=3.64.0"></script>
+  <script src="../config/public-config.js?v=3.65.0"></script>
+  <script src="../js/supabase-config.js?v=3.65.0"></script>
+  <script src="../js/activity-log.js?v=3.65.0"></script>
+  <script src="../js/codes.js?v=3.65.0"></script>
+  <script src="../js/auth.js?v=3.65.0"></script>
+  <script src="../js/theme.js?v=3.65.0"></script>
+  <script src="../js/nav.js?v=3.65.0"></script>
+  <script src="../js/page-size.js?v=3.65.0"></script>
+  <script src="../js/user-mgmt.js?v=3.65.0"></script>
+  <script src="../js/table-sort.js?v=3.65.0"></script>
+  <script src="../js/slack-notify.js?v=3.65.0"></script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.64.0"></script>
+  <script src="../js/version.js?v=3.65.0"></script>
   <script>
     initSupabase();
     let session;
@@ -215,6 +215,12 @@
     let currentFilter = 'all';
     let userTeacherPageSize = null;
     let userStudentPageSize = null;
+    let detailTalentRows = [];
+    let detailOrderRows = [];
+    let detailTalentPage = 1;
+    let detailOrderPage = 1;
+    let detailTalentPageSize = null;
+    let detailOrderPageSize = null;
     (async () => {
       await navInit();
       session = await initPage(60, '../login.html');
@@ -223,6 +229,8 @@
       autoLogPageView();
       userTeacherPageSize = await loadPageSize('users_teacher', 10);
       userStudentPageSize = await loadPageSize('users_student', 10);
+      detailTalentPageSize = await loadPageSize('users_detail_talents', 10);
+      detailOrderPageSize = await loadPageSize('users_detail_orders', 10);
       updatePendingBadge();
       updateNavOrderBadge();
       const myRank = session.permissionRank || 0;
@@ -645,29 +653,19 @@
 
       let talentHtml = '';
       try {
-        const { data: txns } = await _sb.from('talent_transactions').select('type, amount, description, balance_after, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(10);
-        if (txns && txns.length > 0) {
-          talentHtml = '<table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.3rem;"><thead><tr style="background:#f1f3f5;"><th style="padding:0.3rem;">유형</th><th>금액</th><th>설명</th><th>잔액</th><th>날짜</th></tr></thead><tbody>';
-          txns.forEach(t => {
-            const color = t.type === 'earn' ? '#2b8a3e' : '#e03131';
-            talentHtml += `<tr style="border-bottom:1px solid #e9ecef;"><td style="padding:0.3rem;color:${color};">${t.type==='earn'?'적립':'사용'}</td><td style="font-weight:700;color:${color};">${t.type==='earn'?'+':''}${t.amount}</td><td>${t.description||'-'}</td><td>${t.balance_after||0}</td><td>${formatKSTShort(t.created_at)}</td></tr>`;
-          });
-          talentHtml += '</tbody></table>';
-        } else { talentHtml = '<p style="color:#adb5bd;font-size:0.82rem;">달란트 내역이 없습니다.</p>'; }
-      } catch (e) { talentHtml = ''; }
+        const { data: txns } = await _sb.from('talent_transactions').select('type, amount, description, balance_after, created_at').eq('user_id', userId).order('created_at', { ascending: false });
+        detailTalentRows = txns || [];
+      } catch (e) { detailTalentRows = []; }
+      detailTalentPage = 1;
+      talentHtml = buildDetailTalentShell();
 
       let orderHtml = '';
       try {
-        const { data: orders } = await _sb.from('product_orders').select('product_name, price, status, created_at').eq('user_id', userId).neq('status', 'cancelled').order('created_at', { ascending: false }).limit(10);
-        if (orders && orders.length > 0) {
-          const sMap = { requested:'구매 신청', preparing:'상품 준비', purchased:'상품 구매', delivered:'상품 지급' };
-          orderHtml = '<table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.3rem;"><thead><tr style="background:#f1f3f5;"><th style="padding:0.3rem;">상품</th><th>금액</th><th>상태</th><th>날짜</th></tr></thead><tbody>';
-          orders.forEach(o => {
-            orderHtml += `<tr style="border-bottom:1px solid #e9ecef;"><td style="padding:0.3rem;">${o.product_name||'-'}</td><td>${fmtNum(o.price||0)}</td><td>${sMap[o.status]||o.status||'-'}</td><td>${formatKSTShort(o.created_at)}</td></tr>`;
-          });
-          orderHtml += '</tbody></table>';
-        } else { orderHtml = '<p style="color:#adb5bd;font-size:0.82rem;">구매 내역이 없습니다.</p>'; }
-      } catch (e) { orderHtml = ''; }
+        const { data: orders } = await _sb.from('product_orders').select('product_name, price, status, created_at').eq('user_id', userId).neq('status', 'cancelled').order('created_at', { ascending: false });
+        detailOrderRows = orders || [];
+      } catch (e) { detailOrderRows = []; }
+      detailOrderPage = 1;
+      orderHtml = buildDetailOrderShell();
 
       let html = '<table style="width:100%;border-collapse:collapse;">';
       if (myRank >= 100) html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;width:35%;border-bottom:1px solid #e9ecef;">아이디</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${u.username}</td></tr>`;
@@ -681,11 +679,105 @@
       html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">마지막 로그인</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${lastLogin}</td></tr>`;
       html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">달란트 잔액</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;font-weight:700;">${fmtNum(u.talent_balance || 0)}</td></tr>`;
       html += '</table>';
-      html += '<h4 style="margin:1rem 0 0.3rem;font-size:0.9rem;">💰 달란트 내역 (최근 10건)</h4>' + talentHtml;
-      html += '<h4 style="margin:1rem 0 0.3rem;font-size:0.9rem;">🛒 구매 내역 (최근 10건)</h4>' + orderHtml;
+      html += '<h4 style="margin:1rem 0 0.3rem;font-size:0.9rem;">💰 달란트 내역</h4>' + talentHtml;
+      html += '<h4 style="margin:1rem 0 0.3rem;font-size:0.9rem;">🛒 구매 내역</h4>' + orderHtml;
 
       document.getElementById('detailContent').innerHTML = html;
+      renderDetailTalentRows();
+      renderDetailOrderRows();
       document.getElementById('detailModal').classList.remove('hidden');
+    }
+
+    function buildDetailTalentShell() {
+      return `<div style="display:flex;justify-content:flex-end;align-items:center;gap:0.4rem;margin-top:0.3rem;">
+          <span style="font-size:0.75rem;color:var(--admin-text-muted);">페이지당 항목 수</span>
+          <span id="detailTalentPageSizeWrap"></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.3rem;">
+            <thead><tr style="background:#f1f3f5;"><th style="padding:0.3rem;">유형</th><th>금액</th><th>설명</th><th>잔액</th><th>날짜</th></tr></thead>
+            <tbody id="detailTalentList"></tbody>
+          </table>
+        </div>
+        <div id="detailTalentPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>`;
+    }
+
+    function buildDetailOrderShell() {
+      return `<div style="display:flex;justify-content:flex-end;align-items:center;gap:0.4rem;margin-top:0.3rem;">
+          <span style="font-size:0.75rem;color:var(--admin-text-muted);">페이지당 항목 수</span>
+          <span id="detailOrderPageSizeWrap"></span>
+        </div>
+        <div style="overflow-x:auto;">
+          <table style="width:100%;font-size:0.8rem;border-collapse:collapse;margin-top:0.3rem;">
+            <thead><tr style="background:#f1f3f5;"><th style="padding:0.3rem;">상품</th><th>금액</th><th>상태</th><th>날짜</th></tr></thead>
+            <tbody id="detailOrderList"></tbody>
+          </table>
+        </div>
+        <div id="detailOrderPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>`;
+    }
+
+    function renderDetailTalentRows() {
+      const tbody = document.getElementById('detailTalentList');
+      if (!tbody) return;
+      const size = detailTalentPageSize || 10;
+      const totalPages = Math.max(1, Math.ceil(detailTalentRows.length / size));
+      if (detailTalentPage > totalPages) detailTalentPage = totalPages;
+      const rows = detailTalentRows.slice((detailTalentPage - 1) * size, detailTalentPage * size);
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="5" style="padding:0.7rem;text-align:center;color:#adb5bd;">달란트 내역이 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(t => {
+          const color = t.type === 'earn' ? '#2b8a3e' : '#e03131';
+          return `<tr style="border-bottom:1px solid #e9ecef;"><td style="padding:0.3rem;color:${color};">${t.type==='earn'?'적립':'사용'}</td><td style="font-weight:700;color:${color};">${t.type==='earn'?'+':''}${t.amount}</td><td>${t.description||'-'}</td><td>${t.balance_after||0}</td><td>${formatKSTShort(t.created_at)}</td></tr>`;
+        }).join('');
+      }
+      const sizeWrap = document.getElementById('detailTalentPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('users_detail_talents', size, 'onDetailTalentPageSizeChange(this.value)');
+      const paging = document.getElementById('detailTalentPaging');
+      if (paging) paging.innerHTML = buildPagingButtons(detailTalentPage, totalPages, 'goDetailTalentPage(__PAGE__)');
+    }
+
+    function renderDetailOrderRows() {
+      const tbody = document.getElementById('detailOrderList');
+      if (!tbody) return;
+      const size = detailOrderPageSize || 10;
+      const totalPages = Math.max(1, Math.ceil(detailOrderRows.length / size));
+      if (detailOrderPage > totalPages) detailOrderPage = totalPages;
+      const rows = detailOrderRows.slice((detailOrderPage - 1) * size, detailOrderPage * size);
+      const sMap = { requested:'구매 신청', preparing:'상품 준비', purchased:'상품 구매', delivered:'상품 지급' };
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" style="padding:0.7rem;text-align:center;color:#adb5bd;">구매 내역이 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(o => `<tr style="border-bottom:1px solid #e9ecef;"><td style="padding:0.3rem;">${o.product_name||'-'}</td><td>${fmtNum(o.price||0)}</td><td>${sMap[o.status]||o.status||'-'}</td><td>${formatKSTShort(o.created_at)}</td></tr>`).join('');
+      }
+      const sizeWrap = document.getElementById('detailOrderPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('users_detail_orders', size, 'onDetailOrderPageSizeChange(this.value)');
+      const paging = document.getElementById('detailOrderPaging');
+      if (paging) paging.innerHTML = buildPagingButtons(detailOrderPage, totalPages, 'goDetailOrderPage(__PAGE__)');
+    }
+
+    function goDetailTalentPage(page) {
+      detailTalentPage = page;
+      renderDetailTalentRows();
+    }
+
+    function goDetailOrderPage(page) {
+      detailOrderPage = page;
+      renderDetailOrderRows();
+    }
+
+    async function onDetailTalentPageSizeChange(val) {
+      detailTalentPageSize = parseInt(val, 10) || 10;
+      detailTalentPage = 1;
+      await savePageSize('users_detail_talents', detailTalentPageSize);
+      renderDetailTalentRows();
+    }
+
+    async function onDetailOrderPageSizeChange(val) {
+      detailOrderPageSize = parseInt(val, 10) || 10;
+      detailOrderPage = 1;
+      await savePageSize('users_detail_orders', detailOrderPageSize);
+      renderDetailOrderRows();
     }
 
     const MGMT_LEVELS = ['purchase_teacher','dept_teacher','chief','evangelist','admin'];

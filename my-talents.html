@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>내 달란트 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💰</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.64.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.64.0" />
+  <link rel="stylesheet" href="css/themes.css?v=3.65.0" />
+  <link rel="stylesheet" href="css/common.css?v=3.65.0" />
 </head>
 <body class="page-body">
   <div id="nav-container"></div>
@@ -19,17 +19,21 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.64.0"></script>
-  <script src="js/supabase-config.js?v=3.64.0"></script>
-  <script src="js/activity-log.js?v=3.64.0"></script>
-  <script src="js/codes.js?v=3.64.0"></script>
-  <script src="js/auth.js?v=3.64.0"></script>
-  <script src="js/theme.js?v=3.64.0"></script>
-  <script src="js/nav.js?v=3.64.0"></script>
+  <script src="config/public-config.js?v=3.65.0"></script>
+  <script src="js/supabase-config.js?v=3.65.0"></script>
+  <script src="js/activity-log.js?v=3.65.0"></script>
+  <script src="js/codes.js?v=3.65.0"></script>
+  <script src="js/auth.js?v=3.65.0"></script>
+  <script src="js/theme.js?v=3.65.0"></script>
+  <script src="js/nav.js?v=3.65.0"></script>
+  <script src="js/page-size.js?v=3.65.0"></script>
   <script src="js/talent.js"></script>
   <script>
     initSupabase();
     let session;
+    let myTalentHistory = [];
+    let myTalentHistoryPage = 1;
+    let myTalentHistoryPageSize = 10;
 
     function getMyTalentHistoryTypeMeta(t) {
       const isReturn = t.type === 'use' && t.description && t.description.startsWith('반환:');
@@ -46,6 +50,7 @@
       navUpdateAuth(session);
       autoLogPageView();
       updateNavOrderBadge();
+      myTalentHistoryPageSize = await loadPageSize('my_talents_history', 10);
       loadMyTalents();
     })();
 
@@ -63,7 +68,9 @@
         }
       } catch (e) { /* pending_talent column may not exist */ }
       const available = summary.balance - pendingTalent;
-      const { data: history } = await fetchTalentHistory(session.id, { limit: 50 });
+      const { data: history } = await fetchTalentHistory(session.id);
+      myTalentHistory = history || [];
+      myTalentHistoryPage = 1;
       const exceptionTalent = (history || []).filter(t => t.type === 'earn' && t.override_week_limit === true).reduce((s, t) => s + (t.amount || 0), 0);
 
       let deliveryCount = 0;
@@ -115,29 +122,16 @@
         </div>
         <div id="earnBreakdown" style="margin-bottom:1.5rem;"></div>
         <div class="data-table-wrap">
-          <div class="data-table-header"><div class="data-table-title">달란트 내역</div></div>
+          <div class="data-table-header">
+            <div class="data-table-title">달란트 내역</div>
+            <div style="margin-left:auto;"><span id="myTalentHistoryPageSizeWrap"></span></div>
+          </div>
           <table class="data-table">
             <thead><tr><th>날짜</th><th>유형</th><th>금액</th><th>설명</th><th>잔액</th></tr></thead>
-            <tbody>`;
-
-      if (!history || history.length === 0) {
-        html += '<tr><td colspan="5" class="empty-state">아직 달란트 내역이 없습니다.</td></tr>';
-      } else {
-        html += history.map(t => {
-          const meta = getMyTalentHistoryTypeMeta(t);
-          const srcBadge = t.type === 'earn' && t.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : '';
-          const desc = (t.description || '-').replace(/\[[0-9a-f-]{36}\]\s*/gi, '').replace(/^반환:\s*/, '');
-          return `<tr>
-            <td>${formatKSTShort(t.created_at)}</td>
-            <td><span class="type-badge ${meta.className}" ${meta.label === '반환' ? 'style="background:#fff0f6;color:#c2255c;"' : meta.label === '예외' ? 'style="background:#fff3bf;color:#e67700;"' : ''}>${meta.label}</span>${srcBadge}</td>
-            <td style="font-weight:700;color:${meta.amtColor}">${meta.amtPrefix}${fmtNum(t.amount)}</td>
-            <td>${desc}</td>
-            <td>${fmtNum(t.balance_after)}</td>
-          </tr>`;
-        }).join('');
-      }
-
-      html += '</tbody></table></div>';
+            <tbody id="myTalentHistoryBody"></tbody>
+          </table>
+          <div id="myTalentHistoryPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+        </div>`;
 
       let orders = null;
       try {
@@ -161,7 +155,52 @@
       }
 
       main.innerHTML = html;
+      renderMyTalentHistory();
       showEarnBreakdown();
+    }
+
+    function renderMyTalentHistory() {
+      const tbody = document.getElementById('myTalentHistoryBody');
+      const paging = document.getElementById('myTalentHistoryPaging');
+      const sizeWrap = document.getElementById('myTalentHistoryPageSizeWrap');
+      if (!tbody) return;
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('my_talents_history', myTalentHistoryPageSize, 'onMyTalentHistoryPageSizeChange(this.value)');
+
+      if (!myTalentHistory.length) {
+        tbody.innerHTML = '<tr><td colspan="5" class="empty-state">아직 달란트 내역이 없습니다.</td></tr>';
+        if (paging) paging.innerHTML = '';
+        return;
+      }
+
+      const totalPages = Math.max(1, Math.ceil(myTalentHistory.length / myTalentHistoryPageSize));
+      if (myTalentHistoryPage > totalPages) myTalentHistoryPage = totalPages;
+      const startIdx = (myTalentHistoryPage - 1) * myTalentHistoryPageSize;
+      const pageItems = myTalentHistory.slice(startIdx, startIdx + myTalentHistoryPageSize);
+      tbody.innerHTML = pageItems.map(t => {
+        const meta = getMyTalentHistoryTypeMeta(t);
+        const srcBadge = t.type === 'earn' && t.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : '';
+        const desc = (t.description || '-').replace(/\[[0-9a-f-]{36}\]\s*/gi, '').replace(/^반환:\s*/, '');
+        return `<tr>
+          <td>${formatKSTShort(t.created_at)}</td>
+          <td><span class="type-badge ${meta.className}" ${meta.label === '반환' ? 'style="background:#fff0f6;color:#c2255c;"' : meta.label === '예외' ? 'style="background:#fff3bf;color:#e67700;"' : ''}>${meta.label}</span>${srcBadge}</td>
+          <td style="font-weight:700;color:${meta.amtColor}">${meta.amtPrefix}${fmtNum(t.amount)}</td>
+          <td>${desc}</td>
+          <td>${fmtNum(t.balance_after)}</td>
+        </tr>`;
+      }).join('');
+      if (paging) paging.innerHTML = buildPagingButtons(myTalentHistoryPage, totalPages, 'goMyTalentHistoryPage(__PAGE__)');
+    }
+
+    function goMyTalentHistoryPage(page) {
+      myTalentHistoryPage = page;
+      renderMyTalentHistory();
+    }
+
+    async function onMyTalentHistoryPageSizeChange(val) {
+      myTalentHistoryPageSize = parseInt(val, 10) || 10;
+      myTalentHistoryPage = 1;
+      await savePageSize('my_talents_history', myTalentHistoryPageSize);
+      renderMyTalentHistory();
     }
 
     async function showEarnBreakdown() {
@@ -193,6 +232,6 @@
     }
   </script>
   <div id="version-container"></div>
-  <script src="js/version.js?v=3.64.0"></script>
+  <script src="js/version.js?v=3.65.0"></script>
 </body>
 </html>
