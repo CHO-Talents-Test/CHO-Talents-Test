@@ -120,6 +120,25 @@ function renderRoleBadge(elementId, session, basePath) {
   </a>`;
 }
 
+const AUTH_APP_VERSION_KEY = 'cho_session_app_version';
+
+function getLoadedAppVersion() {
+  if (typeof getVersion === 'function') return getVersion();
+  if (window.APP_VERSION && window.APP_VERSION.current) return window.APP_VERSION.current;
+  return null;
+}
+
+function attachCurrentAppVersion(sessionData) {
+  const version = getLoadedAppVersion();
+  if (version) {
+    sessionData.appVersion = version;
+    try { localStorage.setItem(AUTH_APP_VERSION_KEY, version); } catch (e) {}
+  } else {
+    try { sessionData.appVersion = localStorage.getItem(AUTH_APP_VERSION_KEY) || null; } catch (e) { sessionData.appVersion = null; }
+  }
+  return sessionData;
+}
+
 async function login(username, password) {
   if (!_sb) return { success: false, error: 'Supabase 연결 실패' };
   if (!username || !password) return { success: false, error: '아이디와 비밀번호를 입력해주세요.' };
@@ -141,7 +160,7 @@ async function login(username, password) {
 
     const perm = profile.permission_level;
     const _isSA = profile.is_super_admin || false;
-    setSession({
+    setSession(attachCurrentAppVersion({
       id: profile.id,
       username: profile.username,
       displayName: profile.display_name,
@@ -155,7 +174,8 @@ async function login(username, password) {
       talentBalance: profile.talent_balance || 0,
       departmentName: profile.department_name,
       classNumber: profile.class_number
-    });
+    }));
+    if (typeof markCurrentAppVersion === 'function') markCurrentAppVersion();
 
     await logInfo('LOGIN_SUCCESS', { 대상: username, permissionLevel: perm });
     try { await _sb.rpc('update_last_login'); } catch(e) {}
@@ -243,6 +263,7 @@ async function logout(loginPath) {
   clearSession();
   if (_sessionTimer) { clearTimeout(_sessionTimer); _sessionTimer = null; }
   try { localStorage.removeItem(SESSION_ACTIVITY_KEY); } catch (e) {}
+  try { localStorage.removeItem(AUTH_APP_VERSION_KEY); } catch (e) {}
   if (typeof applyTheme === 'function') applyTheme('default');
   window.location.href = resolveAppUrl(loginPath || '../login.html');
 }

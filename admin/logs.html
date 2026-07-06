@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>로그 관리 - CHO Talents</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.64.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.64.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.65.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.65.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -103,14 +103,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.64.0"></script>
-  <script src="../js/supabase-config.js?v=3.64.0"></script>
-  <script src="../js/activity-log.js?v=3.64.0"></script>
-  <script src="../js/codes.js?v=3.64.0"></script>
-  <script src="../js/auth.js?v=3.64.0"></script>
-  <script src="../js/theme.js?v=3.64.0"></script>
-  <script src="../js/nav.js?v=3.64.0"></script>
-  <script src="../js/page-size.js?v=3.64.0"></script>
+  <script src="../config/public-config.js?v=3.65.0"></script>
+  <script src="../js/supabase-config.js?v=3.65.0"></script>
+  <script src="../js/activity-log.js?v=3.65.0"></script>
+  <script src="../js/codes.js?v=3.65.0"></script>
+  <script src="../js/auth.js?v=3.65.0"></script>
+  <script src="../js/theme.js?v=3.65.0"></script>
+  <script src="../js/nav.js?v=3.65.0"></script>
+  <script src="../js/page-size.js?v=3.65.0"></script>
   <script>
     initSupabase();
     let session;
@@ -121,15 +121,46 @@
     let selectedLevels = [];
     let currentAckId = null;
     let userProfileMap = {};
+    let userProfileById = {};
 
     async function loadUserProfiles() {
-      const { data } = await _sb.from('profiles').select('username, display_name');
-      if (data) data.forEach(p => { userProfileMap[p.username] = p.display_name || p.username; });
+      const { data } = await _sb.from('profiles').select('id, username, display_name');
+      userProfileMap = {};
+      userProfileById = {};
+      if (data) data.forEach(p => {
+        if (p.username) userProfileMap[p.username] = p;
+        if (p.id) userProfileById[p.id] = p;
+      });
+    }
+
+    function formatProfileUser(profile) {
+      if (!profile) return '미등록';
+      const account = profile.username || '미등록';
+      const name = profile.display_name || '';
+      return name && name !== account ? `${name} (${account})` : account;
     }
 
     function getUserDisplay(username) {
       if (!username) return '-';
-      return userProfileMap[username] ? userProfileMap[username] + ' (' + username + ')' : username;
+      return userProfileMap[username] ? formatProfileUser(userProfileMap[username]) : username;
+    }
+
+    function getLogUserDisplay(log) {
+      if (!log || typeof log === 'string') return getUserDisplay(log);
+      const details = log.details || {};
+      const username = log.username || details._username || details._userAccount || details.cachedUsername || details.사용자;
+      if (username) {
+        if (userProfileMap[username]) return getUserDisplay(username);
+        const displayName = log.user_name || details._userName || details._displayName;
+        return displayName && displayName !== username ? `${displayName} (${username})` : username;
+      }
+      const authUserId = details.authUserId || details._authUserId;
+      if (authUserId) {
+        const profile = userProfileById[authUserId];
+        return profile ? formatProfileUser(profile) : `미등록 (${authUserId})`;
+      }
+      const displayName = log.user_name || details._userName || details._displayName;
+      return displayName || '-';
     }
 
     function formatActionCell(action) {
@@ -143,6 +174,7 @@
       session = await initPage(100, '../login.html');
       if (!session) return;
       navUpdateAuth(session);
+      if (typeof loadCodeItems === 'function') await loadCodeItems(['activity_logs.action']);
       autoLogPageView();
       PAGE_SIZE = await loadPageSize('logs', PAGE_SIZE);
       updatePendingBadge();
@@ -197,7 +229,7 @@
           <td><span class="level-badge ${l.level}">${l.level}</span></td>
           <td>${formatActionCell(l.action)}</td>
           <td>${l.page || '-'}</td>
-          <td>${getUserDisplay(l.username)}</td>
+          <td>${getLogUserDisplay(l)}</td>
           <td><span class="ack-badge pending">미확인</span></td>
           <td><button class="filter-btn" onclick="showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button><button class="btn-ack" onclick="openAckModal('${l.id}')">확인하기</button></td>
         </tr>
@@ -284,7 +316,7 @@
           <td><span class="level-badge ${l.level}">${l.level}</span></td>
           <td>${formatActionCell(l.action)}</td>
           <td>${l.page || '-'}</td>
-          <td>${getUserDisplay(l.username)}</td>
+          <td>${getLogUserDisplay(l)}</td>
           <td>${clientHtml}</td>
           <td>${ackHtml}</td>
           <td><button class="filter-btn" onclick="showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button>${actionHtml}</td>
@@ -465,9 +497,9 @@
         let html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
         html += '<tr><td style="padding:0.5rem;font-weight:700;width:100px;background:#fafbfc;border:1px solid #eee;">시간</td><td style="padding:0.5rem;border:1px solid #eee;">' + formatKST(l.created_at) + '</td></tr>';
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">레벨</td><td style="padding:0.5rem;border:1px solid #eee;"><span class="level-badge ' + l.level + '">' + l.level + '</span></td></tr>';
-        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">액션</td><td style="padding:0.5rem;border:1px solid #eee;">' + l.action + '</td></tr>';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">액션</td><td style="padding:0.5rem;border:1px solid #eee;">' + formatActionCell(l.action) + '</td></tr>';
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">페이지</td><td style="padding:0.5rem;border:1px solid #eee;">' + (l.page || '-') + '</td></tr>';
-        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">사용자</td><td style="padding:0.5rem;border:1px solid #eee;">' + getUserDisplay(l.username) + '</td></tr>';
+        html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">사용자</td><td style="padding:0.5rem;border:1px solid #eee;">' + getLogUserDisplay(l) + '</td></tr>';
         if (ci) {
           html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">IP</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.ip||'-') + '</td></tr>';
           html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">브라우저</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.browser||'-') + '</td></tr>';
@@ -573,7 +605,7 @@
           <td><span class="level-badge ${l.level}">${l.level}</span></td>
           <td>${formatActionCell(l.action)}</td>
           <td>${l.page || '-'}</td>
-          <td>${getUserDisplay(l.username)}</td>
+          <td>${getLogUserDisplay(l)}</td>
           <td><span style="font-size:0.72rem;color:#d63031;">삭제 대기<br/>${deletedAt}</span></td>
           <td><span class="ack-badge pending" style="background:#ffe3e3;color:#d63031;">삭제 대기</span></td>
           <td><button class="filter-btn" onclick="restoreLog('${l.id}')">복원</button></td>
@@ -600,6 +632,6 @@
     }
   </script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.64.0"></script>
+  <script src="../js/version.js?v=3.65.0"></script>
 </body>
 </html>

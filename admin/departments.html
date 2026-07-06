@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>부서 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.64.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.64.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.65.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.65.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -57,16 +57,16 @@
     .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:120px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.64.0"></script>
-  <script src="../js/supabase-config.js?v=3.64.0"></script>
-  <script src="../js/activity-log.js?v=3.64.0"></script>
-  <script src="../js/codes.js?v=3.64.0"></script>
-  <script src="../js/auth.js?v=3.64.0"></script>
-  <script src="../js/theme.js?v=3.64.0"></script>
-  <script src="../js/nav.js?v=3.64.0"></script>
-  <script src="../js/page-size.js?v=3.64.0"></script>
-  <script src="../js/user-mgmt.js?v=3.64.0"></script>
-  <script src="../js/table-sort.js?v=3.64.0"></script>
+  <script src="../config/public-config.js?v=3.65.0"></script>
+  <script src="../js/supabase-config.js?v=3.65.0"></script>
+  <script src="../js/activity-log.js?v=3.65.0"></script>
+  <script src="../js/codes.js?v=3.65.0"></script>
+  <script src="../js/auth.js?v=3.65.0"></script>
+  <script src="../js/theme.js?v=3.65.0"></script>
+  <script src="../js/nav.js?v=3.65.0"></script>
+  <script src="../js/page-size.js?v=3.65.0"></script>
+  <script src="../js/user-mgmt.js?v=3.65.0"></script>
+  <script src="../js/table-sort.js?v=3.65.0"></script>
   <script>
     initSupabase();
     let session;
@@ -75,6 +75,8 @@
     let allDeptData = [];
     let deptPage = 1;
     let deptPageSize = null;
+    let memberPage = 1;
+    let memberPageSize = null;
     (async () => {
       await navInit();
       session = await initPage(60, '../login.html');
@@ -85,6 +87,7 @@
       updateNavOrderBadge();
       updateBadge();
       deptPageSize = await loadPageSize('departments', window.innerWidth <= 768 ? 10 : 20);
+      memberPageSize = await loadPageSize('departments_members', 10);
       const myRank = session.permissionRank || 0;
       if (myRank < 90) {
         document.querySelector('.filter-btn[onclick="openAddModal()"]').style.display = 'none';
@@ -243,29 +246,43 @@
 
     const PERM_RANK_MAP = { admin:100, evangelist:90, chief:80, purchase_teacher:70, dept_teacher:60, teacher:40, student:20 };
     let _modalMembers = [];
+    let _memberModalContext = null;
+
+    function getMemberPageSize() {
+      return memberPageSize || 10;
+    }
+
+    function sortDepartmentMembers(list) {
+      const typeRank = { teacher: 1, student: 2 };
+      return (list || []).slice().sort((a, b) => {
+        const cA = a.class_number != null ? Number(a.class_number) : 9999;
+        const cB = b.class_number != null ? Number(b.class_number) : 9999;
+        if (cA !== cB) return cA - cB;
+        const tA = typeRank[a.user_type] || 99;
+        const tB = typeRank[b.user_type] || 99;
+        if (tA !== tB) return tA - tB;
+        const nA = a.display_name || a.username || '';
+        const nB = b.display_name || b.username || '';
+        return nA.localeCompare(nB, 'ko');
+      });
+    }
+
     function showMembers(deptName, deptId) {
-      const deptNameFn = () => deptName;
-      const members = sortUserList(allUsers.filter(u => u.department_id === deptId), deptNameFn);
+      const members = sortDepartmentMembers(allUsers.filter(u => u.department_id === deptId));
       _modalMembers = members;
+      memberPage = 1;
       const dept = allDeptData.find(d => d.id === deptId);
       const hasClasses = dept && dept.class_count > 0;
       const isAdmin = (session.permissionRank || 0) >= 100;
+      _memberModalContext = { deptName, deptId, hasClasses, isAdmin };
 
-      const nameMap = resolveDisplayNames(members);
       let html = `<strong>${deptName}</strong> 소속 인원 (${members.length}명)<br/><br/>`;
       if (members.length === 0) {
         html += '<div style="color:#636e72;">소속 인원이 없습니다.</div>';
       } else {
-        html += `<table class="admin-table" id="memberTable" style="font-size:0.85rem;"><thead><tr><th data-sort-key="user_type">역할</th><th data-sort-key="permission_level">권한</th><th data-sort-key="display_name">이름</th>${hasClasses ? '<th data-sort-key="class_number" data-sort-type="number">반</th>' : ''}${isAdmin ? '<th data-sort-key="last_login_at" data-sort-type="date">마지막 로그인</th>' : ''}</tr></thead><tbody>`;
-        html += members.map(u => {
-          const typeLabel = `${getCodeEmoji('profiles.user_type', u.user_type, u.user_type === 'student' ? '🎒' : '👩‍🏫')} ${getCodeLabel('profiles.user_type', u.user_type, u.user_type === 'student' ? '학생' : '교사')}`;
-          const permLabel = (PERMISSION_EMOJI[u.permission_level]||'') + ' ' + (PERMISSION_LABELS[u.permission_level]||u.permission_level);
-          const dn = nameMap[u.id] || u.display_name || '-';
-          const isSelf = u.id === session.id;
-          const classNum = u.class_number ? u.class_number + '반' : '-';
-          return `<tr><td>${typeLabel}</td><td>${permLabel}</td><td>${dn}${(isSelf || isAdminLevel(session)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>${hasClasses ? '<td>' + classNum + '</td>' : ''}${isAdmin ? `<td>${u.last_login_at ? formatKSTShort(u.last_login_at) : '-'}</td>` : ''}</tr>`;
-        }).join('');
-        html += '</tbody></table>';
+        html += `<div style="display:flex;justify-content:flex-end;margin-bottom:0.5rem;"><span id="memberPageSizeWrap"></span></div>
+          <table class="admin-table" id="memberTable" style="font-size:0.85rem;"><thead><tr><th>역할</th><th>권한</th><th>이름</th>${hasClasses ? '<th>반</th>' : ''}${isAdmin ? '<th>마지막 로그인</th>' : ''}</tr></thead><tbody id="memberTableBody"></tbody></table>
+          <div id="memberPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>`;
       }
 
       document.getElementById('modalTitle').textContent = '부서 소속 인원';
@@ -278,7 +295,42 @@
       document.getElementById('modalError').style.background = 'transparent';
       document.getElementById('modalError').style.color = 'inherit';
       document.getElementById('deptModal').classList.remove('hidden');
-      initSortableHeaders('memberTable', function(){ return _modalMembers; }, function(d){ _modalMembers = d; showMembers(deptName, deptId); });
+      renderMemberRows();
+    }
+
+    function renderMemberRows() {
+      const tbody = document.getElementById('memberTableBody');
+      if (!tbody || !_memberModalContext) return;
+      const { hasClasses, isAdmin } = _memberModalContext;
+      const pageSize = getMemberPageSize();
+      const totalPages = Math.max(1, Math.ceil(_modalMembers.length / pageSize));
+      if (memberPage > totalPages) memberPage = totalPages;
+      const pageItems = _modalMembers.slice((memberPage - 1) * pageSize, memberPage * pageSize);
+      const nameMap = resolveDisplayNames(_modalMembers);
+      tbody.innerHTML = pageItems.map(u => {
+        const typeLabel = `${getCodeEmoji('profiles.user_type', u.user_type, u.user_type === 'student' ? '🎒' : '👩‍🏫')} ${getCodeLabel('profiles.user_type', u.user_type, u.user_type === 'student' ? '학생' : '교사')}`;
+        const permLabel = (PERMISSION_EMOJI[u.permission_level]||'') + ' ' + (PERMISSION_LABELS[u.permission_level]||u.permission_level);
+        const dn = nameMap[u.id] || u.display_name || '-';
+        const isSelf = u.id === session.id;
+        const classNum = u.class_number ? u.class_number + '반' : '-';
+        return `<tr><td>${typeLabel}</td><td>${permLabel}</td><td>${dn}${(isSelf || isAdminLevel(session)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>${hasClasses ? '<td>' + classNum + '</td>' : ''}${isAdmin ? `<td>${u.last_login_at ? formatKSTShort(u.last_login_at) : '-'}</td>` : ''}</tr>`;
+      }).join('');
+      const sizeWrap = document.getElementById('memberPageSizeWrap');
+      if (sizeWrap) sizeWrap.innerHTML = renderPageSizeSelector('departments_members', pageSize, 'onMemberPageSizeChange(this.value)');
+      const paging = document.getElementById('memberPaging');
+      if (paging) paging.innerHTML = buildPagingButtons(memberPage, totalPages, 'goMemberPage(__PAGE__)');
+    }
+
+    function goMemberPage(page) {
+      memberPage = page;
+      renderMemberRows();
+    }
+
+    async function onMemberPageSizeChange(val) {
+      memberPageSize = parseInt(val, 10) || 10;
+      memberPage = 1;
+      await savePageSize('departments_members', memberPageSize);
+      renderMemberRows();
     }
 
     const origCloseModal = closeModal;
@@ -298,6 +350,6 @@
     document.getElementById('deptModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
   </script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.64.0"></script>
+  <script src="../js/version.js?v=3.65.0"></script>
 </body>
 </html>

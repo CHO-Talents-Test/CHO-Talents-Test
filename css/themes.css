@@ -604,6 +604,19 @@
   color: var(--t-text) !important;
 }
 
+.manager-search-result:hover {
+  background: var(--t-hover-bg, #f3f0ff);
+}
+
+[data-theme="dark"] .manager-search-result {
+  border-bottom-color: var(--t-border, #33415c) !important;
+}
+
+[data-theme="dark"] .manager-search-result:hover {
+  background: #243047 !important;
+  color: var(--t-text, #e5e7eb) !important;
+}
+
 [data-theme="dark"] .page-size-select {
   background: var(--t-input-bg) !important;
   border-color: var(--t-input-border) !important;

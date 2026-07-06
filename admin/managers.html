@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>관리자 관리 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.64.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.64.0" />
+  <link rel="stylesheet" href="../css/themes.css?v=3.65.0" />
+  <link rel="stylesheet" href="../css/admin.css?v=3.65.0" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -87,16 +87,16 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.64.0"></script>
-  <script src="../js/supabase-config.js?v=3.64.0"></script>
-  <script src="../js/activity-log.js?v=3.64.0"></script>
-  <script src="../js/codes.js?v=3.64.0"></script>
-  <script src="../js/auth.js?v=3.64.0"></script>
-  <script src="../js/theme.js?v=3.64.0"></script>
-  <script src="../js/nav.js?v=3.64.0"></script>
-  <script src="../js/page-size.js?v=3.64.0"></script>
-  <script src="../js/user-mgmt.js?v=3.64.0"></script>
-  <script src="../js/table-sort.js?v=3.64.0"></script>
+  <script src="../config/public-config.js?v=3.65.0"></script>
+  <script src="../js/supabase-config.js?v=3.65.0"></script>
+  <script src="../js/activity-log.js?v=3.65.0"></script>
+  <script src="../js/codes.js?v=3.65.0"></script>
+  <script src="../js/auth.js?v=3.65.0"></script>
+  <script src="../js/theme.js?v=3.65.0"></script>
+  <script src="../js/nav.js?v=3.65.0"></script>
+  <script src="../js/page-size.js?v=3.65.0"></script>
+  <script src="../js/user-mgmt.js?v=3.65.0"></script>
+  <script src="../js/table-sort.js?v=3.65.0"></script>
   <script>
     initSupabase();
     let session;
@@ -329,7 +329,7 @@
           box.innerHTML = matches.map(u => {
             const dept = deptList.find(d => d.id === u.department_id);
             const deptName = dept ? dept.name : '';
-            return `<div style="padding:0.6rem 0.8rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.88rem;" onmousedown="selectUser('${u.id}')" onmouseover="this.style.background='#f3f0ff'" onmouseout="this.style.background=''">
+            return `<div class="manager-search-result" style="padding:0.6rem 0.8rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.88rem;" onmousedown="selectUser('${u.id}')">
               <strong>${u.display_name || u.username}</strong>
               <span style="margin-left:0.5rem;color:var(--admin-text-muted);font-size:0.78rem;">${u.user_type === 'student' ? '학생' : '교사'}${deptName ? ' / ' + deptName : ''}</span>
             </div>`;
@@ -459,6 +459,6 @@
     document.getElementById('mgrModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
   </script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.64.0"></script>
+  <script src="../js/version.js?v=3.65.0"></script>
 </body>
 </html>

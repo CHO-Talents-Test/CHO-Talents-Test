@@ -2,9 +2,21 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.64.0',
-  date: '2026-07-04',
+  current: '3.65.0',
+  date: '2026-07-06',
   history: [
+    {
+      version: '3.65.0',
+      date: '2026-07-06',
+      title: '가입 승인 안내 및 최신 버전 세션 갱신',
+      changes: [
+        '승인 대기 중인 가입 신청 계정은 로그인 인증 전에 승인 대기 안내와 담당 관리자 정보를 표시',
+        '모든 페이지에서 세션의 앱 버전이 최신 버전이 아니면 현재 세션을 종료하고 로그인 페이지로 이동',
+        '내 달란트, 부서 소속보기, 사용자 상세 내역에 페이지 처리를 추가하고 관련 그리드 표시를 정리',
+        '상품 카테고리 신규 추가 후 코드 대신 명칭이 표시되도록 코드 마스터 로드를 보강',
+        '로그 화면의 사용자 계정/이름 및 한글 액션 표시를 보강'
+      ]
+    },
     {
       version: '3.64.0',
       date: '2026-07-04',
@@ -53,6 +65,8 @@ const APP_VERSION = {
     }
   ]
 };
+
+window.APP_VERSION = APP_VERSION;
 
 function getVersion() { return APP_VERSION.current; }
 function getVersionHistory() { return APP_VERSION.history; }
@@ -136,10 +150,101 @@ function renderVersionBadge() {
   });
 }
 
+const VERSION_SESSION_KEY = 'cho_session_app_version';
+
+function markCurrentAppVersion() {
+  try {
+    localStorage.setItem(VERSION_SESSION_KEY, APP_VERSION.current);
+    if (typeof getSession === 'function' && typeof setSession === 'function') {
+      const session = getSession();
+      if (session) {
+        session.appVersion = APP_VERSION.current;
+        setSession(session);
+      }
+    }
+  } catch (e) {}
+}
+
+function _versionLoginPath() {
+  return _versionBasePath() + 'login.html';
+}
+
+function _versionRedirectTarget(loginPath) {
+  const isAuthPage = /\/?(login|register)\.html$/i.test(window.location.pathname);
+  if (isAuthPage) return loginPath;
+  if (typeof buildLoginRedirectUrl === 'function') return buildLoginRedirectUrl(loginPath, window.location.href);
+  return loginPath + '?redirect=' + encodeURIComponent(window.location.href);
+}
+
+async function _fetchLatestVersion() {
+  try {
+    const url = _versionBasePath() + 'js/version.js?_=' + Date.now();
+    const res = await fetch(url, { cache: 'no-store' });
+    if (!res.ok) return APP_VERSION.current;
+    const text = await res.text();
+    const match = text.match(/current:\s*['"]([^'"]+)['"]/);
+    return match ? match[1] : APP_VERSION.current;
+  } catch (e) {
+    return APP_VERSION.current;
+  }
+}
+
+async function _forceLogoutForVersion(latestVersion, sessionVersion) {
+  const loginPath = _versionLoginPath();
+  const target = _versionRedirectTarget(loginPath);
+  try {
+    if (typeof logWarn === 'function') {
+      await logWarn('APP_VERSION_STALE_SESSION', {
+        현재페이지버전: APP_VERSION.current,
+        최신버전: latestVersion,
+        세션버전: sessionVersion || null,
+        요청페이지: window.location.pathname,
+        이동대상: target
+      });
+    }
+  } catch (e) {}
+
+  try {
+    if (typeof _sb !== 'undefined' && _sb && _sb.auth) await _sb.auth.signOut();
+  } catch (e) {}
+  try {
+    if (typeof clearSession === 'function') clearSession();
+    else {
+      sessionStorage.removeItem('cho_session');
+      sessionStorage.removeItem('cho_admin_session');
+    }
+    localStorage.removeItem(VERSION_SESSION_KEY);
+    localStorage.removeItem('cho_last_activity');
+  } catch (e) {}
+
+  alert('새 버전이 배포되어 다시 로그인해주세요.');
+  window.location.href = target;
+}
+
+async function enforceLatestAppVersion() {
+  if (typeof getSession !== 'function') return;
+  const session = getSession();
+  if (!session) return;
+  const latestVersion = await _fetchLatestVersion();
+  const sessionVersion = session.appVersion || localStorage.getItem(VERSION_SESSION_KEY) || '';
+  if (APP_VERSION.current !== latestVersion || sessionVersion !== latestVersion) {
+    await _forceLogoutForVersion(latestVersion, sessionVersion);
+    return;
+  }
+  if (session.appVersion !== latestVersion && typeof setSession === 'function') {
+    session.appVersion = latestVersion;
+    setSession(session);
+  }
+}
+
 if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', renderVersionFooter);
+  document.addEventListener('DOMContentLoaded', () => {
+    renderVersionFooter();
+    enforceLatestAppVersion();
+  });
 } else {
   renderVersionFooter();
+  enforceLatestAppVersion();
 }
 
 
