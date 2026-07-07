@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>로그 관리 - CHO Talents</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.65.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.65.0" />
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
 </head>
 <body class="admin-body">
   <div id="nav-container"></div>
@@ -103,14 +103,14 @@
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.65.0"></script>
-  <script src="../js/supabase-config.js?v=3.65.0"></script>
-  <script src="../js/activity-log.js?v=3.65.0"></script>
-  <script src="../js/codes.js?v=3.65.0"></script>
-  <script src="../js/auth.js?v=3.65.0"></script>
-  <script src="../js/theme.js?v=3.65.0"></script>
-  <script src="../js/nav.js?v=3.65.0"></script>
-  <script src="../js/page-size.js?v=3.65.0"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/page-size.js"></script>
   <script>
     initSupabase();
     let session;
@@ -167,6 +167,23 @@
       const key = action || '-';
       const label = typeof getActionLabel === 'function' ? getActionLabel(action) : key;
       return `<span style="font-weight:600;">${label}</span><br/><span style="font-size:0.7rem;color:#868e96;">${key}</span>`;
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[ch]));
+    }
+
+    function formatKoreanLogDetails(details) {
+      const clean = details ? Object.assign({}, details) : {};
+      delete clean._client;
+      const display = (typeof getDisplayLogDetails === 'function') ? getDisplayLogDetails(clean) : clean;
+      return Object.keys(display).length ? JSON.stringify(display, null, 2) : '-';
     }
 
     (async () => {
@@ -355,10 +372,11 @@
 
       _sb.from('activity_logs').select('*').eq('id', logId).single().then(({ data }) => {
         if (data) {
+          const detailText = formatKoreanLogDetails(data.details);
           document.getElementById('ackLogDetail').innerHTML = `
-            <strong>${data.level}</strong> | ${data.action}<br/>
-            <small>${formatKST(data.created_at)} | ${data.page || '-'}</small><br/>
-            <small>${data.details ? JSON.stringify(data.details) : '-'}</small>
+            <strong>${escapeHtml(data.level)}</strong> | ${formatActionCell(data.action)}<br/>
+            <small>${escapeHtml(formatKST(data.created_at))} | ${escapeHtml(data.page || '-')}</small>
+            <pre style="font-size:0.75rem;white-space:pre-wrap;word-break:break-all;max-height:140px;overflow-y:auto;margin:0.45rem 0 0;background:#fff;padding:0.5rem;border-radius:6px;border:1px solid #eee;">${escapeHtml(detailText)}</pre>
           `;
         }
       });
@@ -493,7 +511,8 @@
         const ci = l.details?._client;
         const detailsClean = l.details ? Object.assign({}, l.details) : {};
         delete detailsClean._client;
-        const hasDetails = Object.keys(detailsClean).length > 0;
+        const detailText = formatKoreanLogDetails(detailsClean);
+        const hasDetails = detailText !== '-';
         let html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
         html += '<tr><td style="padding:0.5rem;font-weight:700;width:100px;background:#fafbfc;border:1px solid #eee;">시간</td><td style="padding:0.5rem;border:1px solid #eee;">' + formatKST(l.created_at) + '</td></tr>';
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">레벨</td><td style="padding:0.5rem;border:1px solid #eee;"><span class="level-badge ' + l.level + '">' + l.level + '</span></td></tr>';
@@ -510,7 +529,7 @@
         }
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">확인</td><td style="padding:0.5rem;border:1px solid #eee;">' + (l.is_acknowledged ? '<span class="ack-badge done">확인됨</span> ' + (l.acknowledged_by||'') + (l.resolution_note ? ' - ' + l.resolution_note : '') : '<span class="ack-badge pending">미확인</span>') + '</td></tr>';
         if (hasDetails) {
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;vertical-align:top;">데이터</td><td style="padding:0.5rem;border:1px solid #eee;"><pre style="font-size:0.75rem;white-space:pre-wrap;word-break:break-all;max-height:200px;overflow-y:auto;margin:0;background:#f8f9fa;padding:0.5rem;border-radius:6px;">' + JSON.stringify(detailsClean, null, 2) + '</pre></td></tr>';
+          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;vertical-align:top;">데이터</td><td style="padding:0.5rem;border:1px solid #eee;"><pre style="font-size:0.75rem;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow-y:auto;margin:0;background:#f8f9fa;padding:0.5rem;border-radius:6px;">' + escapeHtml(detailText) + '</pre></td></tr>';
         }
         html += '</table>';
         document.getElementById('logDetailContent').innerHTML = html;
@@ -632,6 +651,6 @@
     }
   </script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.65.0"></script>
+  <script src="../js/version.js"></script>
 </body>
 </html>

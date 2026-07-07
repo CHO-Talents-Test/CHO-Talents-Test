@@ -120,12 +120,40 @@ function productCategoryRowToItem(row) {
   });
 }
 
+async function fetchProductCategories(options = {}) {
+  if (!_sb) return { data: getProductCategoryItems(options), error: null, fallback: true };
+  try {
+    let query = _sb
+      .from('code_items')
+      .select('group_key, code_key, code_value, sort_order, is_active, meta')
+      .eq('group_key', 'products.category')
+      .order('sort_order', { ascending: true })
+      .order('code_value', { ascending: true });
+    if (!options.includeInactive) query = query.eq('is_active', true);
+    const { data, error } = await query;
+    if (error) return { data: getProductCategoryItems(options), error: error.message, fallback: true };
+    const items = (data || []).map(productCategoryRowToItem);
+    items.forEach(upsertLocalProductCategory);
+    return { data: items, error: null, fallback: false };
+  } catch (err) {
+    return { data: getProductCategoryItems(options), error: String(err), fallback: true };
+  }
+}
+
 async function createProductCategory(categoryData) {
   if (!_sb) return { data: null, error: 'Supabase not initialized' };
   const label = normalizeProductCategoryLabel(categoryData && categoryData.label);
   if (!label) return { data: null, error: '카테고리명을 입력해주세요.' };
 
   const existing = getProductCategoryByLabel(label);
+  if (existing && existing.is_active === false) {
+    const revived = await updateProductCategory(existing.key, {
+      label,
+      emoji: (categoryData && categoryData.emoji) || existing.emoji,
+      sortOrder: (categoryData && categoryData.sortOrder) || existing.order || existing.sort_order
+    });
+    return Object.assign({}, revived, { existing: true, revived: !revived.error });
+  }
   if (existing) return { data: existing, error: null, existing: true };
 
   const emoji = normalizeProductCategoryLabel(categoryData && categoryData.emoji) || '🏷️';
@@ -134,7 +162,7 @@ async function createProductCategory(categoryData) {
     group_key: 'products.category',
     code_key: key,
     code_value: label,
-    sort_order: getNextProductCategoryOrder(),
+    sort_order: Number(categoryData && categoryData.sortOrder) || getNextProductCategoryOrder(),
     is_active: true,
     meta: { emoji, source: 'admin_shop_modal' }
   };
@@ -156,6 +184,94 @@ async function createProductCategory(categoryData) {
   } catch (err) {
     await logError('PRODUCT_CATEGORY_CREATE_ERROR', { 카테고리: label, 오류: String(err) });
     return { data: null, error: String(err) };
+  }
+}
+
+async function updateProductCategory(codeKey, categoryData) {
+  if (!_sb) return { data: null, error: 'Supabase not initialized' };
+  const key = String(codeKey || '').trim();
+  const label = normalizeProductCategoryLabel(categoryData && categoryData.label);
+  if (!key) return { data: null, error: '카테고리 코드를 확인할 수 없습니다.' };
+  if (!label) return { data: null, error: '카테고리명을 입력해주세요.' };
+
+  const duplicate = getProductCategoryItems({ includeInactive: true }).find(item =>
+    item.key !== key &&
+    normalizeProductCategoryLabel(item.value || item.code_value || item.key).toLocaleLowerCase('ko-KR') === label.toLocaleLowerCase('ko-KR')
+  );
+  if (duplicate) return { data: null, error: '같은 이름의 카테고리가 이미 있습니다.' };
+
+  const current = getCodeItem('products.category', key) || {};
+  const emoji = normalizeProductCategoryLabel(categoryData && categoryData.emoji) || current.emoji || '🏷️';
+  const sortOrder = Number(categoryData && categoryData.sortOrder);
+  const row = {
+    code_value: label,
+    sort_order: Number.isFinite(sortOrder) ? sortOrder : Number(current.order || current.sort_order || getNextProductCategoryOrder()),
+    is_active: true,
+    meta: Object.assign({}, current.meta || {}, { emoji, source: current.source || 'admin_shop_modal' })
+  };
+
+  try {
+    const { data, error } = await _sb
+      .from('code_items')
+      .update(row)
+      .eq('group_key', 'products.category')
+      .eq('code_key', key)
+      .select('group_key, code_key, code_value, sort_order, is_active, meta')
+      .single();
+    if (error) {
+      await logError('PRODUCT_CATEGORY_UPDATE_FAIL', { 카테고리: label, 코드: key, 오류: error.message });
+      return { data: null, error: error.message };
+    }
+    const item = productCategoryRowToItem(data || Object.assign({ group_key: 'products.category', code_key: key }, row));
+    upsertLocalProductCategory(item);
+    await logInfo('PRODUCT_CATEGORY_UPDATE', { 카테고리: label, 코드: key });
+    return { data: item, error: null };
+  } catch (err) {
+    await logError('PRODUCT_CATEGORY_UPDATE_ERROR', { 카테고리: label, 코드: key, 오류: String(err) });
+    return { data: null, error: String(err) };
+  }
+}
+
+async function getProductCategoryUsageCount(codeKey) {
+  if (!_sb || !codeKey) return 0;
+  try {
+    const { count, error } = await _sb
+      .from('products')
+      .select('id', { count: 'exact', head: true })
+      .eq('category', codeKey);
+    if (error) return 0;
+    return count || 0;
+  } catch (err) {
+    return 0;
+  }
+}
+
+async function deactivateProductCategory(codeKey) {
+  if (!_sb) return { error: 'Supabase not initialized' };
+  const key = String(codeKey || '').trim();
+  if (!key) return { error: '카테고리 코드를 확인할 수 없습니다.' };
+  if (key === 'etc') return { error: '기타 카테고리는 기본값이라 삭제할 수 없습니다.' };
+  const usageCount = await getProductCategoryUsageCount(key);
+  if (usageCount > 0) {
+    return { error: `이 카테고리를 사용하는 상품이 ${usageCount}건 있어 삭제할 수 없습니다.` };
+  }
+
+  try {
+    const { error } = await _sb
+      .from('code_items')
+      .update({ is_active: false })
+      .eq('group_key', 'products.category')
+      .eq('code_key', key);
+    if (error) {
+      await logError('PRODUCT_CATEGORY_DELETE_FAIL', { 코드: key, 오류: error.message });
+      return { error: error.message };
+    }
+    upsertLocalProductCategory({ key, is_active: false });
+    await logInfo('PRODUCT_CATEGORY_DELETE', { 코드: key });
+    return { error: null };
+  } catch (err) {
+    await logError('PRODUCT_CATEGORY_DELETE_ERROR', { 코드: key, 오류: String(err) });
+    return { error: String(err) };
   }
 }
 

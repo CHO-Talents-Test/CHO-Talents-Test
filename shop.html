@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>달란트 상점 - 달란트 마을</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛒</text></svg>" />
-  <link rel="stylesheet" href="css/themes.css?v=3.65.0" />
-  <link rel="stylesheet" href="css/common.css?v=3.65.0" />
+  <link rel="stylesheet" href="css/themes.css" />
+  <link rel="stylesheet" href="css/common.css" />
   <style>
     .product-card { cursor: pointer; }
     .product-card img.product-img { cursor: zoom-in; }
@@ -47,6 +47,12 @@
     .image-zoom-modal { width: min(92vw, 1000px); max-height: 92vh; display: flex; flex-direction: column; }
     .image-zoom-body { padding: 1rem 1.1rem 1.1rem; overflow: auto; }
     .image-zoom-body img { display: block; max-width: 100%; max-height: 74vh; margin: 0 auto; object-fit: contain; }
+    .shop-sort-buttons { display: inline-flex; gap: 0.35rem; flex-wrap: wrap; }
+    .shop-sort-buttons .filter-btn { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
+    .shop-sort-buttons .filter-btn.active { background: #228be6; color: #fff; border-color: #228be6; }
+    .shop-category-heading { display: flex; align-items: center; gap: 0.5rem; margin: 1.2rem 0 0.75rem; }
+    .shop-category-heading .section-title { margin: 0; }
+    .shop-category-count { font-size: 0.75rem; color: var(--t-text-muted, #868e96); font-weight: 700; }
     @media (max-width: 720px) {
       .product-detail-layout { grid-template-columns: 1fr; }
       .product-detail-emoji { min-height: 180px; }
@@ -71,6 +77,11 @@
         <option value="">전체 카테고리</option>
       </select>
       <input type="text" id="shopSearchInput" oninput="renderShopProducts()" placeholder="상품명/카테고리 검색..." style="padding:0.4rem 0.8rem;border:1px solid #ddd;border-radius:8px;font-size:0.84rem;flex:1;min-width:140px;" />
+      <div class="shop-sort-buttons" aria-label="상품 정렬">
+        <button type="button" class="filter-btn active" id="sortCategoryBtn" onclick="toggleShopSort('category')">카테고리↑</button>
+        <button type="button" class="filter-btn" id="sortPriceBtn" onclick="toggleShopSort('price')">가격순</button>
+        <button type="button" class="filter-btn" id="sortNameBtn" onclick="toggleShopSort('name')">이름</button>
+      </div>
     </div>
 
     <!-- 대리 구매 모달 -->
@@ -145,16 +156,16 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config/public-config.js?v=3.65.0"></script>
-  <script src="js/supabase-config.js?v=3.65.0"></script>
-  <script src="js/activity-log.js?v=3.65.0"></script>
-  <script src="js/codes.js?v=3.65.0"></script>
-  <script src="js/auth.js?v=3.65.0"></script>
-  <script src="js/theme.js?v=3.65.0"></script>
-  <script src="js/nav.js?v=3.65.0"></script>
-  <script src="js/product.js?v=3.65.0"></script>
-  <script src="js/user-mgmt.js?v=3.65.0"></script>
-  <script src="js/slack-notify.js?v=3.65.0"></script>
+  <script src="config/public-config.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/activity-log.js"></script>
+  <script src="js/codes.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/product.js"></script>
+  <script src="js/user-mgmt.js"></script>
+  <script src="js/slack-notify.js"></script>
   <script>
     initSupabase();
     let currentShopTab = 'student';
@@ -164,6 +175,7 @@
     let _userBalance = 0;
     let _userPending = 0;
     let _selectedProduct = null;
+    let shopSortState = { key: 'category', dir: 'asc' };
 
     function escapeHtml(value) {
       return String(value || '').replace(/[&<>"']/g, ch => ({
@@ -233,7 +245,55 @@
       document.getElementById('shopFilterArea').style.display = 'flex';
     }
 
+    function compareShopProducts(a, b) {
+      const dir = shopSortState.dir === 'desc' ? -1 : 1;
+      const categoryCompare = () => {
+        const ao = getCodeOrder('products.category', a.category || 'etc', 9999);
+        const bo = getCodeOrder('products.category', b.category || 'etc', 9999);
+        if (ao !== bo) return (ao - bo) * dir;
+        const labelCmp = getProductCategoryLabel(a.category || 'etc').localeCompare(getProductCategoryLabel(b.category || 'etc'), 'ko');
+        if (labelCmp !== 0) return labelCmp * dir;
+        return (a.name || '').localeCompare(b.name || '', 'ko');
+      };
+      if (shopSortState.key === 'category') return categoryCompare();
+      if (shopSortState.key === 'price') {
+        const priceCmp = ((a.price || 0) - (b.price || 0)) * dir;
+        if (priceCmp !== 0) return priceCmp;
+      } else if (shopSortState.key === 'name') {
+        const nameCmp = (a.name || '').localeCompare(b.name || '', 'ko') * dir;
+        if (nameCmp !== 0) return nameCmp;
+      }
+      const catTie = getProductCategoryLabel(a.category || 'etc').localeCompare(getProductCategoryLabel(b.category || 'etc'), 'ko');
+      if (catTie !== 0) return catTie;
+      return (a.name || '').localeCompare(b.name || '', 'ko');
+    }
+
+    function updateShopSortButtons() {
+      const configs = [
+        { id: 'sortCategoryBtn', key: 'category', label: '카테고리' },
+        { id: 'sortPriceBtn', key: 'price', label: '가격순' },
+        { id: 'sortNameBtn', key: 'name', label: '이름' }
+      ];
+      configs.forEach(cfg => {
+        const btn = document.getElementById(cfg.id);
+        if (!btn) return;
+        const active = shopSortState.key === cfg.key;
+        btn.classList.toggle('active', active);
+        btn.textContent = active ? `${cfg.label}${shopSortState.dir === 'asc' ? '↑' : '↓'}` : cfg.label;
+      });
+    }
+
+    function toggleShopSort(key) {
+      if (shopSortState.key === key) {
+        shopSortState.dir = shopSortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        shopSortState = { key, dir: 'asc' };
+      }
+      renderShopProducts();
+    }
+
     function renderShopProducts() {
+      updateShopSortButtons();
       const catFilter = (document.getElementById('shopCatFilter') || {}).value || '';
       const searchText = ((document.getElementById('shopSearchInput') || {}).value || '').trim().toLowerCase();
       let filtered = allShopProducts.filter(p => p.target_role === currentShopTab);
@@ -243,6 +303,7 @@
         (p.category || '').toLowerCase().includes(searchText) ||
         getProductCategoryLabel(p.category || 'etc').toLowerCase().includes(searchText)
       );
+      filtered = filtered.slice().sort(compareShopProducts);
       const area = document.getElementById('productArea');
       const label = currentShopTab === 'student' ? '학생' : '교사';
       document.getElementById('shopSub').textContent = `${label} 달란트 교환 상품입니다`;
@@ -252,11 +313,20 @@
         return;
       }
 
-      const categories = {};
-      filtered.forEach(p => { const cat = p.category || 'etc'; if (!categories[cat]) categories[cat] = []; categories[cat].push(p); });
+      if (shopSortState.key !== 'category') {
+        area.innerHTML = `<div class="product-grid">${filtered.map(p => renderProductCard(p)).join('')}</div>`;
+        return;
+      }
+
+      const categories = new Map();
+      filtered.forEach(p => {
+        const cat = p.category || 'etc';
+        if (!categories.has(cat)) categories.set(cat, []);
+        categories.get(cat).push(p);
+      });
       let html = '';
-      for (const [cat, items] of Object.entries(categories)) {
-        html += `<h2 class="section-title">${getProductCategoryLabel(cat)}</h2><div class="product-grid">`;
+      for (const [cat, items] of categories.entries()) {
+        html += `<div class="shop-category-heading"><h2 class="section-title">${getProductCategoryLabel(cat)}</h2><span class="shop-category-count">${items.length}개</span></div><div class="product-grid">`;
         html += items.map(p => renderProductCard(p)).join('');
         html += '</div>';
       }
@@ -550,6 +620,6 @@
     }
   </script>
   <div id="version-container"></div>
-  <script src="js/version.js?v=3.65.0"></script>
+  <script src="js/version.js"></script>
 </body>
 </html>

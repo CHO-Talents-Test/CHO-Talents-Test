@@ -2,9 +2,30 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.65.0',
-  date: '2026-07-06',
+  current: '3.66.1',
+  date: '2026-07-07',
   history: [
+    {
+      version: '3.66.1',
+      date: '2026-07-07',
+      title: '버전 캐시 참조 중앙화',
+      changes: [
+        '각 HTML 파일의 고정 버전 쿼리 문자열을 제거해 버전 변경 시 페이지별 수정이 필요 없도록 정리',
+        '공통 version.js에서 최신 버전을 확인하고 로드된 CSS/JS 파일을 강제로 재검증하도록 보강',
+        '구버전 자산 감지 시 한 번 새로고침한 뒤 최신 자산으로 재로그인 안내가 이어지도록 개선'
+      ]
+    },
+    {
+      version: '3.66.0',
+      date: '2026-07-07',
+      title: '로그 상세 한글화 및 기존 로그 백필',
+      changes: [
+        '신규 활동 로그 저장 시 원본 키와 함께 한글 상세 키 별칭을 저장하도록 보강',
+        '로그 관리와 작업 이력 상세 모달에서 한글화된 로그 상세 데이터를 우선 표시',
+        '기존 activity_logs 상세 데이터에 한글 별칭을 추가하는 SQL 문서 추가',
+        '인증/버전/아이디 확인 관련 실제 발생 로그 액션의 한글 라벨 보강'
+      ]
+    },
     {
       version: '3.65.0',
       date: '2026-07-06',
@@ -151,6 +172,7 @@ function renderVersionBadge() {
 }
 
 const VERSION_SESSION_KEY = 'cho_session_app_version';
+const VERSION_ASSET_REFRESH_KEY = 'cho_last_asset_refresh_version';
 
 function markCurrentAppVersion() {
   try {
@@ -189,9 +211,49 @@ async function _fetchLatestVersion() {
   }
 }
 
+function _versionNormalizeAssetUrl(rawUrl) {
+  try {
+    const url = new URL(rawUrl, window.location.href);
+    if (url.origin !== window.location.origin) return null;
+    if (!/\.(css|js)$/i.test(url.pathname)) return null;
+    url.searchParams.delete('v');
+    url.searchParams.delete('_');
+    return url.href;
+  } catch (e) {
+    return null;
+  }
+}
+
+function _versionLoadedAssetUrls() {
+  const nodes = Array.from(document.querySelectorAll('script[src], link[rel="stylesheet"][href]'));
+  const urls = nodes
+    .map(node => _versionNormalizeAssetUrl(node.getAttribute('src') || node.getAttribute('href')))
+    .filter(Boolean);
+  return Array.from(new Set(urls));
+}
+
+async function refreshAppAssetsForVersion(latestVersion) {
+  if (typeof fetch !== 'function') return false;
+  const urls = _versionLoadedAssetUrls();
+  if (urls.length === 0) return false;
+  await Promise.all(urls.map(url => fetch(url, { cache: 'reload' }).catch(() => null)));
+  try {
+    localStorage.setItem(VERSION_ASSET_REFRESH_KEY, latestVersion || APP_VERSION.current);
+  } catch (e) {}
+  return true;
+}
+
+async function _refreshAssetsOnceForVersion(latestVersion) {
+  try {
+    if (!latestVersion || localStorage.getItem(VERSION_ASSET_REFRESH_KEY) === latestVersion) return false;
+  } catch (e) {}
+  return refreshAppAssetsForVersion(latestVersion);
+}
+
 async function _forceLogoutForVersion(latestVersion, sessionVersion) {
   const loginPath = _versionLoginPath();
   const target = _versionRedirectTarget(loginPath);
+  await refreshAppAssetsForVersion(latestVersion);
   try {
     if (typeof logWarn === 'function') {
       await logWarn('APP_VERSION_STALE_SESSION', {
@@ -222,10 +284,18 @@ async function _forceLogoutForVersion(latestVersion, sessionVersion) {
 }
 
 async function enforceLatestAppVersion() {
+  const latestVersion = await _fetchLatestVersion();
+  if (APP_VERSION.current !== latestVersion) {
+    const refreshed = await _refreshAssetsOnceForVersion(latestVersion);
+    if (refreshed) {
+      window.location.reload();
+      return;
+    }
+  }
+
   if (typeof getSession !== 'function') return;
   const session = getSession();
   if (!session) return;
-  const latestVersion = await _fetchLatestVersion();
   const sessionVersion = session.appVersion || localStorage.getItem(VERSION_SESSION_KEY) || '';
   if (APP_VERSION.current !== latestVersion || sessionVersion !== latestVersion) {
     await _forceLogoutForVersion(latestVersion, sessionVersion);
@@ -246,5 +316,7 @@ if (document.readyState === 'loading') {
   renderVersionFooter();
   enforceLatestAppVersion();
 }
+
+window.refreshAppAssetsForVersion = refreshAppAssetsForVersion;
 
 
