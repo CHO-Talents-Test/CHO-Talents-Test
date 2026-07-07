@@ -4,8 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>공지 사항 - CHO Talents Admin</title>
-  <link rel="stylesheet" href="../css/themes.css?v=3.65.0" />
-  <link rel="stylesheet" href="../css/admin.css?v=3.65.0" />
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
   <style>
     .notice-toolbar { display: flex; gap: 0.75rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 1rem; }
     .notice-toolbar-left, .notice-toolbar-right { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
@@ -71,10 +71,23 @@
     .notice-image-preview .notice-image-caption button { border: 0; background: transparent; color: #d63031; cursor: pointer; padding: 0; font-size: 0.75rem; font-weight: 700; }
     .notice-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
     .notice-modal-header h3 { margin: 0; }
+    .notice-read-summary { color: var(--admin-text-muted); font-size: 0.84rem; margin-bottom: 0.75rem; }
+    .notice-read-filters { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
+    .notice-read-filters select { padding: 0.45rem 0.65rem; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-input-bg, #fff); color: var(--t-text, #333); font-size: 0.84rem; }
+    .notice-read-table-wrap { overflow: auto; max-height: 50vh; border: 1px solid var(--admin-border); border-radius: 8px; }
+    .notice-read-table { width: 100%; border-collapse: collapse; font-size: 0.84rem; }
+    .notice-read-table th, .notice-read-table td { padding: 0.55rem 0.65rem; border-bottom: 1px solid var(--admin-border); text-align: left; white-space: nowrap; }
+    .notice-read-table th { background: var(--t-bg, #f8f9fa); color: var(--admin-text-muted); font-weight: 800; }
+    .notice-read-table td:first-child { white-space: normal; min-width: 140px; }
+    .notice-read-status { display: inline-flex; align-items: center; padding: 0.15rem 0.45rem; border-radius: 999px; font-size: 0.74rem; font-weight: 800; }
+    .notice-read-status.done { background: #d3f9d8; color: #2b8a3e; }
+    .notice-read-status.pending { background: #fff3bf; color: #e67700; }
+    .notice-read-paging { display: flex; justify-content: center; align-items: center; gap: 0.3rem; margin-top: 0.75rem; flex-wrap: wrap; }
     @media (max-width: 640px) {
       .notice-content-col { display: none; }
       .notice-author-cell { max-width: 100px; }
       .notice-modal-header { align-items: flex-start; flex-direction: column; }
+      .notice-read-table th, .notice-read-table td { padding: 0.5rem; }
     }
   </style>
 </head>
@@ -194,16 +207,52 @@
     </div>
   </div>
 
+  <div class="modal-overlay hidden" id="noticeReadModal">
+    <div class="modal-box" style="max-width:760px;">
+      <div class="notice-modal-header">
+        <h3 class="modal-title" id="noticeReadTitle">공지 열람 현황</h3>
+        <button class="btn-cancel" onclick="closeNoticeReadStatus()">닫기</button>
+      </div>
+      <div class="notice-read-summary" id="noticeReadSummary">열람 현황을 불러오는 중입니다.</div>
+      <div class="notice-read-filters">
+        <select id="noticeReadUserTypeFilter" onchange="onNoticeReadFilterChange()">
+          <option value="">전체 사용자 유형</option>
+          <option value="teacher">교사</option>
+          <option value="student">학생</option>
+        </select>
+        <select id="noticeReadDeptFilter" onchange="onNoticeReadFilterChange()">
+          <option value="">전체 부서</option>
+        </select>
+        <span id="noticeReadPageSizeWrap"></span>
+      </div>
+      <div class="notice-read-table-wrap">
+        <table class="notice-read-table">
+          <thead>
+            <tr>
+              <th>사용자 이름</th>
+              <th>확인 여부</th>
+              <th>확인 일시</th>
+            </tr>
+          </thead>
+          <tbody id="noticeReadList">
+            <tr><td colspan="3" class="empty-state">로딩 중...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="notice-read-paging" id="noticeReadPaging"></div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="../config/public-config.js?v=3.65.0"></script>
-  <script src="../js/supabase-config.js?v=3.65.0"></script>
-  <script src="../js/activity-log.js?v=3.65.0"></script>
-  <script src="../js/codes.js?v=3.65.0"></script>
-  <script src="../js/auth.js?v=3.65.0"></script>
-  <script src="../js/theme.js?v=3.65.0"></script>
-  <script src="../js/nav.js?v=3.65.0"></script>
-  <script src="../js/page-size.js?v=3.65.0"></script>
-  <script src="../js/image-upload.js?v=3.65.0"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/page-size.js"></script>
+  <script src="../js/image-upload.js"></script>
   <script>
     initSupabase();
     const NOTICE_MANAGE_MIN_RANK = 90;
@@ -219,6 +268,14 @@
     let noticeImageRemoved = false;
     let noticePreviewObjectUrl = null;
     let noticePreviewUrlObject = null;
+    let noticeReadNoticeId = null;
+    let noticeReadUsers = [];
+    let noticeReadDismissalMap = {};
+    let noticeReadDepartments = [];
+    let noticeReadPage = 1;
+    let noticeReadPageSize = 20;
+    let noticeReadUserType = '';
+    let noticeReadDeptId = '';
 
     (async () => {
       await navInit();
@@ -232,6 +289,7 @@
       updateLogBadge();
       applyNoticePermissions();
       noticePageSize = await loadPageSize('notices', 20);
+      noticeReadPageSize = await loadPageSize('notice_reads', 20);
       await loadNotices();
     })();
 
@@ -395,6 +453,132 @@
       return notices.find(n => n.id === id);
     }
 
+    function noticeReadUserName(user) {
+      const name = user.display_name || user.username || '-';
+      const username = user.username && user.username !== name ? ` (${user.username})` : '';
+      return name + username;
+    }
+
+    function populateNoticeReadDeptFilter() {
+      const select = document.getElementById('noticeReadDeptFilter');
+      if (!select) return;
+      select.innerHTML = '<option value="">전체 부서</option>' +
+        noticeReadDepartments.map(d => `<option value="${escapeHtml(d.id)}">${escapeHtml(d.name)}</option>`).join('');
+      select.value = noticeReadDeptId || '';
+    }
+
+    function getNoticeReadRows() {
+      return noticeReadUsers
+        .filter(user => !noticeReadUserType || user.user_type === noticeReadUserType)
+        .filter(user => !noticeReadDeptId || user.department_id === noticeReadDeptId)
+        .map(user => ({
+          user,
+          checked: !!noticeReadDismissalMap[user.id],
+          checkedAt: noticeReadDismissalMap[user.id] || null
+        }))
+        .sort((a, b) => {
+          if (a.checked !== b.checked) return a.checked ? 1 : -1;
+          return noticeReadUserName(a.user).localeCompare(noticeReadUserName(b.user), 'ko');
+        });
+    }
+
+    async function openNoticeReadStatus(id) {
+      if (!requireNoticeManager('공지 열람 현황 조회')) return;
+      closeNoticeMenus();
+      const notice = getNoticeById(id);
+      if (!notice) return;
+      noticeReadNoticeId = id;
+      noticeReadPage = 1;
+      noticeReadUserType = '';
+      noticeReadDeptId = '';
+      const typeFilter = document.getElementById('noticeReadUserTypeFilter');
+      if (typeFilter) typeFilter.value = '';
+      document.getElementById('noticeReadTitle').textContent = `열람 현황: ${notice.title || '공지'}`;
+      document.getElementById('noticeReadSummary').textContent = '열람 현황을 불러오는 중입니다.';
+      document.getElementById('noticeReadList').innerHTML = '<tr><td colspan="3" class="empty-state">로딩 중...</td></tr>';
+      document.getElementById('noticeReadPaging').innerHTML = '';
+      document.getElementById('noticeReadModal').classList.remove('hidden');
+
+      const [userRes, dismissalRes, deptRes] = await Promise.all([
+        _sb.from('profiles').select('id, username, display_name, user_type, department_id').order('user_type').order('display_name'),
+        _sb.from('announcement_dismissals').select('user_id, dismissed_at').eq('announcement_id', id),
+        _sb.from('departments').select('id, name').order('name')
+      ]);
+
+      if (userRes.error) {
+        document.getElementById('noticeReadList').innerHTML =
+          '<tr><td colspan="3" class="empty-state" style="color:#d63031;">사용자 목록을 불러오지 못했습니다.<br>' + escapeHtml(tErr(userRes.error.message)) + '</td></tr>';
+        return;
+      }
+      if (dismissalRes.error) {
+        document.getElementById('noticeReadList').innerHTML =
+          '<tr><td colspan="3" class="empty-state" style="color:#d63031;">공지 열람 기록을 불러오지 못했습니다. docs/TASK-066_notice_reads_and_category_manage.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(dismissalRes.error.message)) + '</td></tr>';
+        return;
+      }
+
+      noticeReadUsers = userRes.data || [];
+      noticeReadDismissalMap = {};
+      (dismissalRes.data || []).forEach(row => { noticeReadDismissalMap[row.user_id] = row.dismissed_at; });
+      noticeReadDepartments = deptRes.data || [];
+      populateNoticeReadDeptFilter();
+      renderNoticeReadStatus();
+      await logInfo('ANNOUNCEMENT_READ_STATUS_VIEW', { 공지ID: id, 제목: notice.title });
+    }
+
+    function renderNoticeReadStatus() {
+      const rows = getNoticeReadRows();
+      const checkedCount = rows.filter(row => row.checked).length;
+      const uncheckedCount = rows.length - checkedCount;
+      document.getElementById('noticeReadSummary').textContent =
+        `표시 ${rows.length}명 · 확인 ${checkedCount}명 · 미확인 ${uncheckedCount}명`;
+      document.getElementById('noticeReadPageSizeWrap').innerHTML =
+        renderPageSizeSelector('notice_reads', noticeReadPageSize, 'onNoticeReadPageSizeChange(this.value)');
+
+      const totalPages = Math.max(1, Math.ceil(rows.length / noticeReadPageSize));
+      if (noticeReadPage > totalPages) noticeReadPage = totalPages;
+      const start = (noticeReadPage - 1) * noticeReadPageSize;
+      const pageRows = rows.slice(start, start + noticeReadPageSize);
+      const tbody = document.getElementById('noticeReadList');
+      if (!pageRows.length) {
+        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">해당 조건의 사용자가 없습니다.</td></tr>';
+        document.getElementById('noticeReadPaging').innerHTML = '';
+        return;
+      }
+      tbody.innerHTML = pageRows.map(row => `
+        <tr>
+          <td>${escapeHtml(noticeReadUserName(row.user))}</td>
+          <td><span class="notice-read-status ${row.checked ? 'done' : 'pending'}">${row.checked ? '확인' : '미확인'}</span></td>
+          <td>${row.checkedAt ? escapeHtml(formatKSTShort(row.checkedAt)) : '-'}</td>
+        </tr>
+      `).join('');
+      document.getElementById('noticeReadPaging').innerHTML =
+        buildPagingButtons(noticeReadPage, totalPages, 'goNoticeReadPage(__PAGE__)');
+    }
+
+    function onNoticeReadFilterChange() {
+      noticeReadUserType = document.getElementById('noticeReadUserTypeFilter').value || '';
+      noticeReadDeptId = document.getElementById('noticeReadDeptFilter').value || '';
+      noticeReadPage = 1;
+      renderNoticeReadStatus();
+    }
+
+    async function onNoticeReadPageSizeChange(value) {
+      noticeReadPageSize = parseInt(value, 10) || 20;
+      noticeReadPage = 1;
+      await savePageSize('notice_reads', noticeReadPageSize);
+      renderNoticeReadStatus();
+    }
+
+    function goNoticeReadPage(page) {
+      noticeReadPage = page;
+      renderNoticeReadStatus();
+    }
+
+    function closeNoticeReadStatus() {
+      document.getElementById('noticeReadModal').classList.add('hidden');
+      noticeReadNoticeId = null;
+    }
+
     function openNoticeImageZoom(src, title) {
       const overlay = document.getElementById('noticeImageZoomOverlay');
       const img = document.getElementById('noticeImageZoomImg');
@@ -489,6 +673,7 @@
           `<button type="button" onclick="closeNoticeMenus(); openNoticeView('${n.id}')">보기</button>`
         ];
         if (canManage) {
+          menuItems.push(`<button type="button" onclick="closeNoticeMenus(); openNoticeReadStatus('${n.id}')">열람</button>`);
           menuItems.push(`<button type="button" onclick="closeNoticeMenus(); openNoticeEditor('${n.id}')">수정</button>`);
           menuItems.push(`<button type="button" class="danger" onclick="closeNoticeMenus(); deleteNotice('${n.id}')">삭제</button>`);
         }
@@ -826,8 +1011,11 @@
     document.getElementById('noticeEditModal').addEventListener('click', e => {
       if (e.target.classList.contains('modal-overlay')) closeNoticeEditor();
     });
+    document.getElementById('noticeReadModal').addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay')) closeNoticeReadStatus();
+    });
   </script>
   <div id="version-container"></div>
-  <script src="../js/version.js?v=3.65.0"></script>
+  <script src="../js/version.js"></script>
 </body>
 </html>

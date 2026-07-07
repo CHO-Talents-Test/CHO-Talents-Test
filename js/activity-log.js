@@ -34,6 +34,7 @@ const ACTION_LABELS = {
   JS_ERROR: 'JS 오류',
   PROMISE_REJECTION: '비동기 오류',
   CONNECTION_FAIL: '연결 실패',
+  APP_VERSION_STALE_SESSION: '구버전 세션 감지',
   // 사용자
   USER_CREATE: '사용자 등록',
   USER_CREATE_FAIL: '사용자 등록 실패',
@@ -49,6 +50,8 @@ const ACTION_LABELS = {
   USER_DELETE_ERROR: '사용자 삭제 오류',
   USER_PW_RESET: '비밀번호 초기화',
   USER_PW_RESET_FAIL: '비밀번호 초기화 실패',
+  USER_ID_CHECK_FAIL: '아이디 중복 확인 실패',
+  USER_ID_CHECK_DUPLICATE: '아이디 중복',
   PASSWORD_RESET: '비밀번호 초기화',
   PASSWORD_RESET_FAIL: '비밀번호 초기화 실패',
   PASSWORD_RESET_DENIED: '비밀번호 초기화 거부',
@@ -59,6 +62,7 @@ const ACTION_LABELS = {
   REGISTER_APPROVE: '가입 승인',
   REGISTER_APPROVE_FAIL: '가입 승인 실패',
   REGISTER_REJECT: '가입 거부',
+  BULK_REGISTER: '학생 일괄 등록',
   // 인증
   LOGIN_SUCCESS: '로그인 성공',
   LOGIN_FAIL: '로그인 실패',
@@ -145,6 +149,12 @@ const ACTION_LABELS = {
   PRODUCT_CATEGORY_CREATE: '상품 카테고리 등록',
   PRODUCT_CATEGORY_CREATE_FAIL: '상품 카테고리 등록 실패',
   PRODUCT_CATEGORY_CREATE_ERROR: '상품 카테고리 등록 오류',
+  PRODUCT_CATEGORY_UPDATE: '상품 카테고리 수정',
+  PRODUCT_CATEGORY_UPDATE_FAIL: '상품 카테고리 수정 실패',
+  PRODUCT_CATEGORY_UPDATE_ERROR: '상품 카테고리 수정 오류',
+  PRODUCT_CATEGORY_DELETE: '상품 카테고리 삭제',
+  PRODUCT_CATEGORY_DELETE_FAIL: '상품 카테고리 삭제 실패',
+  PRODUCT_CATEGORY_DELETE_ERROR: '상품 카테고리 삭제 오류',
   PRODUCT_UPDATE: '상품 수정',
   PRODUCT_UPDATE_FAIL: '상품 수정 실패',
   PRODUCT_UPDATE_ERROR: '상품 수정 오류',
@@ -206,6 +216,7 @@ const ACTION_LABELS = {
   QNA_FAQ_SET: 'FAQ 설정',
   // 공지
   ANNOUNCEMENT_VIEW: '공지 조회',
+  ANNOUNCEMENT_READ_STATUS_VIEW: '공지 열람 현황 조회',
   ANNOUNCEMENT_CREATE: '공지 등록',
   ANNOUNCEMENT_CREATE_FAIL: '공지 등록 실패',
   ANNOUNCEMENT_UPDATE: '공지 수정',
@@ -252,6 +263,290 @@ function getActionLabel(action) {
   return (typeof getCodeLabel === 'function')
     ? getCodeLabel('activity_logs.action', action, fallback)
     : fallback;
+}
+
+const LOG_DETAIL_KEY_LABELS = {
+  _actionKey: '작업코드',
+  _actionEn: '작업코드',
+  _actionLabel: '작업명',
+  _actionKo: '작업명',
+  _userAccount: '작업자 아이디',
+  _username: '작업자 아이디',
+  _userName: '작업자',
+  _displayName: '작업자',
+  _client: '클라이언트',
+  action: '작업',
+  actionKey: '작업코드',
+  actionLabel: '작업명',
+  message: '메시지',
+  details: '상세',
+  detail: '상세',
+  error: '오류',
+  reason: '사유',
+  target: '대상',
+  targetName: '대상',
+  displayName: '표시 이름',
+  name: '이름',
+  username: '아이디',
+  userName: '사용자 이름',
+  userId: '사용자 ID',
+  authUserId: '인증 사용자 ID',
+  user_type: '사용자 유형',
+  userType: '사용자 유형',
+  class_number: '반',
+  classNumber: '반',
+  roleKey: '역할',
+  permissionKey: '권한',
+  permissionLevel: '권한 등급',
+  permissionRank: '권한 순위',
+  cachedUsername: '캐시된 아이디',
+  cachedPermissionLevel: '캐시된 권한 등급',
+  cachedPermissionRank: '캐시된 권한 순위',
+  hasCachedSession: '캐시 세션 여부',
+  lastActivityAt: '마지막 활동 일시',
+  idleExpired: '유휴 만료 여부',
+  page: '페이지',
+  pageId: '페이지 ID',
+  pageName: '페이지명',
+  filename: '파일명',
+  lineno: '줄 번호',
+  colno: '열 번호',
+  url: 'URL',
+  imageUrl: '이미지 URL',
+  filePath: '파일 경로',
+  currentVersion: '현재 버전',
+  latestVersion: '최신 버전',
+  sessionVersion: '세션 버전',
+  currentPageVersion: '현재 페이지 버전',
+  redirectTarget: '이동 대상',
+  dateFrom: '시작일',
+  dateTo: '종료일',
+  level: '레벨',
+  logId: '로그 ID',
+  count: '건수',
+  total: '전체',
+  totalCount: '전체 건수',
+  itemId: '항목 ID',
+  itemName: '항목명',
+  taskId: '작업 ID',
+  taskTitle: '작업 제목',
+  product_id: '상품 ID',
+  productId: '상품 ID',
+  product_name: '상품명',
+  productName: '상품명',
+  category: '카테고리',
+  categoryCode: '카테고리 코드',
+  categoryName: '카테고리명',
+  emoji: '이모지',
+  sort_order: '표시 순번',
+  sortOrder: '표시 순번',
+  displayOrder: '표시 순번',
+  orderId: '주문 ID',
+  orderNo: '주문번호',
+  status: '상태',
+  state: '상태',
+  oldStatus: '이전 상태',
+  newStatus: '변경 상태',
+  amount: '수량',
+  balance: '잔액',
+  price: '가격',
+  pending: '대기 달란트',
+  available: '사용 가능 달란트',
+  talentBalance: '달란트 잔액',
+  talent_balance: '달란트 잔액',
+  pendingTalent: '보류 달란트',
+  pending_talent: '보류 달란트',
+  department: '부서',
+  departmentId: '부서 ID',
+  departmentName: '부서명',
+  fromDept: '이전 부서',
+  toDept: '이동 부서',
+  fromDeptName: '이전 부서명',
+  toDeptName: '이동 부서명',
+  success: '성공',
+  fail: '실패',
+  failed: '실패',
+  old: '이전 값',
+  new: '변경 값',
+  oldValue: '이전 값',
+  newValue: '변경 값',
+  before: '이전 값',
+  after: '변경 값',
+  is_active: '활성 상태',
+  isActive: '활성 상태',
+  is_deleted: '삭제 상태',
+  isDeleted: '삭제 상태',
+  acknowledgedBy: '확인자',
+  acknowledgedAt: '확인 일시',
+  resolutionNote: '해결 사항',
+  ip: 'IP',
+  browser: '브라우저',
+  os: 'OS',
+  screenRes: '화면 해상도',
+  windowSize: '창 크기',
+  deviceType: '기기 유형',
+  language: '언어',
+  userAgent: '사용자 에이전트',
+  현재페이지버전: '현재 페이지 버전',
+  최신버전: '최신 버전',
+  세션버전: '세션 버전',
+  요청페이지: '요청 페이지',
+  이동대상: '이동 대상'
+};
+
+const LOG_DETAIL_VALUE_LABELS = {
+  true: '예',
+  false: '아니오',
+  teacher: '교사',
+  student: '학생',
+  admin: '관리자',
+  super_admin: '최고 관리자',
+  evangelist: '전도사님',
+  chief: '부장 교사',
+  purchase_teacher: '구매 담당 교사',
+  dept_teacher: '부서 담당 교사',
+  pending: '대기',
+  approved: '승인',
+  rejected: '거부',
+  requested: '요청됨',
+  preparing: '준비 중',
+  purchased: '구매 완료',
+  delivered: '지급 완료',
+  cancelled: '취소됨',
+  active: '활성',
+  inactive: '비활성',
+  ALL: '전체',
+  desktop: '데스크톱',
+  mobile: '모바일',
+  tablet: '태블릿',
+  Unknown: '알 수 없음',
+  unknown: '알 수 없음',
+  'Supabase client not initialized': 'Supabase 클라이언트 초기화 안 됨',
+  'Supabase auth session error': 'Supabase 인증 세션 오류',
+  'Supabase auth session exception': 'Supabase 인증 세션 예외',
+  'Supabase auth session missing': 'Supabase 인증 세션 없음',
+  'Profile RPC returned no profile': '프로필 RPC 결과 없음'
+};
+
+const LOG_TECHNICAL_DETAIL_KEYS = new Set([
+  '_actionKey',
+  '_actionEn',
+  '_actionLabel',
+  '_actionKo',
+  '_userAccount',
+  '_username',
+  '_userName',
+  '_displayName',
+  '_client'
+]);
+
+function getLogDetailKeyLabel(key) {
+  return LOG_DETAIL_KEY_LABELS[key] || key;
+}
+
+function _addLogDetailValue(target, key, value) {
+  if (!key) return;
+  if (!Object.prototype.hasOwnProperty.call(target, key)) {
+    target[key] = value;
+    return;
+  }
+  if (JSON.stringify(target[key]) !== JSON.stringify(value)) {
+    let idx = 2;
+    let nextKey = key + ' ' + idx;
+    while (Object.prototype.hasOwnProperty.call(target, nextKey)) {
+      idx += 1;
+      nextKey = key + ' ' + idx;
+    }
+    target[nextKey] = value;
+  }
+}
+
+function _localizeLogDetailValue(key, value, depth = 0) {
+  if (depth > 5) return value;
+  if (value === null || value === undefined) return value;
+  if (typeof value === 'boolean') return value ? '예' : '아니오';
+  if (Array.isArray(value)) return value.map(item => _localizeLogDetailValue(key, item, depth + 1));
+  if (typeof value === 'object') {
+    return buildKoreanLogDetails(value, {
+      includeOriginalKeys: false,
+      includeTechnicalKeys: false,
+      addContext: false,
+      depth: depth + 1
+    });
+  }
+  if (typeof value !== 'string') return value;
+
+  const lowerKey = String(key || '').toLowerCase();
+  if ((lowerKey.includes('permission') || lowerKey === 'rolekey') && typeof getCodeLabel === 'function') {
+    return getCodeLabel('profiles.permission_level', value, LOG_DETAIL_VALUE_LABELS[value] || value);
+  }
+  if ((lowerKey === 'action' || lowerKey === 'actionkey') && value) {
+    return getActionLabel(value);
+  }
+  return LOG_DETAIL_VALUE_LABELS[value] || value;
+}
+
+function buildKoreanLogDetails(details, options = {}) {
+  const source = (details && typeof details === 'object' && !Array.isArray(details)) ? details : {};
+  const includeOriginalKeys = options.includeOriginalKeys !== false;
+  const includeTechnicalKeys = options.includeTechnicalKeys !== false;
+  const addContext = options.addContext !== false;
+  const result = {};
+
+  if (addContext) {
+    const actionKey = options.action || source._actionKey || source._actionEn || source.action || null;
+    const actionLabel = options.actionLabel || source._actionKo || source._actionLabel || (actionKey ? getActionLabel(actionKey) : null);
+    const userName = options.userName || source._userName || source._displayName || null;
+    const userAccount = options.userAccount || source._userAccount || source._username || null;
+
+    if (actionLabel) _addLogDetailValue(result, '작업', actionLabel);
+    if (actionKey) _addLogDetailValue(result, '작업코드', actionKey);
+    if (userName) _addLogDetailValue(result, '작업자', userName);
+    if (userAccount) _addLogDetailValue(result, '작업자 아이디', userAccount);
+  }
+
+  Object.entries(source).forEach(([key, value]) => {
+    const isTechnical = key.startsWith('_') || LOG_TECHNICAL_DETAIL_KEYS.has(key);
+    if (includeOriginalKeys && (includeTechnicalKeys || !isTechnical)) {
+      _addLogDetailValue(result, key, value);
+    }
+
+    const label = getLogDetailKeyLabel(key);
+    const localizedValue = _localizeLogDetailValue(key, value, options.depth || 0);
+    if (label && label !== key) {
+      _addLogDetailValue(result, label, localizedValue);
+    } else if (!includeOriginalKeys && !isTechnical) {
+      _addLogDetailValue(result, key, localizedValue);
+    }
+  });
+
+  return result;
+}
+
+function getLocalizedLogDetails(details, options = {}) {
+  return buildKoreanLogDetails(details, Object.assign({
+    includeOriginalKeys: true,
+    includeTechnicalKeys: true
+  }, options));
+}
+
+function getDisplayLogDetails(details, options = {}) {
+  return buildKoreanLogDetails(details, Object.assign({
+    includeOriginalKeys: false,
+    includeTechnicalKeys: false
+  }, options));
+}
+
+function stringifyKoreanLogDetails(details) {
+  const localized = getDisplayLogDetails(details || {});
+  return Object.keys(localized).length ? JSON.stringify(localized, null, 2) : '-';
+}
+
+if (typeof window !== 'undefined') {
+  window.getLogDetailKeyLabel = getLogDetailKeyLabel;
+  window.getLocalizedLogDetails = getLocalizedLogDetails;
+  window.getDisplayLogDetails = getDisplayLogDetails;
+  window.stringifyKoreanLogDetails = stringifyKoreanLogDetails;
 }
 
 function _getLogErrorMessage(error) {
@@ -387,7 +682,15 @@ async function writeLog(level, action, page, details) {
   baseDetails._username = userAccount;
   baseDetails._userName = userName;
   baseDetails._displayName = userName;
-  const merged = Object.assign({}, baseDetails, { _client: ci });
+  const merged = Object.assign({}, getLocalizedLogDetails(baseDetails, {
+    action,
+    actionLabel,
+    userAccount,
+    userName
+  }), {
+    _client: ci,
+    '클라이언트': _localizeLogDetailValue('_client', ci)
+  });
   const row = {
     level,
     action,
@@ -399,7 +702,7 @@ async function writeLog(level, action, page, details) {
   };
   var result = await _insertActivityLogRow(row);
   if (SLACK_ALERT_LEVELS.includes(level)) {
-    _sendLogAlertDirect(level, action, page || window.location.pathname, baseDetails);
+    _sendLogAlertDirect(level, action, page || window.location.pathname, merged);
   }
   return result;
 }
@@ -551,6 +854,33 @@ async function updatePendingBadge() {
   } else {
     badge.classList.add('hidden');
   }
+  if (typeof updateNavGroupBadges === 'function') updateNavGroupBadges();
+}
+
+/* ===== Talent Exception Request Badge (nav "달란트" group) ===== */
+
+async function getPendingTalentExceptionRequestCount() {
+  if (!_sb) return 0;
+  try {
+    const session = getSession();
+    if (!session || (session.permissionRank || 0) < 60) return 0;
+    const { count, error } = await _sb
+      .from('talent_exception_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('status', 'pending');
+    if (error) return 0;
+    return count || 0;
+  } catch { return 0; }
+}
+
+async function updateTalentExceptionBadge() {
+  const badge = document.getElementById('navTalentExceptionBadge');
+  if (!badge) return;
+  try {
+    const cnt = await getPendingTalentExceptionRequestCount();
+    if (cnt > 0) { badge.textContent = cnt; badge.classList.remove('hidden'); }
+    else { badge.classList.add('hidden'); }
+  } catch (e) {}
   if (typeof updateNavGroupBadges === 'function') updateNavGroupBadges();
 }
 
