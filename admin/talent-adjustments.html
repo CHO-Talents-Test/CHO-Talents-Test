@@ -18,6 +18,10 @@
       min-width:0;
       overflow:hidden;
     }
+    .summary-card.theme-request { --summary-color:#e67700; --summary-soft:#fff8e6; background:linear-gradient(90deg, var(--summary-soft) 0%, var(--admin-card, #fff) 56%); }
+    .summary-card.theme-exception { --summary-color:#2b8a3e; --summary-soft:#f0fff4; background:linear-gradient(90deg, var(--summary-soft) 0%, var(--admin-card, #fff) 56%); }
+    .summary-card.theme-return { --summary-color:#c92a2a; --summary-soft:#fff5f5; background:linear-gradient(90deg, var(--summary-soft) 0%, var(--admin-card, #fff) 56%); }
+    .summary-card.theme-total { --summary-color:#339af0; --summary-soft:#e7f5ff; background:linear-gradient(90deg, var(--summary-soft) 0%, var(--admin-card, #fff) 56%); }
     .section {
       background:var(--admin-card, #fff);
       border:1px solid var(--admin-border, #dee2e6);
@@ -50,18 +54,23 @@
     .section.theme-request { --section-accent:#e67700; --section-soft:#fff8e6; border-color:#ffd8a8; }
     .section.theme-exception { --section-accent:#2b8a3e; --section-soft:#f0fff4; border-color:#b2f2bb; }
     .section.theme-return { --section-accent:#c92a2a; --section-soft:#fff5f5; border-color:#ffc9c9; }
+    .section.theme-total { --section-accent:#339af0; --section-soft:#e7f5ff; border-color:#a5d8ff; }
     .section.theme-request,
     .section.theme-exception,
-    .section.theme-return { border-left:5px solid var(--section-accent); }
+    .section.theme-return,
+    .section.theme-total { border-left:5px solid var(--section-accent); }
     .section.theme-request .section-head,
     .section.theme-exception .section-head,
-    .section.theme-return .section-head { background:var(--section-soft); border-bottom-color:var(--section-accent); }
+    .section.theme-return .section-head,
+    .section.theme-total .section-head { background:var(--section-soft); border-bottom-color:var(--section-accent); }
     .section.theme-request .adj-table th { background:#fff4dc; color:#7c4a00; }
     .section.theme-exception .adj-table th { background:#ebfbee; color:#1b6b2a; }
     .section.theme-return .adj-table th { background:#fff0f0; color:#9b1c1c; }
+    .section.theme-total .adj-table th { background:#e7f5ff; color:#1864ab; }
     .section.theme-request .adj-table tbody tr:hover { background:#fff9eb; }
     .section.theme-exception .adj-table tbody tr:hover { background:#f2fff5; }
     .section.theme-return .adj-table tbody tr:hover { background:#fff5f5; }
+    .section.theme-total .adj-table tbody tr:hover { background:#f1f8ff; }
     .section-title { display:flex; flex-direction:column; gap:0.2rem; }
     .section-title strong { font-size:0.98rem; }
     .section-title span { font-size:0.8rem; color:var(--admin-text-muted, #6c757d); }
@@ -106,6 +115,8 @@
     .badge.approved { background:#d3f9d8; color:#2b8a3e; }
     .badge.rejected { background:#ffe3e3; color:#c92a2a; }
     .badge.request-approved { background:#e7f5ff; color:#1864ab; }
+    .badge.processed-exception { background:#d3f9d8; color:#2b8a3e; }
+    .badge.processed-return { background:#ffe3e3; color:#c92a2a; }
     .request-actions { display:flex; gap:0.35rem; flex-wrap:wrap; }
     .small-muted { font-size:0.74rem; color:var(--admin-text-muted, #6c757d); line-height:1.35; }
     .reason-cell { max-width:360px; }
@@ -134,13 +145,16 @@
     [data-theme="dark"] .small-muted { color:#adb5bd; }
     [data-theme="dark"] .section.theme-request,
     [data-theme="dark"] .section.theme-exception,
-    [data-theme="dark"] .section.theme-return { border-color:#374151; border-left-color:var(--section-accent); }
+    [data-theme="dark"] .section.theme-return,
+    [data-theme="dark"] .section.theme-total { border-color:#374151; border-left-color:var(--section-accent); }
     [data-theme="dark"] .section.theme-request .section-head,
     [data-theme="dark"] .section.theme-exception .section-head,
     [data-theme="dark"] .section.theme-return .section-head,
+    [data-theme="dark"] .section.theme-total .section-head,
     [data-theme="dark"] .section.theme-request .adj-table th,
     [data-theme="dark"] .section.theme-exception .adj-table th,
-    [data-theme="dark"] .section.theme-return .adj-table th { background:#1f2937; color:#e9ecef; }
+    [data-theme="dark"] .section.theme-return .adj-table th,
+    [data-theme="dark"] .section.theme-total .adj-table th { background:#1f2937; color:#e9ecef; }
     @media (max-width: 900px) { .summary-grid { grid-template-columns:repeat(2, minmax(0, 1fr)); } }
     @media (max-width: 768px) {
       .summary-grid { grid-template-columns:1fr; }
@@ -164,25 +178,25 @@
       </div>
 
       <div class="summary-grid" aria-label="예외 지급 및 반환 처리 현황">
-        <div class="summary-card" style="--summary-color:#51cf66;">
-          <div class="summary-label">예외 지급</div>
-          <div class="summary-value" id="summaryExceptionCount">-</div>
-          <div class="summary-sub">처리된 예외 지급</div>
-        </div>
-        <div class="summary-card" style="--summary-color:#c2255c;">
-          <div class="summary-label">반환</div>
-          <div class="summary-value" id="summaryReturnCount">-</div>
-          <div class="summary-sub">달란트 반환 처리</div>
-        </div>
-        <div class="summary-card" style="--summary-color:#339af0;">
-          <div class="summary-label">전체 처리</div>
-          <div class="summary-value" id="summaryProcessedCount">-</div>
-          <div class="summary-sub">예외 지급 + 반환</div>
-        </div>
-        <div class="summary-card" style="--summary-color:#e67700;">
+        <div class="summary-card theme-request">
           <div class="summary-label">예외 지급 요청</div>
           <div class="summary-value" id="summaryRequestCount">-</div>
           <div class="summary-sub">조회 조건 내 요청</div>
+        </div>
+        <div class="summary-card theme-exception">
+          <div class="summary-label">예외 지급 내역</div>
+          <div class="summary-value" id="summaryExceptionCount">-</div>
+          <div class="summary-sub">처리된 예외 지급</div>
+        </div>
+        <div class="summary-card theme-return">
+          <div class="summary-label">달란트 반환 내역</div>
+          <div class="summary-value" id="summaryReturnCount">-</div>
+          <div class="summary-sub">달란트 반환 처리</div>
+        </div>
+        <div class="summary-card theme-total">
+          <div class="summary-label">전체 처리</div>
+          <div class="summary-value" id="summaryProcessedCount">-</div>
+          <div class="summary-sub">예외 지급 + 반환</div>
         </div>
       </div>
 
@@ -295,6 +309,41 @@
         </div>
         <div class="pagination-wrap" id="returnPaging"></div>
       </div>
+
+      <div class="section theme-total">
+        <div class="section-head">
+          <div class="section-title">
+            <strong>전체 처리</strong>
+            <span>예외 지급 내역과 달란트 반환 내역을 시간순으로 함께 확인합니다.</span>
+          </div>
+          <div class="section-tools">
+            <div class="page-size-slot" style="margin-left:0;">
+              <span style="font-size:0.78rem;font-weight:700;color:#495057;">페이지당 항목 수</span>
+              <span id="processedPageSizeWrap"></span>
+            </div>
+            <div class="small-muted" id="processedSectionMeta">0건</div>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="adj-table">
+            <thead>
+              <tr>
+                <th>처리 시각</th>
+                <th>구분</th>
+                <th>대상자</th>
+                <th>처리자</th>
+                <th>항목/원본 지급</th>
+                <th style="text-align:right;">금액</th>
+                <th>사유</th>
+              </tr>
+            </thead>
+            <tbody id="processedList">
+              <tr><td colspan="7" class="empty-state">불러오는 중...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <div class="pagination-wrap" id="processedPaging"></div>
+      </div>
     </div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -313,22 +362,26 @@
     const PAGE_KEYS = {
       request: 'talent_adjustments_request',
       exception: 'talent_adjustments_exception',
-      return: 'talent_adjustments_return'
+      return: 'talent_adjustments_return',
+      processed: 'talent_adjustments_processed'
     };
     const MAX_ROWS = 5000;
     let session = null;
     let requestPageSize = 20;
     let exceptionPageSize = 20;
     let returnPageSize = 20;
+    let processedPageSize = 20;
     let requestPage = 1;
     let exceptionPage = 1;
     let returnPage = 1;
+    let processedPage = 1;
     let rawRequestRows = [];
     let rawExceptionRows = [];
     let rawReturnRows = [];
     let requestRows = [];
     let exceptionRows = [];
     let returnRows = [];
+    let processedRows = [];
     let requestTotal = 0;
     let exceptionTotal = 0;
     let returnTotal = 0;
@@ -405,6 +458,7 @@
       requestPage = 1;
       exceptionPage = 1;
       returnPage = 1;
+      processedPage = 1;
       if (shouldReload) reloadAll();
     }
 
@@ -459,6 +513,9 @@
           row.user_display_name,
           row.talent_item_name,
           row.override_reason,
+          row.description,
+          row.review_note,
+          row.status,
           actor?.username,
           actor?.display_name,
           row.requested_by_name,
@@ -481,6 +538,11 @@
       exceptionRows = applySearchFilter(applyDeptFilter(rawExceptionRows));
       exceptionRows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
       returnRows = applySearchFilter(applyDeptFilter(rawReturnRows));
+      returnRows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
+      processedRows = exceptionRows
+        .map(row => ({ ...row, processed_kind: 'exception' }))
+        .concat(returnRows.map(row => ({ ...row, processed_kind: 'return' })));
+      processedRows.sort((a, b) => String(b.created_at || '').localeCompare(String(a.created_at || '')));
       requestTotal = requestRows.length;
       exceptionTotal = exceptionRows.length;
       returnTotal = returnRows.length;
@@ -501,8 +563,10 @@
       sel.value = selectedDeptId || '';
       sel.onchange = () => {
         selectedDeptId = sel.value || '';
+        requestPage = 1;
         exceptionPage = 1;
         returnPage = 1;
+        processedPage = 1;
         reloadAll();
       };
     }
@@ -660,15 +724,25 @@
     }
 
     function renderPaging(kind, totalPages) {
-      const page = kind === 'request' ? requestPage : (kind === 'exception' ? exceptionPage : returnPage);
-      const target = document.getElementById(kind === 'request' ? 'requestPaging' : (kind === 'exception' ? 'exceptionPaging' : 'returnPaging'));
-      const fn = kind === 'request' ? 'goRequestPage(__PAGE__)' : (kind === 'exception' ? 'goExceptionPage(__PAGE__)' : 'goReturnPage(__PAGE__)');
+      const pageMap = { request: requestPage, exception: exceptionPage, return: returnPage, processed: processedPage };
+      const targetMap = { request: 'requestPaging', exception: 'exceptionPaging', return: 'returnPaging', processed: 'processedPaging' };
+      const fnMap = {
+        request: 'goRequestPage(__PAGE__)',
+        exception: 'goExceptionPage(__PAGE__)',
+        return: 'goReturnPage(__PAGE__)',
+        processed: 'goProcessedPage(__PAGE__)'
+      };
+      const page = pageMap[kind] || 1;
+      const target = document.getElementById(targetMap[kind]);
+      const fn = fnMap[kind] || 'goProcessedPage(__PAGE__)';
+      if (!target) return;
       target.innerHTML = buildPagingButtons(page, totalPages, fn);
     }
 
     function getPageSizeFor(kind) {
       if (kind === 'request') return requestPageSize;
       if (kind === 'exception') return exceptionPageSize;
+      if (kind === 'processed') return processedPageSize;
       return returnPageSize;
     }
 
@@ -676,6 +750,7 @@
       const next = parseInt(value, 10) || 20;
       if (kind === 'request') requestPageSize = next;
       else if (kind === 'exception') exceptionPageSize = next;
+      else if (kind === 'processed') processedPageSize = next;
       else returnPageSize = next;
       return next;
     }
@@ -684,9 +759,11 @@
       const requestWrap = document.getElementById('requestPageSizeWrap');
       const exceptionWrap = document.getElementById('exceptionPageSizeWrap');
       const returnWrap = document.getElementById('returnPageSizeWrap');
+      const processedWrap = document.getElementById('processedPageSizeWrap');
       if (requestWrap) requestWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.request, requestPageSize, 'onRequestPageSizeChange(this.value)');
       if (exceptionWrap) exceptionWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.exception, exceptionPageSize, 'onExceptionPageSizeChange(this.value)');
       if (returnWrap) returnWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.return, returnPageSize, 'onReturnPageSizeChange(this.value)');
+      if (processedWrap) processedWrap.innerHTML = renderPageSizeSelector(PAGE_KEYS.processed, processedPageSize, 'onProcessedPageSizeChange(this.value)');
     }
 
     function renderRequestBadges() {
@@ -871,6 +948,54 @@
       renderPaging('return', totalPages);
     }
 
+    function renderProcessedRows() {
+      const tbody = document.getElementById('processedList');
+      if (!tbody) return;
+      const totalPages = Math.max(1, Math.ceil(processedRows.length / processedPageSize));
+      if (processedPage > totalPages) processedPage = totalPages;
+      const rows = processedRows.slice((processedPage - 1) * processedPageSize, processedPage * processedPageSize);
+
+      const meta = document.getElementById('processedSectionMeta');
+      if (meta) meta.textContent = `${processedRows.length}건`;
+      if (rows.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">해당 조건의 전체 처리 내역이 없습니다.</td></tr>';
+      } else {
+        tbody.innerHTML = rows.map(row => {
+          if (row.processed_kind === 'return') {
+            const target = getUserLabel(getProfile(row.user_id));
+            const actor = getUserLabel(getProfile(row.created_by));
+            const parsed = parseReturnReason(row.description);
+            return `<tr>
+              <td>${escapeHtml(formatKST(row.created_at))}</td>
+              <td><span class="badge processed-return">반환</span></td>
+              <td>${escapeHtml(target)}</td>
+              <td>${escapeHtml(actor)}</td>
+              <td>${formatOriginalGrant(parsed)}</td>
+              <td style="text-align:right;font-weight:700;color:#c92a2a;">${escapeHtml(fmtNum(row.amount))}</td>
+              <td class="reason-cell"><div class="reason-text">${escapeHtml(parsed.reason)}</div></td>
+            </tr>`;
+          }
+
+          const targetProfile = getProfile(row.user_id);
+          const actorProfile = getProfile(row.created_by);
+          const target = targetProfile ? getUserLabel(targetProfile) : (row.user_display_name || '-');
+          const actor = actorProfile ? getUserLabel(actorProfile) : (row.reviewed_by_name || '-');
+          const itemName = row.talent_item_name || getItemName(row.talent_item_id);
+          const requestBadge = row.synthetic_exception_request ? ' <span class="badge request-approved">승인 요청</span>' : '';
+          return `<tr>
+            <td>${escapeHtml(formatKST(row.created_at))}</td>
+            <td><span class="badge processed-exception">예외 지급</span></td>
+            <td>${escapeHtml(target)}</td>
+            <td>${escapeHtml(actor)}</td>
+            <td>${escapeHtml(itemName)}${requestBadge}</td>
+            <td style="text-align:right;font-weight:700;color:#2b8a3e;">${escapeHtml(fmtNum(row.amount))}</td>
+            <td class="reason-cell"><div class="reason-text">${escapeHtml(row.override_reason || '-')}</div></td>
+          </tr>`;
+        }).join('');
+      }
+      renderPaging('processed', totalPages);
+    }
+
     function goRequestPage(page) {
       requestPage = page;
       renderRequestRows();
@@ -884,6 +1009,11 @@
     function goReturnPage(page) {
       returnPage = page;
       renderReturnRows();
+    }
+
+    function goProcessedPage(page) {
+      processedPage = page;
+      renderProcessedRows();
     }
 
     function getRequestById(id) {
@@ -1018,6 +1148,7 @@
       renderRequestRows();
       renderExceptionRows();
       renderReturnRows();
+      renderProcessedRows();
       if (typeof updateTalentExceptionBadge === 'function') updateTalentExceptionBadge();
     }
 
@@ -1042,16 +1173,25 @@
       renderReturnRows();
     }
 
+    async function onProcessedPageSizeChange(val) {
+      setPageSizeFor('processed', val);
+      await savePageSize(PAGE_KEYS.processed, processedPageSize);
+      processedPage = 1;
+      renderProcessedRows();
+    }
+
     function onSearchChange(val) {
       searchKeyword = val || '';
       requestPage = 1;
       exceptionPage = 1;
       returnPage = 1;
+      processedPage = 1;
       applyClientFilters();
       renderRequestBadges();
       renderRequestRows();
       renderExceptionRows();
       renderReturnRows();
+      renderProcessedRows();
     }
 
     (async () => {
@@ -1063,6 +1203,7 @@
       requestPageSize = await loadPageSize(PAGE_KEYS.request, 20);
       exceptionPageSize = await loadPageSize(PAGE_KEYS.exception, 20);
       returnPageSize = await loadPageSize(PAGE_KEYS.return, 20);
+      processedPageSize = await loadPageSize(PAGE_KEYS.processed, 20);
       updatePendingBadge();
       updateTalentExceptionBadge();
       updateNavOrderBadge();

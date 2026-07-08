@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.66.1 / 2026-07-07. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.66.2 / 2026-07-08. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -102,7 +102,7 @@
       <thead><tr><th>파일</th><th>페이지명</th><th>최소 권한</th><th>핵심 스코핑</th></tr></thead>
       <tbody>
         <tr><td><code>admin/talents.html</code></td><td>달란트 관리</td><td><span class="badge b-40">40</span></td><td>일반 교사는 같은 부서+반, 부서 담당은 담당 부서, 80+는 더 넓은 조회. 부서 담당 교사(60+) 이상은 주간 제한 예외 지급 요청 가능, 전도사님(90+) 이상은 사유 입력 후 즉시 예외 지급 가능. 상세 팝업 상단에 <strong>누적적립·총사용·총반환·잔여</strong> 4칸 요약과 이력 페이징/페이지당 항목 수 선택 표시</td></tr>
-        <tr><td><code>admin/talent-adjustments.html</code></td><td>예외 지급/반환 관리</td><td><span class="badge b-60">60</span></td><td>상단에 예외 지급 요청 목록 표시. 90+만 승인/거부 가능, 그 외는 조회만 가능. 부서 담당 교사는 담당 부서 이력/요청만, 부장 교사 이상은 전체 부서 이력/요청 조회. 예외 지급과 반환을 분리 표시</td></tr>
+        <tr><td><code>admin/talent-adjustments.html</code></td><td>예외 지급/반환 관리</td><td><span class="badge b-60">60</span></td><td>예외 지급 요청, 예외 지급 내역, 달란트 반환 내역, 전체 처리 순서로 표시. 90+만 승인/거부 가능하며 네비게이션 배지도 90+ 처리 가능자 기준으로 표시. 그 외는 조회만 가능. 부서 담당 교사는 담당 부서 이력/요청만, 부장 교사 이상은 전체 부서 이력/요청 조회</td></tr>
         <tr><td><code>admin/index.html</code></td><td>대시보드</td><td><span class="badge b-60">60</span></td><td>통계 카드와 이슈 로그 테이블만 표시. v3.50.0: 바로가기(quickLinks) 박스 제거. 최근 이슈 로그는 100+만 표시</td></tr>
         <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>60+는 담당 부서 중심, 80+는 요청 처리 범위 확대, 90+ 전체 처리. v3.50.0: 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
         <tr><td><code>admin/departments.html</code></td><td>부서 관리</td><td><span class="badge b-60">60</span></td><td>생성/수정 80+, 삭제/비활성화 90+ 성격. 부서명 오름차순 기본 정렬과 페이지당 항목 수 선택 지원</td></tr>
@@ -153,7 +153,7 @@
     </table>
   </div>
 
-  <h2>8. 최근 변경 요약 (v3.62.0~v3.66.1)</h2>
+  <h2>8. 최근 변경 요약 (v3.62.0~v3.66.2)</h2>
   <div class="rule-card">
     <table>
       <thead><tr><th>대상</th><th>변경 내용</th></tr></thead>
@@ -167,11 +167,12 @@
         <tr><td><code>admin/notices.html</code></td><td>전도사님(90+) 이상 공지 열람 현황 조회. <code>announcement_dismissals</code> SELECT 정책 보강</td></tr>
         <tr><td><code>admin/logs.html</code>, <code>admin/audit.html</code></td><td>로그/작업 이력 상세 모달에서 한글 상세 키 우선 표시. 기존 로그는 <code>docs/TASK-067_korean_activity_logs.sql</code>로 백필 가능</td></tr>
         <tr><td><code>js/version.js</code>, <code>*.html</code></td><td>고정 <code>?v=</code> 참조를 제거하고 <code>version.js</code>가 최신 버전 확인, 자산 재검증, 구버전 세션 재로그인 안내를 중앙 처리</td></tr>
+        <tr><td><code>admin/talent-adjustments.html</code>, <code>js/activity-log.js</code></td><td>예외 지급 요청 배지는 전도사님(90+) 이상 처리 가능자 기준으로 표시하고, 예외 지급/반환 관리의 카드·그리드 순서와 색상을 통일</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.66.1 · 실제 소스 코드 기준 권한 설정 · 2026-07-07 작성</p>
+  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.66.2 · 실제 소스 코드 기준 권한 설정 · 2026-07-08 작성</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
