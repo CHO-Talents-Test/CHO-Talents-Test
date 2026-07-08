@@ -863,7 +863,7 @@ async function getPendingTalentExceptionRequestCount() {
   if (!_sb) return 0;
   try {
     const session = getSession();
-    if (!session || (session.permissionRank || 0) < 60) return 0;
+    if (!session || (session.permissionRank || 0) < 90) return 0;
     const { count, error } = await _sb
       .from('talent_exception_requests')
       .select('id', { count: 'exact', head: true })
