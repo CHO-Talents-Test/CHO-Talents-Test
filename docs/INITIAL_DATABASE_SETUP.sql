@@ -155,6 +155,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   image_url text,
   target_role text NOT NULL CHECK (target_role IN ('teacher','student')),
   category text,
+  sort_order integer DEFAULT 0,
   stock integer DEFAULT 0,
   is_active boolean DEFAULT true,
   created_by uuid REFERENCES public.profiles(id),
@@ -387,6 +388,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_talent_exception_requests_pending_item
   ON public.talent_exception_requests(user_id, talent_item_id)
   WHERE status = 'pending';
 CREATE INDEX IF NOT EXISTS idx_products_active_target ON public.products(is_active, target_role);
+CREATE INDEX IF NOT EXISTS idx_products_category_sort ON public.products(category, sort_order, name);
 CREATE INDEX IF NOT EXISTS idx_product_orders_user_status ON public.product_orders(user_id, status);
 CREATE INDEX IF NOT EXISTS idx_product_orders_status ON public.product_orders(status, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_qna_status ON public.qna(status, is_faq, is_deleted);

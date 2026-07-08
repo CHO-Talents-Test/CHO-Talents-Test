@@ -99,12 +99,14 @@
     function renderPage() {
       const history = getVersionHistory();
       const current = history[0];
+      const versionCount = history.length;
+      const changeCount = history.reduce((sum, v) => sum + (Array.isArray(v.changes) ? v.changes.length : 0), 0);
 
       document.getElementById('currentVersion').innerHTML = `
         <div class="ver-current-badge">v${current.version}</div>
         <div class="ver-current-info">
           <h3>${current.title}</h3>
-          <p>최종 업데이트: ${current.date} | 전체 ${history.length}개 버전</p>
+          <p>최종 업데이트: ${current.date} | 표시 버전 ${versionCount}개 | 표시 변경 항목 ${changeCount}개</p>
         </div>
       `;
 

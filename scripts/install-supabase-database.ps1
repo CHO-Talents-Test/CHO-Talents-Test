@@ -122,11 +122,15 @@ $baseSql = Get-Content -LiteralPath $resolvedSqlPath -Raw -Encoding UTF8
 if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
   $defaultCodeMasterSql = Join-Path $ScriptRoot '..\docs\TASK-057_code_master.sql'
   $defaultProductCategoryPolicySql = Join-Path $ScriptRoot '..\docs\TASK-058_product_category_policy.sql'
+  $defaultProductCategoryPageSql = Join-Path $ScriptRoot '..\docs\TASK-068_product_category_page_and_sort_order.sql'
   if (Test-Path -LiteralPath $defaultCodeMasterSql) {
     $ExtraSqlPaths = @($defaultCodeMasterSql)
   }
   if (Test-Path -LiteralPath $defaultProductCategoryPolicySql) {
     $ExtraSqlPaths += $defaultProductCategoryPolicySql
+  }
+  if (Test-Path -LiteralPath $defaultProductCategoryPageSql) {
+    $ExtraSqlPaths += $defaultProductCategoryPageSql
   }
 }
 

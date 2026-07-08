@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.66.1 기준 인증/권한 리디렉트 원인, 최신 버전 세션 감지, QR 위치 권한 차단, 상품 카테고리 추가/수정/삭제, 공지 사항 관리/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.67.0 기준 인증/권한 리디렉트 원인, 최신 버전 세션 감지, QR 위치 권한 차단, 상품 카테고리 관리, 공지 사항 관리/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -275,8 +275,7 @@
           <tr><td>ORDER_CANCEL</td><td><span class="level-tag info">INFO</span></td><td>주문 취소</td></tr>
           <tr><td>ORDER_CANCEL_REFUND_FAIL</td><td><span class="level-tag warn">WARN</span></td><td>주문 취소 후 달란트 반환 실패 (RLS 또는 권한 문제)</td></tr>
           <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 CRUD</td></tr>
-          <tr><td>PRODUCT_CATEGORY_CREATE</td><td><span class="level-tag info">INFO</span></td><td>상품 등록/수정 모달에서 새 카테고리 추가</td></tr>
-          <tr><td>PRODUCT_CATEGORY_UPDATE / PRODUCT_CATEGORY_DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 카테고리 수정 또는 삭제(비활성화). 사용 중인 카테고리 삭제 시도는 실패 로그로 확인</td></tr>
+          <tr><td>PRODUCT_CATEGORY_CREATE / UPDATE / DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 카테고리 관리 페이지에서 카테고리 등록, 수정, 삭제(비활성화). 사용 중인 카테고리 삭제 시도는 실패 로그로 확인</td></tr>
         </tbody>
       </table>
 

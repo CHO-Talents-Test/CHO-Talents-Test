@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.66.2 / 2026-07-08. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.67.0 / 2026-07-08. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -87,6 +87,7 @@
         <tr><td>상품</td><td>상품 구매</td><td><span class="badge b-public">공개</span></td></tr>
         <tr><td>상품</td><td>내 구매 상품</td><td><span class="badge b-20">로그인</span></td></tr>
         <tr><td>상품</td><td>상품 관리, 구매 관리, 구매 통계</td><td><span class="badge b-60">60</span></td></tr>
+        <tr><td>상품</td><td>상품 카테고리 관리</td><td><span class="badge b-70">70</span></td></tr>
         <tr><td>관리</td><td>대시보드, 사용자 관리, 부서 관리</td><td><span class="badge b-60">60</span></td></tr>
         <tr><td>관리</td><td>학생 일괄 등록, 관리자 관리</td><td><span class="badge b-80">80</span></td></tr>
         <tr><td>운영</td><td>페이지 권한 룰, 로그 작성 룰, Slack 알림 룰, 작업 이력 작성 룰, 버전, 보고서</td><td><span class="badge b-80">80</span></td></tr>
@@ -106,7 +107,8 @@
         <tr><td><code>admin/index.html</code></td><td>대시보드</td><td><span class="badge b-60">60</span></td><td>통계 카드와 이슈 로그 테이블만 표시. v3.50.0: 바로가기(quickLinks) 박스 제거. 최근 이슈 로그는 100+만 표시</td></tr>
         <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>60+는 담당 부서 중심, 80+는 요청 처리 범위 확대, 90+ 전체 처리. v3.50.0: 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
         <tr><td><code>admin/departments.html</code></td><td>부서 관리</td><td><span class="badge b-60">60</span></td><td>생성/수정 80+, 삭제/비활성화 90+ 성격. 부서명 오름차순 기본 정렬과 페이지당 항목 수 선택 지원</td></tr>
-        <tr><td><code>admin/shop.html</code></td><td>상품 관리</td><td><span class="badge b-60">60</span></td><td>상품 등록/수정과 카테고리 추가·수정·삭제는 60+. 상품 삭제는 90+. 사용 중인 카테고리와 기본 <code>etc</code> 카테고리는 삭제 불가</td></tr>
+        <tr><td><code>admin/shop.html</code></td><td>상품 관리</td><td><span class="badge b-60">60</span></td><td>상품 등록/수정, 이미지 업로드, 상품 정렬 순번 관리. 목록은 카테고리 순번과 상품 순번 기준으로 정렬되며 로우 클릭 시 수정 창이 열림. 상품 삭제는 90+</td></tr>
+        <tr><td><code>admin/product-categories.html</code></td><td>상품 카테고리 관리</td><td><span class="badge b-70">70</span></td><td>카테고리 등록/수정/삭제와 카테고리 정렬 순번 관리. 사용 중인 카테고리와 기본 <code>etc</code> 카테고리는 삭제 불가</td></tr>
         <tr><td><code>admin/purchases.html</code></td><td>구매 관리</td><td><span class="badge b-60">60</span></td><td>구매 담당 교사는 전체 부서, 60~89 일반 운영자는 담당 부서 중심</td></tr>
         <tr><td><code>admin/purchase-stats.html</code></td><td>구매 통계</td><td><span class="badge b-60">60</span></td><td>구매 담당 교사와 80+는 전체 부서 통계 조회. v3.51.0: 부서별/사용자별/유형별 기본 정렬과 통계별 페이지당 항목 수 선택 지원</td></tr>
         <tr><td><code>admin/talent-items.html</code></td><td>달란트 항목 관리</td><td><span class="badge b-60">60</span></td><td>접근은 60+, 퀵 버튼은 80+, 항목 CRUD는 화면/정책상 90+ 기준</td></tr>
@@ -153,7 +155,7 @@
     </table>
   </div>
 
-  <h2>8. 최근 변경 요약 (v3.62.0~v3.66.2)</h2>
+  <h2>8. 최근 변경 요약 (v3.62.0~v3.67.0)</h2>
   <div class="rule-card">
     <table>
       <thead><tr><th>대상</th><th>변경 내용</th></tr></thead>
@@ -163,7 +165,8 @@
         <tr><td><code>admin/talent-adjustments.html</code></td><td>상단 예외 지급 요청 목록 추가. 90+ 승인/거부 처리, 그 외 권한자는 조회만 가능. 부장 교사 미만은 담당/소속 부서 요청만 조회</td></tr>
         <tr><td><code>talent_exception_requests</code></td><td>예외 지급 요청/승인 상태 저장 테이블 추가. 대기 중인 같은 대상/항목 요청 중복 방지</td></tr>
         <tr><td><code>docs/TASK-061_talent_exception_requests.sql</code></td><td>신규 요청 테이블, 인덱스, RLS 정책 설치 SQL 추가</td></tr>
-        <tr><td><code>admin/shop.html</code></td><td>상품 카테고리 관리 패널에서 카테고리 추가·수정·삭제 지원. 60+ UPDATE 정책은 <code>docs/TASK-066_notice_reads_and_category_manage.sql</code> 기준</td></tr>
+        <tr><td><code>admin/shop.html</code></td><td>상품 카테고리 관리 패널 제거. 상품 정렬 순번 입력, 카테고리 순번+상품 순번 기본 정렬, 로우 클릭 수정 지원</td></tr>
+        <tr><td><code>admin/product-categories.html</code></td><td>상품 카테고리 등록·수정·삭제와 카테고리 정렬 순번 관리를 구매 담당 교사(70+) 이상 전용 페이지로 분리. 정책은 <code>docs/TASK-068_product_category_page_and_sort_order.sql</code> 기준</td></tr>
         <tr><td><code>admin/notices.html</code></td><td>전도사님(90+) 이상 공지 열람 현황 조회. <code>announcement_dismissals</code> SELECT 정책 보강</td></tr>
         <tr><td><code>admin/logs.html</code>, <code>admin/audit.html</code></td><td>로그/작업 이력 상세 모달에서 한글 상세 키 우선 표시. 기존 로그는 <code>docs/TASK-067_korean_activity_logs.sql</code>로 백필 가능</td></tr>
         <tr><td><code>js/version.js</code>, <code>*.html</code></td><td>고정 <code>?v=</code> 참조를 제거하고 <code>version.js</code>가 최신 버전 확인, 자산 재검증, 구버전 세션 재로그인 안내를 중앙 처리</td></tr>
@@ -172,7 +175,7 @@
     </table>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.66.2 · 실제 소스 코드 기준 권한 설정 · 2026-07-08 작성</p>
+  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.67.0 · 실제 소스 코드 기준 권한 설정 · 2026-07-08 작성</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
