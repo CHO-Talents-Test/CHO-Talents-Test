@@ -12,19 +12,27 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v3.65.0` (`js/version.js` 기준, 2026-07-06) |
+| 현재 버전 | `v3.66.1` (`js/version.js` 기준, 2026-07-07) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
 
-- `APP_VERSION.current`는 `3.65.0`으로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `3.66.1`로 갱신되어 있습니다.
+- **v3.66.1 주요 변경 사항**:
+  - 각 HTML 파일의 고정 버전 쿼리 문자열을 제거하고, `js/version.js`가 최신 버전 확인과 로드된 CSS/JS 자산 재검증을 중앙에서 담당합니다.
+  - 구버전 자산이 감지되면 한 번 새로고침해 최신 자산을 받아오고, 이후 세션 버전이 맞지 않으면 재로그인 안내를 표시합니다.
+- **v3.66.0 주요 변경 사항**:
+  - 신규 활동 로그 저장 시 원본 키와 함께 한글 상세 키 별칭을 저장합니다.
+  - 로그 관리와 작업 이력 상세 모달은 한글화된 상세 데이터를 우선 표시합니다.
+  - 기존 `activity_logs.details` 데이터에 한글 별칭을 추가하는 `docs/TASK-067_korean_activity_logs.sql`을 추가했습니다.
+  - 인증/버전/아이디 확인 관련 실제 발생 로그 액션의 한글 라벨을 보강했습니다.
 - **v3.65.0 주요 변경 사항**:
   - 승인 대기 중인 가입 신청 계정은 비밀번호 인증 전에 승인 대기 안내와 신청 부서 담당 관리자 정보를 표시합니다.
   - 모든 페이지에서 로그인 세션의 앱 버전이 최신 버전과 다르면 현재 세션을 종료하고 로그인 페이지로 이동합니다.
   - 내 달란트, 부서 소속보기, 사용자 상세 내역에 페이지 처리를 추가했습니다.
   - 상품 카테고리 신규 추가 후 코드 대신 명칭이 표시되도록 코드 마스터 로드를 보강했습니다.
   - 신규 SQL `docs/TASK-065_registration_approval_contact.sql`과 초기 설치 SQL을 동기화했습니다.
-  - 현재 작업 반영을 위해 전체 HTML 캐시 버스팅 참조를 `v3.65.0`으로 갱신했습니다.
+  - 최신 버전 세션 갱신 정책의 기반을 정리했습니다.
 - **v3.62.0 주요 변경 사항**:
   - 사용자 관리의 `사용자 등록` 모달에 아이디 중복확인을 추가하고, 중복확인 완료 후에만 등록되도록 제한했습니다.
   - 부서 담당 교사(60+) 이상도 예외 지급을 요청할 수 있게 하되, 전도사님(90+) 이상 승인 후 실제 지급되도록 `talent_exception_requests` 승인 흐름을 추가했습니다.
@@ -456,9 +464,9 @@ CHO-Talents/
 │   ├── table-sort.js              # 그리드 헤더 클릭 정렬 공통 유틸리티
 │   ├── slack-notify.js            # Slack 알림 공통 유틸리티 (Edge Function slack-notify 호출)
 │   ├── talent.js                  # 달란트 잔액/내역/지급/사용/반환
-│   ├── product.js                 # 상품 조회/등록/수정/삭제/비활성화/카테고리 추가
+│   ├── product.js                 # 상품 조회/등록/수정/삭제/비활성화/카테고리 추가·수정·삭제
 │   ├── image-upload.js            # 상품/공지 이미지 압축 업로드와 ID 기반 Storage 파일명 생성
-│   └── version.js                 # 버전 정보, 변경 이력, 공통 하단 버전 footer
+│   └── version.js                 # 버전 정보, 변경 이력, 공통 하단 버전 footer, 최신 자산 재검증
 └── docs/                          # 작업 보고서, SQL, 구성 문서, 사용자 안내서, 역할별 가이드
 ```
 
@@ -472,6 +480,7 @@ CHO-Talents/
 - **에러 처리:** `tErr()` 함수로 영문 DB 에러를 한글로 자동 변환, 전체 기능에 `logError`/`logWarn`/`logInfo` 로깅
 - **Slack 알림:** 부서별/유형별 채널 분리 라우팅. 브라우저에서 `js/slack-notify.js` → Supabase Edge Function `slack-notify` → 채널별 Slack Webhook 경로로 전송
 - **공통 코드 관리:** 브라우저는 `js/codes.js`의 기본 코드북을 우선 사용하고, DB에 `code_items`가 있으면 활성 코드/라벨/정렬/색상 값을 불러와 덮어씁니다.
+- **버전 관리:** 모든 페이지는 고정 `?v=` 쿼리 대신 `js/version.js`가 최신 버전을 조회하고, 구버전 자산/세션을 감지하면 자산 재검증 또는 재로그인을 유도합니다.
 
 ## Slack 알림 연동
 
@@ -728,6 +737,7 @@ flowchart TD
 
 - `activity-log.js`가 페이지 방문, 로그인, 관리 작업, 에러를 `activity_logs`에 기록합니다.
 - 모든 기능의 성공/실패/거부가 `logInfo`/`logWarn`/`logError`로 기록됩니다.
+- `writeLog()`는 액션 라벨과 상세 키의 한글 별칭을 함께 저장하며, `admin/logs.html`과 `admin/audit.html`은 한글 상세 데이터를 우선 표시합니다.
 - `writeLog()`는 Supabase insert의 반환 `error`를 확인하고, 구버전 DB 스키마의 선택 컬럼 오류는 제거 후 재시도합니다.
 - `ERROR`, `FATAL`, `CRITICAL` 로그는 미확인 상태로 남고, `admin/logs.html`에서 확인 처리합니다.
 - 로그 삭제는 소프트 삭제(`is_deleted=true`)이며, 실제 삭제는 SQL Editor에서 수행합니다.
@@ -753,8 +763,8 @@ flowchart TD
 | QR 코드 | `talent_qr_codes` | QR 코드 생성/유효기간(`valid_from`/`valid_until`, 지정일 시간 범위 포함)/1회·반복·위치 제한 관리 |
 | QR 스캔 | `talent_qr_scans` | QR 코드 스캔 이력 (중복 수령 방지) |
 | 공지 | `announcements` | 운영자가 등록한 공지 제목/내용, 활성 여부, 작성/수정자 기록 |
-| 공지 숨김 | `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태 |
-| 로그 | `activity_logs` | 오류/운영 활동 기록, 소프트 삭제, `activity_logs.action` 코드 라벨과 `details._actionLabel` 저장 |
+| 공지 숨김 | `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. 전도사님(90+) 이상은 공지 열람 현황 조회에 사용 |
+| 로그 | `activity_logs` | 오류/운영 활동 기록, 소프트 삭제, `activity_logs.action` 코드 라벨과 `details._actionLabel`/`details._actionKo` 및 한글 상세 키 저장 |
 | 보고서 | `reports` | 작업 계획, 검증, 테스트, 수정 보고서 |
 | 페이지 권한 | `page_permissions` | 페이지별 조회/관리 권한 설정 (레거시) |
 | 권한별 접근 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
@@ -784,8 +794,8 @@ flowchart TD
 - 사용자 관리 버튼은 본인 또는 본인보다 낮은 권한 대상에게만 표시됩니다.
 - 아이디(`username`)는 관리자에게 전체 표시되고, 비관리자는 본인 아이디만 볼 수 있습니다. 동명이인은 표시명에 번호를 붙여 구분합니다.
 - 소속 부서/반 변경은 부서 이동 요청/승인 흐름으로 처리합니다 (수정 모달에서 부서 변경 불가).
-- 상품 삭제와 달란트 항목 관리는 90등급 이상에 제한됩니다.
-- 공지 등록/수정/활성 토글은 90등급 이상만 가능하며, 활성 공지는 로그인 사용자에게 읽기 허용됩니다.
+- 상품 삭제와 달란트 항목 관리는 90등급 이상에 제한됩니다. 상품 카테고리 추가/수정/삭제는 60등급 이상 상품 관리자에게 열리며, 사용 중인 카테고리는 삭제할 수 없습니다.
+- 공지 등록/수정/활성 토글과 공지 열람 현황 조회는 90등급 이상만 가능하며, 활성 공지는 로그인 사용자에게 읽기 허용됩니다.
 - 페이지 접근/페이지 기능/작업 이력/로그 화면은 100등급 이상만 접근합니다.
 - 교사가 `shop.html`에 접근하면 기본 필터가 교사용으로 자동 설정됩니다.
 - 영문 DB/RPC 에러는 `tErr()` 함수를 통해 한글로 변환되어 사용자에게 표시됩니다.
@@ -821,6 +831,9 @@ SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실�
 | `docs/TASK-059_announcements.sql` | v3.59.0: 공지 관리용 `announcements`, `announcement_dismissals` 테이블과 RLS, 공지 로그 액션 코드 |
 | `docs/TASK-060_change_report.md` | v3.60.0: 달란트 주간 제한 예외 지급/반환 관리와 문서 동기화 변경 보고 |
 | `docs/TASK-061_talent_exception_requests.sql` | v3.62.0: 예외 지급 요청/승인용 `talent_exception_requests` 테이블과 RLS 정책 |
+| `docs/TASK-065_registration_approval_contact.sql` | v3.65.0: 승인 대기 로그인 안내용 담당자 조회 RPC |
+| `docs/TASK-066_notice_reads_and_category_manage.sql` | v3.66.0: 상품 카테고리 수정/삭제 RLS와 공지 열람 현황 조회 권한 보강 |
+| `docs/TASK-067_korean_activity_logs.sql` | v3.66.0: 기존 활동 로그 상세 한글 별칭 백필 및 실제 발생 액션 라벨 보강 |
 
 ## 관련 문서
 

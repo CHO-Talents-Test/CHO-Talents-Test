@@ -62,7 +62,7 @@ scripts/install-supabase-database.sh \
   --supabase-anon-key "YOUR_PUBLISHABLE_OR_ANON_KEY"
 ```
 
-생성된 합본 SQL에도 코드 마스터(`code_groups`, `code_items`)와 상품 카테고리 추가 정책이 포함된다.
+생성된 합본 SQL에는 코드 마스터(`code_groups`, `code_items`)와 상품 카테고리 추가 정책이 포함된다. v3.65.0~v3.66.0 보강 기능까지 새 DB에 바로 적용하려면 합본 실행 후 `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-067_korean_activity_logs.sql`을 추가로 실행한다.
 
 ## 부분 설치 복구
 
