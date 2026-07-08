@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상품 카테고리 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <style>
+    .category-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:0.8rem;margin-bottom:1rem;}
+    .category-stat{background:var(--t-card,#fff);border:1px solid var(--admin-border);border-left:4px solid var(--admin-primary);border-radius:8px;padding:0.9rem 1rem;}
+    .category-stat strong{display:block;font-size:1.5rem;line-height:1.1;margin-top:0.35rem;}
+    .category-stat span{font-size:0.8rem;color:var(--admin-text-muted);}
+    .mgmt-dropdown{position:relative;display:inline-block;}
+    .mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card,#fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:120px;padding:0.3rem 0;}
+    .mgmt-menu.show{display:block;}
+    .mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text,#333);text-decoration:none;cursor:pointer;white-space:nowrap;}
+    .mgmt-menu a:hover{background:var(--t-hover-bg,#f1f3f5);}
+    .category-row.inactive{opacity:0.55;}
+    [data-theme="dark"] .category-stat{background:#101827;}
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <h2 style="margin-bottom:1rem;">🏷️ 상품 카테고리 관리</h2>
+
+    <div class="category-summary">
+      <div class="category-stat">
+        <span>전체 카테고리</span>
+        <strong id="statTotal">0</strong>
+      </div>
+      <div class="category-stat" style="border-left-color:#2b8a3e;">
+        <span>사용 중인 카테고리</span>
+        <strong id="statUsed">0</strong>
+      </div>
+      <div class="category-stat" style="border-left-color:#f08c00;">
+        <span>미사용 카테고리</span>
+        <strong id="statUnused">0</strong>
+      </div>
+    </div>
+
+    <div class="admin-table-wrap">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="tableTitle">상품 카테고리 목록</div>
+        <div class="filters">
+          <span id="categoryPageSizeWrap"></span>
+          <button class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="openAddModal()">+ 카테고리 등록</button>
+        </div>
+      </div>
+      <table class="admin-table" id="categoryTable">
+        <thead>
+          <tr>
+            <th>순번</th>
+            <th>코드</th>
+            <th>명칭</th>
+            <th>이모지</th>
+            <th>사용 상품</th>
+            <th>상태</th>
+            <th>관리</th>
+          </tr>
+        </thead>
+        <tbody id="categoryList"><tr><td colspan="7" class="empty-state">로딩 중...</td></tr></tbody>
+      </table>
+      <div id="categoryPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="categoryModal">
+    <div class="modal-box" style="max-width:460px;">
+      <h3 class="modal-title" id="modalTitle">카테고리 등록</h3>
+      <div class="form-error" id="modalError"></div>
+      <input type="hidden" id="editingCategoryKey" />
+      <div style="margin-bottom:0.8rem;" id="categoryCodeWrap">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">카테고리 코드</label>
+        <input type="text" id="mCode" disabled style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;background:var(--t-input-bg,#f8f9fa);" />
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">카테고리명</label>
+        <input type="text" id="mName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="예: 간식" />
+      </div>
+      <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
+        <div style="flex:1;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이모지</label>
+          <input type="text" id="mEmoji" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="🏷️" />
+        </div>
+        <div style="flex:1;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">정렬 순번</label>
+          <input type="number" id="mSortOrder" min="0" step="1" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button class="btn-cancel" onclick="closeModal()">취소</button>
+        <button class="btn-confirm" id="btnSaveCategory" onclick="saveCategory()">저장</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/page-size.js"></script>
+  <script src="../js/product.js"></script>
+  <script>
+    initSupabase();
+    let session;
+    let categoryRows = [];
+    let categoryPage = 1;
+    let categoryPageSize = null;
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function toAttrJson(value) {
+      return JSON.stringify(value).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '\\u003c');
+    }
+
+    function getCategoryPageSize() {
+      if (categoryPageSize !== null) return categoryPageSize;
+      return window.innerWidth <= 768 ? 10 : 20;
+    }
+
+    (async () => {
+      await navInit();
+      session = await initPage(70, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      updatePendingBadge();
+      updateNavOrderBadge();
+      if ((session.permissionRank || 0) >= 80) updateLogBadge();
+      categoryPageSize = await loadPageSize('product_categories', 20);
+      if (typeof loadCodeItems === 'function') await loadCodeItems(['products.category']);
+      await loadCategories();
+    })();
+
+    async function loadCategories() {
+      const tbody = document.getElementById('categoryList');
+      tbody.innerHTML = '<tr><td colspan="7" class="empty-state">카테고리를 불러오는 중...</td></tr>';
+      const result = await fetchProductCategories({ includeInactive: false });
+      const rows = (result.data || []).slice().sort((a, b) => {
+        const ao = Number(a.order ?? a.sort_order ?? 9999);
+        const bo = Number(b.order ?? b.sort_order ?? 9999);
+        if (ao !== bo) return ao - bo;
+        return String(a.value || a.code_value || a.key).localeCompare(String(b.value || b.code_value || b.key), 'ko');
+      });
+      const withUsage = await Promise.all(rows.map(async row => {
+        const key = row.key || row.code_key;
+        const usageCount = await getProductCategoryUsageCount(key);
+        return Object.assign({}, row, { usageCount });
+      }));
+      categoryRows = withUsage;
+      renderCategories();
+      if (result.error && result.fallback) {
+        showError('DB 카테고리 목록을 불러오지 못해 기본 코드북을 표시합니다. 저장 기능은 제한될 수 있습니다.');
+      }
+    }
+
+    function renderCategories() {
+      const pageSize = getCategoryPageSize();
+      const totalPages = Math.max(1, Math.ceil(categoryRows.length / pageSize));
+      if (categoryPage > totalPages) categoryPage = totalPages;
+      const currentPage = categoryPage || 1;
+      const startIdx = (currentPage - 1) * pageSize;
+      const pageRows = categoryRows.slice(startIdx, startIdx + pageSize);
+      const usedCount = categoryRows.filter(row => (row.usageCount || 0) > 0).length;
+
+      document.getElementById('statTotal').textContent = fmtNum(categoryRows.length);
+      document.getElementById('statUsed').textContent = fmtNum(usedCount);
+      document.getElementById('statUnused').textContent = fmtNum(categoryRows.length - usedCount);
+      document.getElementById('tableTitle').textContent = `상품 카테고리 목록 (${categoryRows.length}건)`;
+
+      const tbody = document.getElementById('categoryList');
+      if (!pageRows.length) {
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">등록된 카테고리가 없습니다.</td></tr>';
+        document.getElementById('categoryPaging').innerHTML = '';
+        renderPageSizeControl(totalPages);
+        return;
+      }
+
+      tbody.innerHTML = pageRows.map(row => {
+        const key = String(row.key || row.code_key || '');
+        const label = row.value || row.code_value || key;
+        const order = row.order ?? row.sort_order ?? '';
+        const isActive = row.is_active !== false;
+        const rowJson = toAttrJson(Object.assign({}, row, { key, value: label, order }));
+        const keyJson = toAttrJson(key);
+        const labelJson = toAttrJson(label);
+        const deleteDisabled = key === 'etc' || (row.usageCount || 0) > 0;
+        const items = [`<a onclick='event.stopPropagation();openEditModal(${rowJson})'>수정</a>`];
+        items.push(deleteDisabled
+          ? `<a style="opacity:0.45;cursor:not-allowed;" title="기본 카테고리이거나 사용 중인 카테고리는 삭제할 수 없습니다.">삭제 불가</a>`
+          : `<a onclick='event.stopPropagation();deleteCategory(${keyJson}, ${labelJson})'>삭제</a>`);
+        return `<tr class="category-row${isActive ? '' : ' inactive'}">
+          <td style="font-weight:700;">${escapeHtml(order)}</td>
+          <td><code>${escapeHtml(key)}</code></td>
+          <td>${escapeHtml(label)}</td>
+          <td>${escapeHtml(row.emoji || '🏷️')}</td>
+          <td>${fmtNum(row.usageCount || 0)}건</td>
+          <td>${isActive ? '<span class="level-badge INFO">활성</span>' : '<span class="level-badge FATAL">비활성</span>'}</td>
+          <td>
+            <div class="mgmt-dropdown">
+              <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
+              <div class="mgmt-menu">${items.join('')}</div>
+            </div>
+          </td>
+        </tr>`;
+      }).join('');
+      document.getElementById('categoryPaging').innerHTML = buildPagingButtons(currentPage, totalPages, 'goCategoryPage(__PAGE__)');
+      renderPageSizeControl(totalPages);
+    }
+
+    function renderPageSizeControl() {
+      const wrap = document.getElementById('categoryPageSizeWrap');
+      if (wrap) wrap.innerHTML = renderPageSizeSelector('product_categories', getCategoryPageSize(), 'onCategoryPageSizeChange(this.value)');
+    }
+
+    async function onCategoryPageSizeChange(value) {
+      categoryPageSize = parseInt(value, 10) || 20;
+      await savePageSize('product_categories', categoryPageSize);
+      categoryPage = 1;
+      renderCategories();
+    }
+
+    function goCategoryPage(page) {
+      categoryPage = page;
+      renderCategories();
+    }
+
+    function toggleMgmt(e, btn) {
+      e.stopPropagation();
+      document.querySelectorAll('.mgmt-menu.show').forEach(menu => {
+        if (menu !== btn.nextElementSibling) menu.classList.remove('show');
+      });
+      btn.nextElementSibling.classList.toggle('show');
+    }
+    document.addEventListener('click', () => document.querySelectorAll('.mgmt-menu.show').forEach(menu => menu.classList.remove('show')));
+
+    function showError(message) {
+      const errEl = document.getElementById('modalError');
+      errEl.textContent = message;
+      errEl.classList.add('show');
+    }
+
+    function openAddModal() {
+      document.getElementById('modalTitle').textContent = '카테고리 등록';
+      document.getElementById('editingCategoryKey').value = '';
+      document.getElementById('mCode').value = '저장 시 자동 생성';
+      document.getElementById('categoryCodeWrap').style.display = 'none';
+      document.getElementById('mName').value = '';
+      document.getElementById('mEmoji').value = '🏷️';
+      document.getElementById('mSortOrder').value = getNextProductCategoryOrder();
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('categoryModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('mName').focus(), 0);
+    }
+
+    function openEditModal(row) {
+      const key = row.key || row.code_key || '';
+      document.getElementById('modalTitle').textContent = '카테고리 수정';
+      document.getElementById('editingCategoryKey').value = key;
+      document.getElementById('mCode').value = key;
+      document.getElementById('categoryCodeWrap').style.display = '';
+      document.getElementById('mName').value = row.value || row.code_value || '';
+      document.getElementById('mEmoji').value = row.emoji || '🏷️';
+      document.getElementById('mSortOrder').value = row.order ?? row.sort_order ?? '';
+      document.getElementById('modalError').classList.remove('show');
+      document.getElementById('categoryModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('mName').focus(), 0);
+    }
+
+    function closeModal() {
+      document.getElementById('categoryModal').classList.add('hidden');
+    }
+
+    async function saveCategory() {
+      const errEl = document.getElementById('modalError');
+      const btn = document.getElementById('btnSaveCategory');
+      const key = document.getElementById('editingCategoryKey').value.trim();
+      const label = document.getElementById('mName').value.trim();
+      const emoji = document.getElementById('mEmoji').value.trim() || '🏷️';
+      const sortOrder = parseInt(document.getElementById('mSortOrder').value, 10);
+      if (!label) {
+        errEl.textContent = '카테고리명을 입력해주세요.';
+        errEl.classList.add('show');
+        return;
+      }
+
+      btn.disabled = true;
+      btn.textContent = '저장 중...';
+      const payload = { label, emoji, sortOrder: Number.isFinite(sortOrder) ? sortOrder : getNextProductCategoryOrder() };
+      const result = key ? await updateProductCategory(key, payload) : await createProductCategory(payload);
+      btn.disabled = false;
+      btn.textContent = '저장';
+
+      if (result.error) {
+        errEl.textContent = '저장 실패: ' + tErr(result.error);
+        errEl.classList.add('show');
+        return;
+      }
+
+      closeModal();
+      await loadCategories();
+    }
+
+    async function deleteCategory(key, label) {
+      if (!confirm(`"${label}" 카테고리를 삭제하시겠습니까?\n사용 중인 상품이 있으면 삭제되지 않습니다.`)) return;
+      const result = await deactivateProductCategory(key);
+      if (result.error) {
+        alert('카테고리 삭제 실패: ' + tErr(result.error));
+        return;
+      }
+      await loadCategories();
+    }
+
+    document.getElementById('categoryModal').addEventListener('click', e => {
+      if (e.target.classList.contains('modal-overlay')) closeModal();
+    });
+  </script>
+  <div id="version-container"></div>
+  <script src="../js/version.js"></script>
+</body>
+</html>

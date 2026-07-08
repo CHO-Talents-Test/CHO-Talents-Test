@@ -35,6 +35,7 @@ const NAV_MENU = [
       { href: 'shop.html', label: '상품 구매' },
       { href: 'my-orders.html', label: '내 구매 상품', id: 'navMyOrders', authOnly: true },
       { href: 'admin/shop.html', label: '상품 관리', minPerm: 60 },
+      { href: 'admin/product-categories.html', label: '상품 카테고리 관리', minPerm: 70 },
       { href: 'admin/purchases.html', label: '구매 관리', minPerm: 60, badgeId: 'navOrderBadge' },
       { href: 'admin/purchase-stats.html', label: '구매 통계', minPerm: 60 }
     ]

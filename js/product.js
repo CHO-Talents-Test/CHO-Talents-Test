@@ -28,6 +28,18 @@ function getProductCategoryLabel(category) {
     : category;
 }
 
+function getProductCategoryOrder(category) {
+  const key = category || 'etc';
+  const item = typeof getCodeItem === 'function' ? getCodeItem('products.category', key) : null;
+  const order = Number(item && (item.order ?? item.sort_order));
+  return Number.isFinite(order) ? order : (key === 'etc' ? 999 : 9000);
+}
+
+function getProductSortOrder(product) {
+  const order = Number(product && product.sort_order);
+  return Number.isFinite(order) ? order : 0;
+}
+
 function renderProductCategoryOptions(selectedValue) {
   const selected = selectedValue || 'etc';
   if (typeof renderCodeOptions === 'function') {
@@ -164,7 +176,7 @@ async function createProductCategory(categoryData) {
     code_value: label,
     sort_order: Number(categoryData && categoryData.sortOrder) || getNextProductCategoryOrder(),
     is_active: true,
-    meta: { emoji, source: 'admin_shop_modal' }
+    meta: { emoji, source: 'product_category_management' }
   };
 
   try {
@@ -207,7 +219,7 @@ async function updateProductCategory(codeKey, categoryData) {
     code_value: label,
     sort_order: Number.isFinite(sortOrder) ? sortOrder : Number(current.order || current.sort_order || getNextProductCategoryOrder()),
     is_active: true,
-    meta: Object.assign({}, current.meta || {}, { emoji, source: current.source || 'admin_shop_modal' })
+    meta: Object.assign({}, current.meta || {}, { emoji, source: current.source || 'product_category_management' })
   };
 
   try {

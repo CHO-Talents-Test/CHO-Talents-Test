@@ -12,12 +12,18 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v3.66.2` (`js/version.js` 기준, 2026-07-08) |
+| 현재 버전 | `v3.67.0` (`js/version.js` 기준, 2026-07-08) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
 
-- `APP_VERSION.current`는 `3.66.2`로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `3.67.0`로 갱신되어 있습니다.
+- **v3.67.0 주요 변경 사항**:
+  - `예외 지급/반환 관리` 요약 카드 색상과 다크 모드 그리드 hover 대비를 각 그리드 색상 기준으로 개선했습니다.
+  - `상품 관리`에서 카테고리 관리 패널을 제거하고 구매 담당 교사(70+) 이상 전용 `상품 카테고리 관리` 페이지를 추가했습니다.
+  - 상품에 `정렬 순번`을 추가하고 최초 목록을 카테고리 순번 → 상품 순번 → 상품명 기준으로 정렬합니다. 상품 로우 클릭 시 수정 창이 열립니다.
+  - `달란트 항목 관리`의 관리 열 버튼을 `관리` 드롭다운 메뉴로 통합했습니다.
+  - `버전` 페이지는 표시 버전 수와 표시 변경 항목 수를 구분해 보여줍니다.
 - **v3.66.2 주요 변경 사항**:
   - `예외 지급/반환 관리`의 네비게이션 배지는 실제 예외 지급 요청 승인/거부가 가능한 전도사님(90+) 이상에게만 표시합니다.
   - 요약 카드와 그리드의 순서/명칭/색상을 `예외 지급 요청 → 예외 지급 내역 → 달란트 반환 내역 → 전체 처리` 기준으로 통일했습니다.
@@ -72,7 +78,7 @@
   - 새 카테고리명과 이모지를 `products.category` 코드 마스터에 저장하고, 저장 성공 시 선택박스에 즉시 반영해 방금 만든 카테고리로 상품을 저장할 수 있습니다.
   - 이미 등록된 카테고리명을 입력하면 중복 생성 대신 기존 카테고리를 자동 선택합니다.
   - 카테고리 추가 패널과 상품 이미지 드롭존을 다크 테마 배경/입력 색상에 맞게 보정했습니다.
-  - `PRODUCT_CATEGORY_CREATE` 로그/작업 이력 액션과 60등급 이상 상품 카테고리 INSERT 정책 SQL(`docs/TASK-058_product_category_policy.sql`)을 추가했습니다.
+  - `PRODUCT_CATEGORY_CREATE` 로그/작업 이력 액션과 상품 카테고리 INSERT 정책 SQL(`docs/TASK-058_product_category_policy.sql`)을 추가했습니다. 최신 운영 기준은 구매 담당 교사(70+) 이상입니다.
 - **v3.53.0 주요 변경 사항**:
   - 인증/권한 리디렉트 진단 로그 강화: `AUTH_SESSION_MISSING`, `AUTH_PROFILE_LOAD_FAIL`, `AUTH_REDIRECT`, `AUTH_PAGE_ACCESS_CHECK_FAIL` 액션 추가
   - 보호 페이지 진입 실패 시 세션 없음/만료, 첫 로그인 비밀번호 변경, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단 사유와 page_id, 필요/실제 권한, 이동 대상을 로그에 기록
@@ -439,7 +445,8 @@ CHO-Talents/
 │   ├── talents.html               # 학생/교사 달란트 지급·사용·반환
 │   ├── talent-adjustments.html    # 예외 지급/반환 이력 관리
 │   ├── talent-items.html          # 달란트 지급 항목 관리
-│   ├── shop.html                  # 상품 등록/수정/삭제/활성 상태 관리
+│   ├── shop.html                  # 상품 등록/수정/삭제/활성 상태/정렬 순번 관리
+│   ├── product-categories.html    # 상품 카테고리 등록/수정/삭제/정렬 관리
 │   ├── purchases.html             # 구매 관리 (4단계 구매 흐름)
 │   ├── reports.html               # 작업 보고서 조회 + JS 시더
 │   ├── logs.html                  # 활동 로그 조회/확인/삭제 대기
@@ -574,6 +581,7 @@ flowchart TD
   Home --> TalentAdjustments["admin/talent-adjustments.html<br/>60+"]
   Home --> TalentItems["admin/talent-items.html<br/>60+"]
   Home --> AdminShop["admin/shop.html<br/>60+"]
+  Home --> ProductCategories["admin/product-categories.html<br/>70+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
   Home --> Reports["admin/reports.html<br/>80+"]
   Home --> Notices["admin/notices.html<br/>40+ 조회 / 90+ 관리"]
@@ -612,7 +620,8 @@ flowchart TD
 | `admin/talent-adjustments.html` | 60 | 예외 지급 요청, 예외 지급 내역, 달란트 반환 내역, 전체 처리 순으로 조회. 부서 담당 교사는 담당 부서만, 부장 교사 이상은 전체 부서 이력 조회. 전도사님(90+) 이상은 예외 지급 요청 승인/거부와 네비게이션 배지를 확인. 처리자/대상자/사유/원본 지급 참조/처리 시각을 페이징으로 확인 |
 | `admin/talent-items.html` | 60 | 달란트 지급 항목 등록/수정/활성화, 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시. 학생 항목은 주 1회 지급 규칙과 연동, 퀵 버튼 설정은 80등급 이상 |
 | `admin/talent-qr.html` | 90 | QR 코드 생성(qrcode.js 이미지), 수정(새 코드 재생성), 비활성화. 지정일 날짜+시간 또는 기간(from~to datetime) 설정, 위치 반경 100m~5km(기본 500m). 수령자 목록에 반환된 달란트 "반환" 배지 표시 |
-| `admin/shop.html` | 60 | 학생용/교사용 상품 등록, 수정, 이미지 업로드, 상품 카테고리 추가. 삭제 버튼(90+)은 소프트 삭제(삭제 대기=비활성화)로 목록에서 숨김 |
+| `admin/shop.html` | 60 | 학생용/교사용 상품 등록, 수정, 이미지 업로드, 정렬 순번 관리. 목록은 카테고리 순번과 상품 순번 기준으로 기본 정렬되며 로우 클릭 시 수정 창이 열림. 삭제 버튼(90+)은 소프트 삭제(삭제 대기=비활성화)로 목록에서 숨김 |
+| `admin/product-categories.html` | 70 | 상품 카테고리 등록, 수정, 삭제(비활성화), 카테고리 정렬 순번 관리. 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제 불가 |
 | `admin/purchases.html` | 60 | 구매 관리: 4단계 처리, 모든 상태 탭에 부서/기간 필터(기본 오늘) + 기간 프리셋, 구매 확정 시 달란트 차감 |
 | `admin/notices.html` | 40 | 공지 사항 조회. 일반 교사는 활성 공지만 볼 수 있고, 전도사님(90+) 이상은 공지 등록/수정/삭제와 활성 토글을 처리합니다. 목록 행 선택 시 보기 모달이 열리며, 활성 공지는 로그인 후 메인 화면에 팝업 표시되고 계정별 다시 열지 않음 상태를 저장 |
 | `admin/reports.html` | 80 | 작업 보고서 유형별 조회, 상세 보기, 등록/수정, 선택 삭제 |
@@ -714,7 +723,9 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  AdminShop["admin/shop.html"] --> ProductCRUD["products 등록/수정/삭제"]
+  AdminShop["admin/shop.html"] --> ProductCRUD["products 등록/수정/삭제/정렬 순번"]
+  ProductCategories["admin/product-categories.html"] --> CategoryCRUD["code_items products.category 등록/수정/비활성화"]
+  CategoryCRUD --> ProductCRUD
   ProductCRUD --> Storage["공통 압축 이미지 업로드<br/>Talents_Items Storage"]
   ProductCRUD --> PublicShop["shop.html"]
   PublicShop --> StudentGoods["학생용 상품"]
@@ -761,7 +772,7 @@ flowchart TD
 | 달란트 | `talent_transactions` | 적립/사용/반환 거래 내역. 승인 완료된 예외 지급은 `override_week_limit=true`, `override_reason`으로 사유 저장 |
 | 예외 지급 요청 | `talent_exception_requests` | 부서 담당 교사(60+) 이상 예외 지급 요청과 전도사님(90+) 이상 승인/거부 상태 |
 | 달란트 항목 | `talent_items` | 지급 항목, 달란트 금액, 지급 규칙(`giving_rule`), 지급 설명(`giving_description`) |
-| 상품 | `products` | 상점 상품, 가격, 대상(`products.target_role`), 카테고리(`products.category`), 이미지, 활성 상태 |
+| 상품 | `products` | 상점 상품, 가격, 대상(`products.target_role`), 카테고리(`products.category`), 정렬 순번(`sort_order`), 이미지, 활성 상태 |
 | 상품 주문 | `product_orders` | 구매 신청, 코드화된 4단계 상태(`product_orders.status`) 관리, 담당자 기록 |
 | Q&A | `qna` | FAQ, 사용자 질문, 답변, 공개 여부 |
 | QR 코드 | `talent_qr_codes` | QR 코드 생성/유효기간(`valid_from`/`valid_until`, 지정일 시간 범위 포함)/1회·반복·위치 제한 관리 |
@@ -798,7 +809,7 @@ flowchart TD
 - 사용자 관리 버튼은 본인 또는 본인보다 낮은 권한 대상에게만 표시됩니다.
 - 아이디(`username`)는 관리자에게 전체 표시되고, 비관리자는 본인 아이디만 볼 수 있습니다. 동명이인은 표시명에 번호를 붙여 구분합니다.
 - 소속 부서/반 변경은 부서 이동 요청/승인 흐름으로 처리합니다 (수정 모달에서 부서 변경 불가).
-- 상품 삭제와 달란트 항목 관리는 90등급 이상에 제한됩니다. 상품 카테고리 추가/수정/삭제는 60등급 이상 상품 관리자에게 열리며, 사용 중인 카테고리는 삭제할 수 없습니다.
+- 상품 삭제는 90등급 이상에 제한됩니다. 상품 카테고리 추가/수정/삭제는 구매 담당 교사(70+) 이상에게 열리며, 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제할 수 없습니다.
 - 공지 등록/수정/활성 토글과 공지 열람 현황 조회는 90등급 이상만 가능하며, 활성 공지는 로그인 사용자에게 읽기 허용됩니다.
 - 페이지 접근/페이지 기능/작업 이력/로그 화면은 100등급 이상만 접근합니다.
 - 교사가 `shop.html`에 접근하면 기본 필터가 교사용으로 자동 설정됩니다.
@@ -813,9 +824,9 @@ flowchart TD
 |---|---|
 | `docs/INITIAL_DATABASE_SETUP.sql` | 현재 테이블, RPC, RLS, Storage 버킷, 기본 데이터를 새 DB에 설치 |
 | `docs/INITIAL_DATABASE_SETUP.md` | SQL Editor 방식과 PowerShell/psql 자동 설치 방법 |
-| `scripts/install-supabase-database.ps1` | `.env.local` 값을 읽어 새 프로젝트 공개 설정까지 반영하는 자동 설치 스크립트. 기본 실행 시 `docs/TASK-057_code_master.sql`과 `docs/TASK-058_product_category_policy.sql`도 합본에 포함 |
+| `scripts/install-supabase-database.ps1` | `.env.local` 값을 읽어 새 프로젝트 공개 설정까지 반영하는 자동 설치 스크립트. 기본 실행 시 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`도 합본에 포함 |
 
-SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실행 후 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`을 이어서 실행합니다. PowerShell/Bash 설치 스크립트와 `-GenerateOnly` 합본 SQL은 두 파일을 기본 포함합니다.
+SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실행 후 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`을 이어서 실행합니다. PowerShell/Bash 설치 스크립트와 `-GenerateOnly` 합본 SQL은 세 파일을 기본 포함합니다.
 
 아래 SQL 파일들은 과거 작업별 변경 이력이며, 빈 새 DB에는 위 단일 설치 SQL을 우선 사용합니다:
 
@@ -831,13 +842,14 @@ SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실�
 | `docs/TASK-049_schema.sql` | v3.37.0: `profiles.last_login_at` 컬럼, `update_last_login()` RPC |
 | `docs/TASK-041_page_sizes.sql` | v3.40.0: `user_preferences.page_sizes` JSONB 컬럼 추가 |
 | `docs/TASK-057_code_master.sql` | v3.50.0: `code_groups`/`code_items` 코드 마스터, 텍스트 CHECK 제약 완화, 코드 컬럼 검증 트리거, `get_permission_rank()` 코드 기반 조회 |
-| `docs/TASK-058_product_category_policy.sql` | v3.54.0: 60등급 이상 상품 관리자가 상품 등록 모달에서 `products.category` 코드 항목을 추가할 수 있도록 RLS INSERT 정책 보강 |
+| `docs/TASK-058_product_category_policy.sql` | v3.54.0/v3.67.0 기준 갱신: 구매 담당 교사(70+) 이상이 `products.category` 코드 항목을 추가할 수 있도록 RLS INSERT 정책 보강 |
 | `docs/TASK-059_announcements.sql` | v3.59.0: 공지 관리용 `announcements`, `announcement_dismissals` 테이블과 RLS, 공지 로그 액션 코드 |
 | `docs/TASK-060_change_report.md` | v3.60.0: 달란트 주간 제한 예외 지급/반환 관리와 문서 동기화 변경 보고 |
 | `docs/TASK-061_talent_exception_requests.sql` | v3.62.0: 예외 지급 요청/승인용 `talent_exception_requests` 테이블과 RLS 정책 |
 | `docs/TASK-065_registration_approval_contact.sql` | v3.65.0: 승인 대기 로그인 안내용 담당자 조회 RPC |
 | `docs/TASK-066_notice_reads_and_category_manage.sql` | v3.66.0: 상품 카테고리 수정/삭제 RLS와 공지 열람 현황 조회 권한 보강 |
 | `docs/TASK-067_korean_activity_logs.sql` | v3.66.0: 기존 활동 로그 상세 한글 별칭 백필 및 실제 발생 액션 라벨 보강 |
+| `docs/TASK-068_product_category_page_and_sort_order.sql` | v3.67.0: `products.sort_order` 컬럼/인덱스 추가와 상품 카테고리 관리 권한을 구매 담당 교사(70+) 이상으로 정렬 |
 
 ## 관련 문서
 
