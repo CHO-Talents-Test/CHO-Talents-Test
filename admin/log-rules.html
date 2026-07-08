@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.62.0 기준 인증/권한 리디렉트 원인, QR 위치 권한 차단, 상품 카테고리 추가, 공지 사항 관리, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.66.1 기준 인증/권한 리디렉트 원인, 최신 버전 세션 감지, QR 위치 권한 차단, 상품 카테고리 추가/수정/삭제, 공지 사항 관리/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -188,6 +188,9 @@
         logWarn('TALENT_GIVE_DENIED', { userId, 사유: '권한 부족' })<br>
         logError('TALENT_GIVE_FAIL', { userId, error: err.message })
       </div>
+      <div class="note-box">
+        <strong>한글 상세:</strong> v3.66.0부터 <code>writeLog()</code>는 원본 영문/기술 키를 유지하면서 <code>details._actionLabel</code>, <code>details._actionKo</code>, 한글 키 별칭을 함께 저장합니다. 로그/작업 이력 상세 모달은 한글 키를 우선 표시합니다.
+      </div>
       <h3>자동 첨부 데이터 (details._client)</h3>
       <table class="rule-table">
         <thead>
@@ -219,6 +222,7 @@
           <tr><td>AUTH_PROFILE_LOAD_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>Auth 세션은 있으나 <code>get_my_profile</code> RPC가 프로필을 반환하지 못함</td></tr>
           <tr><td>AUTH_REDIRECT</td><td><span class="level-tag warn">WARN</span></td><td>세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단, 24시간 유휴 만료로 리디렉트</td></tr>
           <tr><td>AUTH_PAGE_ACCESS_CHECK_FAIL</td><td><span class="level-tag error">ERROR</span></td><td><code>role_page_access</code> 조회 중 오류</td></tr>
+          <tr><td>APP_VERSION_STALE_SESSION</td><td><span class="level-tag warn">WARN</span></td><td>새 버전 배포 후 현재 페이지/세션 버전이 최신 버전과 달라 세션 종료 및 재로그인 안내</td></tr>
           <tr><td>LOGOUT</td><td><span class="level-tag info">INFO</span></td><td>로그아웃 (수동 또는 24시간 세션 만료 자동 로그아웃)</td></tr>
           <tr><td>PASSWORD_CHANGE</td><td><span class="level-tag info">INFO</span></td><td>비밀번호 변경 성공</td></tr>
           <tr><td>PASSWORD_CHANGE_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>비밀번호 변경 RPC 오류</td></tr>
@@ -271,7 +275,8 @@
           <tr><td>ORDER_CANCEL</td><td><span class="level-tag info">INFO</span></td><td>주문 취소</td></tr>
           <tr><td>ORDER_CANCEL_REFUND_FAIL</td><td><span class="level-tag warn">WARN</span></td><td>주문 취소 후 달란트 반환 실패 (RLS 또는 권한 문제)</td></tr>
           <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 CRUD</td></tr>
-          <tr><td>PRODUCT_CATEGORY_CREATE</td><td><span class="level-tag info">INFO</span></td><td>상품 등록 모달에서 새 카테고리 추가</td></tr>
+          <tr><td>PRODUCT_CATEGORY_CREATE</td><td><span class="level-tag info">INFO</span></td><td>상품 등록/수정 모달에서 새 카테고리 추가</td></tr>
+          <tr><td>PRODUCT_CATEGORY_UPDATE / PRODUCT_CATEGORY_DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 카테고리 수정 또는 삭제(비활성화). 사용 중인 카테고리 삭제 시도는 실패 로그로 확인</td></tr>
         </tbody>
       </table>
 
@@ -282,6 +287,7 @@
           <tr><td>ANNOUNCEMENT_VIEW</td><td><span class="level-tag info">INFO</span></td><td>공지 사항에서 기존 공지 보기</td></tr>
           <tr><td>ANNOUNCEMENT_CREATE / ANNOUNCEMENT_UPDATE</td><td><span class="level-tag info">INFO</span></td><td>공지 등록/수정 성공</td></tr>
           <tr><td>ANNOUNCEMENT_TOGGLE</td><td><span class="level-tag info">INFO</span></td><td>공지 활성/비활성 토글 성공</td></tr>
+          <tr><td>ANNOUNCEMENT_READ_STATUS_VIEW</td><td><span class="level-tag info">INFO</span></td><td>전도사님(90+) 이상이 공지 열람 현황 조회</td></tr>
           <tr><td>ANNOUNCEMENT_DISMISS</td><td><span class="level-tag info">INFO</span></td><td>사용자가 로그인 공지 팝업에서 다시 열지 않음 선택</td></tr>
           <tr><td>ANNOUNCEMENT_LOAD_FAIL / ANNOUNCEMENT_CREATE_FAIL / ANNOUNCEMENT_UPDATE_FAIL / ANNOUNCEMENT_TOGGLE_FAIL / ANNOUNCEMENT_DISMISS_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>공지 조회, 저장, 토글, 숨김 처리 실패</td></tr>
         </tbody>
@@ -335,7 +341,7 @@
         <strong>소프트 삭제:</strong> 로그는 물리적으로 삭제되지 않고 <code>is_deleted=true</code>로 표시됩니다.
       </div>
       <div class="note-box">
-        <strong>한글 라벨:</strong> 액션 라벨은 <code>js/codes.js</code> 기본 코드북과 DB <code>activity_logs.action</code> 코드 그룹을 우선 사용합니다. <code>writeLog()</code> 호출 시 자동으로 <code>details._actionLabel</code>에 한글 라벨이 추가되어 기존 로그도 하위호환 표시됩니다.
+        <strong>한글 라벨/상세:</strong> 액션 라벨은 <code>js/codes.js</code> 기본 코드북과 DB <code>activity_logs.action</code> 코드 그룹을 우선 사용합니다. <code>writeLog()</code> 호출 시 자동으로 <code>details._actionLabel</code>/<code>details._actionKo</code>와 한글 상세 키가 추가되어 기존 로그도 하위호환 표시됩니다. 기존 DB 데이터는 <code>docs/TASK-067_korean_activity_logs.sql</code>로 백필합니다.
       </div>
       <div class="note-box">
         <strong>로그 관리 페이지:</strong> <a href="logs.html" style="color:var(--admin-primary);">운영 &gt; 로그</a>에서 조회/확인 처리/삭제 가능. 페이지당 항목 수 콤보 박스는 필터 영역 가장 아래의 <strong>삭제 대기 목록</strong> 줄 오른쪽에 배치되며, 선택값은 계정별 설정으로 저장됩니다.

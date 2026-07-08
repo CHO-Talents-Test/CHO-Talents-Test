@@ -90,11 +90,11 @@ Supabase `app_config` 테이블에는 비밀 원문을 넣지 않는다. 대신 
 
 ## 5. Supabase app_config 적용
 
-새 Supabase Database를 완전히 비어 있는 상태에서 구성할 때는 먼저 `docs/INITIAL_DATABASE_SETUP.sql`을 Supabase SQL Editor에서 실행한 뒤 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`을 이어서 실행한다. 기본 설치 SQL은 테이블, 함수/RPC, RLS 정책, Storage 버킷, 기본 권한 데이터를 포함하고, `TASK-057`은 권한/유형/상태/카테고리/로그 액션 코드 마스터를 추가하며 `TASK-058`은 상품 등록 모달의 카테고리 추가 권한을 보강한다.
+새 Supabase Database를 완전히 비어 있는 상태에서 구성할 때는 먼저 `docs/INITIAL_DATABASE_SETUP.sql`을 Supabase SQL Editor에서 실행한 뒤 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-067_korean_activity_logs.sql`을 이어서 실행한다. 기본 설치 SQL은 테이블, 함수/RPC, RLS 정책, Storage 버킷, 기본 권한 데이터를 포함하고, `TASK-057`은 권한/유형/상태/카테고리/로그 액션 코드 마스터를 추가하며 `TASK-058`/`TASK-066`은 상품 카테고리 추가·수정·삭제 권한과 공지 열람 현황 조회 권한을 보강한다. `TASK-065`는 승인 대기 로그인 안내 담당자 조회 RPC, `TASK-067`은 기존 로그 상세 한글 별칭 백필과 실제 발생 액션 라벨을 보강한다.
 
 공개 설정만 기존 DB에 보강하거나 점검할 때는 Supabase SQL Editor 또는 Management API에서 `docs/TASK-041_app_config.sql`을 실행한다.
 
-로컬에서 DB 접속 문자열을 사용할 수 있으면 `scripts/install-supabase-database.ps1` 또는 `scripts/install-supabase-database.sh`로 설치 SQL 생성 또는 실행을 자동화할 수 있다. 이 스크립트들은 기본으로 `docs/TASK-057_code_master.sql`과 `docs/TASK-058_product_category_policy.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 검증한다. 새 프로젝트 전체 설치 절차는 `docs/SUPABASE_NEW_PROJECT_SETUP.md`를 함께 확인한다.
+로컬에서 DB 접속 문자열을 사용할 수 있으면 `scripts/install-supabase-database.ps1` 또는 `scripts/install-supabase-database.sh`로 설치 SQL 생성 또는 실행을 자동화할 수 있다. 이 스크립트들은 기본으로 `docs/TASK-057_code_master.sql`과 `docs/TASK-058_product_category_policy.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 검증한다. v3.65.0~v3.66.0 보강 SQL은 생성된 합본 뒤에 수동 적용하거나 스크립트의 추가 SQL 옵션으로 함께 넘긴다. 새 프로젝트 전체 설치 절차는 `docs/SUPABASE_NEW_PROJECT_SETUP.md`를 함께 확인한다.
 
 적용 후 브라우저에서는 아래 흐름으로 설정을 읽는다.
 

@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.62.0 / 2026-07-03. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.66.1 / 2026-07-07. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -106,7 +106,7 @@
         <tr><td><code>admin/index.html</code></td><td>대시보드</td><td><span class="badge b-60">60</span></td><td>통계 카드와 이슈 로그 테이블만 표시. v3.50.0: 바로가기(quickLinks) 박스 제거. 최근 이슈 로그는 100+만 표시</td></tr>
         <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>60+는 담당 부서 중심, 80+는 요청 처리 범위 확대, 90+ 전체 처리. v3.50.0: 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
         <tr><td><code>admin/departments.html</code></td><td>부서 관리</td><td><span class="badge b-60">60</span></td><td>생성/수정 80+, 삭제/비활성화 90+ 성격. 부서명 오름차순 기본 정렬과 페이지당 항목 수 선택 지원</td></tr>
-        <tr><td><code>admin/shop.html</code></td><td>상품 관리</td><td><span class="badge b-60">60</span></td><td>상품 삭제는 90+</td></tr>
+        <tr><td><code>admin/shop.html</code></td><td>상품 관리</td><td><span class="badge b-60">60</span></td><td>상품 등록/수정과 카테고리 추가·수정·삭제는 60+. 상품 삭제는 90+. 사용 중인 카테고리와 기본 <code>etc</code> 카테고리는 삭제 불가</td></tr>
         <tr><td><code>admin/purchases.html</code></td><td>구매 관리</td><td><span class="badge b-60">60</span></td><td>구매 담당 교사는 전체 부서, 60~89 일반 운영자는 담당 부서 중심</td></tr>
         <tr><td><code>admin/purchase-stats.html</code></td><td>구매 통계</td><td><span class="badge b-60">60</span></td><td>구매 담당 교사와 80+는 전체 부서 통계 조회. v3.51.0: 부서별/사용자별/유형별 기본 정렬과 통계별 페이지당 항목 수 선택 지원</td></tr>
         <tr><td><code>admin/talent-items.html</code></td><td>달란트 항목 관리</td><td><span class="badge b-60">60</span></td><td>접근은 60+, 퀵 버튼은 80+, 항목 CRUD는 화면/정책상 90+ 기준</td></tr>
@@ -116,7 +116,7 @@
         <tr><td><code>admin/versions.html</code></td><td>버전</td><td><span class="badge b-80">80</span></td><td>읽기 전용 버전 이력</td></tr>
         <tr><td><code>admin/slack-rules.html</code></td><td>Slack 알림 룰</td><td><span class="badge b-80">80</span></td><td>알림 라우팅 문서 열람</td></tr>
         <tr><td><code>admin/talent-qr.html</code></td><td>달란트 QR 관리</td><td><span class="badge b-90">90</span></td><td>QR 생성/수정/비활성화. v3.51.0: 지정일 유효 시간, 위치 반경 100m~5km(기본 500m), QR 목록/수령자 팝업 페이징·페이지당 항목 수 콤보 지원</td></tr>
-        <tr><td><code>admin/notices.html</code></td><td>공지 사항</td><td><span class="badge b-40">40</span></td><td><code>admin-notices</code> page_id. 일반 교사 이상은 활성 공지 조회, 전도사님(90+) 이상은 공지 등록/수정/삭제와 활성 토글. 활성 공지는 로그인 후 메인 화면에 표시</td></tr>
+        <tr><td><code>admin/notices.html</code></td><td>공지 사항</td><td><span class="badge b-40">40</span></td><td><code>admin-notices</code> page_id. 일반 교사 이상은 활성 공지 조회, 전도사님(90+) 이상은 공지 등록/수정/삭제, 활성 토글, 열람 현황 조회. 활성 공지는 로그인 후 메인 화면에 표시</td></tr>
         <tr><td><code>admin/page-access.html</code></td><td>페이지 접근</td><td><span class="badge b-100">100</span></td><td>role_page_access 관리</td></tr>
         <tr><td><code>admin/page-features.html</code></td><td>페이지 기능</td><td><span class="badge b-100">100</span></td><td>role_page_features 관리</td></tr>
         <tr><td><code>admin/audit.html</code></td><td>작업 이력</td><td><span class="badge b-100">100</span></td><td>activity_logs 중 감사 액션 조회</td></tr>
@@ -137,7 +137,7 @@
 
   <h2>6. 24시간 세션 관리 및 리디렉트 로그</h2>
   <div class="rule-card">
-    <p class="note" style="margin:0;"><code>js/auth.js</code>의 <code>initPage()</code>가 성공하면 <code>startSessionTimer()</code>가 자동 시작됩니다. 마지막 활동(클릭·키입력·스크롤·터치 등)으로부터 <strong>24시간</strong> 유휴 시 세션이 만료되고 로그인 페이지로 이동합니다. 활동 시간은 <code>localStorage</code>(<code>cho_last_activity</code>)로 멀티탭 간 공유되며, 탭 전환 시에도 만료 여부를 재검증합니다. v3.53.0부터 세션 없음/만료, 최초 로그인 이동, 권한 등급 부족, 허용 권한 불일치, <code>role_page_access</code> 차단은 <code>AUTH_REDIRECT</code> 로그에 요청 페이지, page_id, 필요/실제 권한, 이동 대상을 남깁니다.</p>
+    <p class="note" style="margin:0;"><code>js/auth.js</code>의 <code>initPage()</code>가 성공하면 <code>startSessionTimer()</code>가 자동 시작됩니다. 마지막 활동(클릭·키입력·스크롤·터치 등)으로부터 <strong>24시간</strong> 유휴 시 세션이 만료되고 로그인 페이지로 이동합니다. 활동 시간은 <code>localStorage</code>(<code>cho_last_activity</code>)로 멀티탭 간 공유되며, 탭 전환 시에도 만료 여부를 재검증합니다. v3.53.0부터 세션 없음/만료, 최초 로그인 이동, 권한 등급 부족, 허용 권한 불일치, <code>role_page_access</code> 차단은 <code>AUTH_REDIRECT</code> 로그에 요청 페이지, page_id, 필요/실제 권한, 이동 대상을 남깁니다. v3.66.1부터 <code>js/version.js</code>가 최신 버전과 세션 버전을 비교해 구버전 자산은 재검증하고, 구버전 세션은 <code>APP_VERSION_STALE_SESSION</code> 로그 후 재로그인을 안내합니다.</p>
   </div>
 
   <h2>7. 보조 권한 테이블</h2>
@@ -153,7 +153,7 @@
     </table>
   </div>
 
-  <h2>8. v3.62.0 변경 요약</h2>
+  <h2>8. 최근 변경 요약 (v3.62.0~v3.66.1)</h2>
   <div class="rule-card">
     <table>
       <thead><tr><th>대상</th><th>변경 내용</th></tr></thead>
@@ -163,12 +163,15 @@
         <tr><td><code>admin/talent-adjustments.html</code></td><td>상단 예외 지급 요청 목록 추가. 90+ 승인/거부 처리, 그 외 권한자는 조회만 가능. 부장 교사 미만은 담당/소속 부서 요청만 조회</td></tr>
         <tr><td><code>talent_exception_requests</code></td><td>예외 지급 요청/승인 상태 저장 테이블 추가. 대기 중인 같은 대상/항목 요청 중복 방지</td></tr>
         <tr><td><code>docs/TASK-061_talent_exception_requests.sql</code></td><td>신규 요청 테이블, 인덱스, RLS 정책 설치 SQL 추가</td></tr>
-        <tr><td><code>js/version.js</code>, <code>*.html</code></td><td>버전 이력을 <code>v3.62.0</code>으로 올리고 HTML 캐시 버스팅 참조 갱신</td></tr>
+        <tr><td><code>admin/shop.html</code></td><td>상품 카테고리 관리 패널에서 카테고리 추가·수정·삭제 지원. 60+ UPDATE 정책은 <code>docs/TASK-066_notice_reads_and_category_manage.sql</code> 기준</td></tr>
+        <tr><td><code>admin/notices.html</code></td><td>전도사님(90+) 이상 공지 열람 현황 조회. <code>announcement_dismissals</code> SELECT 정책 보강</td></tr>
+        <tr><td><code>admin/logs.html</code>, <code>admin/audit.html</code></td><td>로그/작업 이력 상세 모달에서 한글 상세 키 우선 표시. 기존 로그는 <code>docs/TASK-067_korean_activity_logs.sql</code>로 백필 가능</td></tr>
+        <tr><td><code>js/version.js</code>, <code>*.html</code></td><td>고정 <code>?v=</code> 참조를 제거하고 <code>version.js</code>가 최신 버전 확인, 자산 재검증, 구버전 세션 재로그인 안내를 중앙 처리</td></tr>
       </tbody>
     </table>
   </div>
 
-  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.62.0 · 실제 소스 코드 기준 권한 설정 · 2026-07-03 작성</p>
+  <p class="note" style="text-align:center;margin-top:2rem;">CHO-Talents v3.66.1 · 실제 소스 코드 기준 권한 설정 · 2026-07-07 작성</p>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

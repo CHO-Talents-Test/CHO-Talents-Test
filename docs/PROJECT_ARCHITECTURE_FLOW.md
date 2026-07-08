@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-07-03 KST 현재 코드 기준 (v3.62.0)
+작성 기준: 2026-07-07 KST 현재 코드 기준 (v3.66.1)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -29,14 +29,14 @@ flowchart LR
   User["사용자 브라우저"] --> Pages["GitHub Pages 정적 화면<br/>HTML/CSS/Vanilla JS"]
 
   Pages --> AuthJS["js/auth.js<br/>로그인/세션/24h 타임아웃/권한/리디렉트 진단/tErr()/fmtNum()"]
-  Pages --> LogJS["js/activity-log.js<br/>로그/action 라벨/세션 캐시/인증 실패 분류/소프트 삭제"]
+  Pages --> LogJS["js/activity-log.js<br/>로그/action 라벨/한글 상세/세션 캐시/인증 실패 분류/소프트 삭제"]
   Pages --> CodesJS["js/codes.js<br/>공통 코드북/라벨/정렬/옵션"]
   Pages --> UserMgmt["js/user-mgmt.js<br/>사용자/부서 관리"]
   Pages --> TalentJS["js/talent.js<br/>달란트 조회/지급/사용/반환"]
-  Pages --> ProductJS["js/product.js<br/>상품 조회/관리"]
+  Pages --> ProductJS["js/product.js<br/>상품 조회/관리/카테고리 관리"]
   Pages --> TableSortJS["js/table-sort.js<br/>헤더 클릭 정렬"]
   Pages --> SlackJS["js/slack-notify.js<br/>Slack 알림 (fire-and-forget)"]
-  Pages --> VersionJS["js/version.js<br/>버전 이력"]
+  Pages --> VersionJS["js/version.js<br/>버전 이력/자산 재검증"]
 
   SlackJS --> EdgeFn["Supabase Edge Function<br/>slack-notify"]
   EdgeFn --> Slack["채널별 Slack Webhook<br/>(부서/상품관리/운영/Q&A)"]
@@ -86,7 +86,7 @@ flowchart LR
 | `dept-teacher-guide.html` | 부서 담당 교사 가이드. 담당 부서 사용자/달란트/상품/구매/Q&A 관리와 일반 교사가 없는 부서에서 해야 할 일 안내 |
 | `purchase-teacher-guide.html` | 구매 담당 교사 가이드. 전체 부서 구매 주문 처리, 구매 통계, Slack 구매 알림 기준 안내 |
 | `chief-teacher-guide.html` | 부장 교사 가이드. 학생 일괄 등록, 보고서/버전, 달란트 반환, 운영 룰 문서 열람 안내 |
-| `evangelist-guide.html` | 전도사님 가이드. 달란트 항목, QR, 상품 삭제, Q&A 삭제, 부서 비활성화 안내 |
+| `evangelist-guide.html` | 전도사님 가이드. 달란트 항목, QR, 상품 삭제, 공지 열람 현황, Q&A 삭제, 부서 비활성화 안내 |
 | `admin-guide.html` | 관리자 가이드. 부서 담당 교사(60+) 이상만 접근 가능, 운영 권한 전체 요약 |
 | `qna.html` | Q&A/FAQ. 공개 FAQ 조회, 관리자 FAQ 직접 등록, 로그인 사용자 질문/답변 등록, 60등급 이상 답변+FAQ 등록, 90등급 이상 삭제 |
 | `earn-talents.html` | 달란트 적립 방법 안내. 항목 카드 그리드(모바일 3열, PC 5열)와 `talent_items` 활성 항목 지급 수량 배지 표시. 로그인 사용자의 `user_type`에 따라 학생/교사 탭 기본 선택 |
@@ -103,20 +103,21 @@ flowchart LR
 | `admin/talent-stats.html` | 60등급 이상 달란트 누적적립 통계. 반환(`type='use'`, `description`이 `반환:`)된 달란트를 원 지급 건에서 차감해 실제 지급 달란트로 집계. 부서별 기본 정렬: 달란트 DESC → 인원 ASC → 항목 ASC → 부서 ASC. 사용자별 기본 정렬: 달란트 DESC → 항목 ASC → 부서 ASC → 이름 ASC. 사용자별 목록 공통 페이징과 페이지당 항목 수 설정. 라디오 필터, 부서 필터, 기간 프리셋 |
 | `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). QR 목록과 수령자 팝업 모두 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
-| `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 상품 등록/수정 모달에서 `products.category` 새 카테고리 추가 가능. 관리 드롭다운(수정/삭제). 삭제는 소프트 삭제 |
+| `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 대상 열 삭제. 상품 등록/수정 모달의 카테고리 관리 패널에서 `products.category` 새 카테고리 추가·수정·삭제 가능. 관리 드롭다운(수정/삭제). 상품 삭제는 소프트 삭제 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
 | `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
-| `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공통 페이지당 항목 수 설정을 사용. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
+| `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공지 열람 현황 조회, 공통 페이지당 항목 수 설정을 사용. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
-| `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`). 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
+| `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`)와 상세 모달 한글 키 우선 표시. 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
 | `admin/versions.html` | 80등급 이상 버전 이력 확인 |
 | `admin/page-access.html` | 100등급 이상 유형/권한별 페이지 접근/요소 가시성 설정 |
 | `admin/page-features.html` | 100등급 이상 권한별 페이지 기능 설정값 관리 |
-| `admin/audit.html` | 100등급 이상 관리 작업 이력 조회 (기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년), 자동 조회, 10개 카테고리 필터, 한글 작업 유형 라벨). 공통 페이징(PC 20/모바일 10) |
+| `admin/audit.html` | 100등급 이상 관리 작업 이력 조회 (기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년), 자동 조회, 10개 카테고리 필터, 한글 작업 유형 라벨, 한글 상세 키 우선 표시). 공통 페이징(PC 20/모바일 10) |
 | `admin/page-permissions.html` | 100등급 페이지 권한 매트릭스 관리 (레거시, 직접 주소 접근) |
 | `admin/change-password.html` | 로그인 사용자 비밀번호 변경 |
 | `css/` | 테마(`themes.css`), 메인(`style.css`), 공통(`common.css`), 관리자(`admin.css`) 스타일 |
 | `js/codes.js` | 권한/유형/상태/카테고리/로그 액션 공통 코드북. DB `code_items`가 있으면 활성 코드의 라벨, 정렬, 색상, 이모지, rank 메타를 우선 적용 |
+| `js/version.js` | 공통 버전 footer, 버전 이력, 최신 `version.js` 조회, 로드된 CSS/JS 자산 `cache: reload` 재검증, 구버전 세션 재로그인 안내 |
 | `js/slack-notify.js` | Slack 알림 공통 유틸리티. `sendSlackNotify(type, data)`로 Edge Function `slack-notify` 호출. fire-and-forget, 동일 알림 5초 throttle. 부서/유형별 채널 라우팅은 Edge Function에서 수행 |
 | `js/` | 테마(`theme.js`), 네비게이션(`nav.js` - `#navHeaderActions` 내부 햄버거·테마·로그인/로그아웃, 처리 가능 건수 배지 + Q&A 미답변 배지 자동 호출 포함), 코드북(`codes.js`), 페이지 크기(`page-size.js`), Slack 알림(`slack-notify.js`), Supabase 설정, 인증/24h 세션 타임아웃/tErr, 로그, 사용자/달란트/상품/버전 모듈 |
 | `docs/edge-function-slack-notify.ts` | Supabase Edge Function `slack-notify` 배포용 소스. 부서별/유형별 Webhook Secret 동적 선택, Slack Block Kit 메시지 포맷 |
@@ -262,8 +263,11 @@ flowchart TD
 6. `role_page_access` 확인: DB 접근 차단 시 `AUTH_REDIRECT`, 조회 실패 시 `AUTH_PAGE_ACCESS_CHECK_FAIL` 기록
 7. 통과 시 `auth-ready` 적용, 역할 배지/메뉴/페이지 데이터 로드
 8. `startSessionTimer()` 호출 — 24시간 유휴 세션 타임아웃 시작 (v3.48.0)
+9. `js/version.js`의 `enforceLatestAppVersion()`이 최신 버전과 세션 버전을 비교하고, 필요 시 자산 재검증/새로고침 또는 재로그인 안내를 수행
 
 `AUTH_REDIRECT` details에는 요청 페이지, `detectCurrentPageId()` 결과, 이동 대상, 사용자, 권한, 권한등급, 필요권한등급/허용권한, 세션 실패 상세가 들어간다. 로그인 필수 페이지가 간헐적으로 `index.html`로 보이는 경우는 대부분 `initPage()`의 권한 미달/허용 권한 불일치/DB 페이지 접근 차단에서 `getRedirectUrl()`이 권한별 기본 화면(`index.html`)을 반환했기 때문이다. 세션 없음/만료는 `login.html` 이동과 `AUTH_SESSION_MISSING` 로그로 구분한다.
+
+최신 버전 검증은 모든 페이지 하단의 `version.js`가 담당한다. 현재 페이지의 `APP_VERSION.current`가 원격 `version.js`의 최신 버전과 다르면 로드된 `script[src]`/`link[rel=stylesheet]` 자산을 `cache: reload`로 한 번 재검증한 뒤 새로고침한다. 로그인 세션의 `appVersion`이 최신 버전과 다르면 `APP_VERSION_STALE_SESSION` WARN 로그를 남기고 세션을 종료한 뒤 로그인 페이지로 이동한다.
 
 로그인 후 `index.html`은 활성 공지를 조회한다. `announcements.is_active = true`인 공지 중 현재 사용자가 `announcement_dismissals`에 저장하지 않은 항목만 팝업으로 표시하며, `다시 열지 않음`을 누르면 `(announcement_id, user_id)` 기준으로 숨김 상태를 저장한다.
 
@@ -344,11 +348,14 @@ flowchart TD
   Popup --> Dismiss["다시 열지 않음"]
   Dismiss --> Store["announcement_dismissals UPSERT"]
   Popup --> Close["닫기: 이번 접속에서만 닫기"]
+  Operator --> ReadStatus["공지 열람 현황 조회"]
+  ReadStatus --> DismissRows["announcement_dismissals SELECT"]
 ```
 
 - 공지 사항 페이지 진입은 `initPage(40, '../login.html')`로 제한한다.
 - 활성 공지는 일반 교사 이상이 조회할 수 있고, 비활성 공지 조회/등록/수정/삭제/활성 토글은 90등급 이상 UI 권한과 RLS 정책으로 제한한다.
 - 공지 등록, 수정, 활성 토글은 `ANNOUNCEMENT_CREATE`, `ANNOUNCEMENT_UPDATE`, `ANNOUNCEMENT_TOGGLE` 로그로 남아 작업 이력에서 확인할 수 있다.
+- 공지 열람 현황은 90등급 이상이 `announcement_dismissals`를 조회해 사용자별 확인/미확인 상태를 표시하며, 조회 시 `ANNOUNCEMENT_READ_STATUS_VIEW` 로그를 남긴다.
 
 ## 7. 신규 계정 신청 흐름
 
@@ -528,7 +535,7 @@ flowchart TD
   ConfirmRPC --> Delivered["✅ 상품 지급 (status: delivered)<br/>일괄 처리 가능"]
 ```
 
-상품 구매 흐름에서 `products.target_role`, `products.category`, `product_orders.status`는 코드 마스터 기준으로 표시한다. 상점, 상품 관리, 내 구매 상품, 구매 관리, 구매 통계는 같은 `products.category`와 `product_orders.status` 코드 그룹을 사용하므로 라벨, 색상, 정렬 순서가 동일하다. 상품 등록/수정 모달의 카테고리 추가 패널은 `code_items(group_key='products.category')`에 새 행을 넣고, 성공 시 브라우저 코드북을 즉시 갱신해 새 카테고리를 선택한다.
+상품 구매 흐름에서 `products.target_role`, `products.category`, `product_orders.status`는 코드 마스터 기준으로 표시한다. 상점, 상품 관리, 내 구매 상품, 구매 관리, 구매 통계는 같은 `products.category`와 `product_orders.status` 코드 그룹을 사용하므로 라벨, 색상, 정렬 순서가 동일하다. 상품 등록/수정 모달의 카테고리 관리 패널은 `code_items(group_key='products.category')`에 새 행을 넣거나 기존 행을 수정/비활성화하고, 성공 시 브라우저 코드북을 즉시 갱신해 최신 카테고리를 선택한다.
 
 구매 관리 권한:
 
@@ -547,7 +554,7 @@ flowchart TD
 | 교사용 상품 | 로그인한 교사 또는 60등급 이상만 조회 |
 | 교사 기본 필터 | 교사 접속 시 교사용 탭 자동 선택 |
 | 상품 등록/수정 | 60등급 이상 |
-| 상품 카테고리 추가 | 60등급 이상. `docs/TASK-058_product_category_policy.sql`의 `code_items_product_category_insert` 정책으로 `products.category` INSERT만 허용 |
+| 상품 카테고리 추가/수정/삭제 | 60등급 이상. `docs/TASK-058_product_category_policy.sql`의 INSERT 정책과 `docs/TASK-066_notice_reads_and_category_manage.sql`의 UPDATE 정책 기준. 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제 불가 |
 | 상품 삭제 | 90등급 이상. 소프트 삭제(삭제 대기=비활성화) - 목록에서 숨김 |
 | 구매 신청 | 로그인 사용자 (잔여 달란트 확인) |
 | 대리 구매 | 40등급 이상. 권한별 부서/반/사용자 범위 제한 |
@@ -557,10 +564,10 @@ flowchart TD
 ```mermaid
 flowchart TD
   Event["로그인/인증 리디렉트/오류/관리 작업"] --> WriteLog["writeLog() → activity_logs INSERT<br/>반환 error 감지 + 호환 재시도"]
-  WriteLog --> ActionLabel["activity_logs.action 코드 라벨<br/>details._actionLabel 자동 저장"]
+  WriteLog --> ActionLabel["activity_logs.action 코드 라벨<br/>details._actionLabel/_actionKo 및 한글 상세 키 저장"]
   ActionLabel --> Logs["admin/logs.html (100등급+)"]
   Logs --> Filter["레벨/기간 필터"]
-  Logs --> KoLabel["action 열 한글 라벨 표시<br/>(getActionLabel, 영문 키 병기)"]
+  Logs --> KoLabel["action 열 한글 라벨 표시<br/>상세 모달 한글 키 우선 표시"]
   Logs --> Ack["ERROR 이상 로그 확인 처리"]
   Logs --> SoftDel["소프트 삭제 (is_deleted = true)<br/>관리자(100+)만"]
   SoftDel --> DelView["삭제 대기 목록 보기 / 복원"]
@@ -575,9 +582,10 @@ flowchart TD
 - v3.40.0부터 `autoLogPageView()`는 no-op이며 PAGE_VIEW 로그를 기록하지 않는다 (함수 호출은 각 페이지에 유지)
 - v3.53.0부터 인증/권한 원인 분석용 action을 구분한다: `AUTH_SESSION_MISSING`, `AUTH_PROFILE_LOAD_FAIL`, `AUTH_REDIRECT`, `AUTH_PAGE_ACCESS_CHECK_FAIL`, `QR_LOCATION_PERMISSION_BLOCKED`.
 - v3.54.0부터 상품 등록 모달에서 새 카테고리를 추가하면 `PRODUCT_CATEGORY_CREATE`를 기록하고, 실패 시 `PRODUCT_CATEGORY_CREATE_FAIL`/`PRODUCT_CATEGORY_CREATE_ERROR`를 기록한다.
+- v3.66.0부터 상품 카테고리 수정/삭제는 `PRODUCT_CATEGORY_UPDATE`, `PRODUCT_CATEGORY_DELETE`로 기록하고, 공지 열람 현황 조회는 `ANNOUNCEMENT_READ_STATUS_VIEW`로 기록한다.
 - `AUTH_REDIRECT`는 로그인 필수 페이지가 로그인 화면 또는 `index.html`로 이동한 원인을 추적하기 위한 로그이며, 세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단을 구분한다.
 - `activity-log.js`의 `getActionLabel()`은 `js/codes.js`/DB `activity_logs.action` 코드 그룹을 우선 사용하고, 기존 로그의 `details._actionLabel`을 하위호환 라벨로 함께 사용한다
-- `writeLog()`는 기록 시 action 라벨이 있으면 `details._actionLabel`에 한글 라벨을 자동 저장한다
+- `writeLog()`는 기록 시 action 라벨이 있으면 `details._actionLabel`/`details._actionKo`와 한글 상세 키 별칭을 자동 저장한다
 - `writeLog()`는 Supabase insert 결과의 `error`를 확인하고, 구버전 DB 스키마에서 `user_name`/`is_acknowledged` 컬럼 오류가 나면 해당 선택 컬럼을 제거해 재시도한다
 - `admin/logs.html`은 `getActionLabel()`로 action 열에 한글 라벨을 표시한다 (영문 키 병기)
 - `ERROR`, `FATAL`, `CRITICAL`은 기본적으로 미확인 상태로 저장
@@ -591,7 +599,7 @@ flowchart TD
 
 ```mermaid
 flowchart TD
-  AdminAction["관리 작업 수행"] --> AuditLog["writeLog() → activity_logs<br/>details._actionLabel 한글 라벨"]
+  AdminAction["관리 작업 수행"] --> AuditLog["writeLog() → activity_logs<br/>details._actionLabel/_actionKo + 한글 상세"]
   AuditLog --> AuditPage["admin/audit.html (100등급+)"]
   AuditPage --> CategoryFilter["10개 카테고리 필터<br/>사용자/등록/부서/달란트/상품·주문/Q&A/인증/로그관리/권한·설정"]
   AuditPage --> KoType["작업 유형 한글 라벨 표시<br/>(AUDIT_ACTIONS + 코드북)"]
@@ -601,7 +609,7 @@ flowchart TD
 - `AUDIT_ACTIONS`는 기본 정의와 `activity_logs.action` 코드 그룹을 함께 사용해 70개 이상 관리 작업 action 키와 한글 라벨/카테고리를 표시한다
 - 작업 이력 화면은 10개 카테고리 필터(전체 + 9개 그룹)로 조회 범위를 좁힌다
 - 작업 이력은 별도 테이블이 아니라 `activity_logs`에서 `AUDIT_ACTIONS` 키에 해당하는 로그만 필터링한다
-- 상세 내역은 `writeLog()`가 저장한 `details._actionLabel` 및 한글화된 details 키를 표시한다
+- 상세 내역은 `writeLog()`가 저장한 `details._actionLabel`/`details._actionKo` 및 한글화된 details 키를 표시한다. `docs/TASK-067_korean_activity_logs.sql`은 기존 로그에도 같은 한글 별칭을 백필한다
 
 ## 13. Slack 알림 흐름
 
@@ -699,8 +707,8 @@ flowchart TD
 | `talent_qr_codes` | QR 코드 생성/관리. `target_type`(학생/교사), `valid_from`/`valid_until` 기간 또는 지정일 시간 범위, `max_uses` (0=무제한, N=선착순), `location_*` 위치 제한(100m~5km, 기본 500m), `repeat_type`(none/daily/weekday/week_weekday), `repeat_days` INT[], `repeat_weeks` INT[] |
 | `talent_qr_scans` | QR 코드 스캔 이력. 반복 수령 시 오늘 기준 중복 체크 |
 | `announcements` | 공지 제목/내용, 활성 여부, 작성자/수정자와 시각. 활성 공지는 로그인 사용자 조회 가능, 관리 작업은 90등급 이상 |
-| `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. `(announcement_id, user_id)` 기본키로 중복 저장 방지 |
-| `activity_logs` | 활동/오류 로그. `is_deleted`/`deleted_at` 소프트 삭제, `user_name` 기록, `action` 코드 라벨과 `details._actionLabel` 한글 라벨. 작업 이력도 이 테이블을 필터링해 표시 |
+| `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. `(announcement_id, user_id)` 기본키로 중복 저장 방지. 90등급 이상 공지 열람 현황 조회에서 확인/미확인 판정에 사용 |
+| `activity_logs` | 활동/오류 로그. `is_deleted`/`deleted_at` 소프트 삭제, `user_name` 기록, `action` 코드 라벨과 `details._actionLabel`/`details._actionKo`, 한글 상세 키 별칭 저장. 작업 이력도 이 테이블을 필터링해 표시 |
 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
 | `role_page_features` | 권한 등급별 페이지 기능 설정값 |
 | `page_permissions` | 페이지 권한 설정 (레거시) |
@@ -825,7 +833,10 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 | 20 | `docs/TASK-059_announcements.sql` | v3.59.0: 공지 관리 `announcements`, `announcement_dismissals` 테이블/RLS 및 공지 로그 액션 코드 |
 | 21 | `docs/TASK-060_change_report.md` | v3.60.0: 예외 지급/반환 관리 변경 요약과 검증 결과 |
 | 22 | `docs/TASK-061_talent_exception_requests.sql` | v3.62.0: 예외 지급 요청/승인 `talent_exception_requests` 테이블과 RLS |
-| 23 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 23 | `docs/TASK-065_registration_approval_contact.sql` | v3.65.0: 승인 대기 로그인 안내 담당자 조회 RPC |
+| 24 | `docs/TASK-066_notice_reads_and_category_manage.sql` | v3.66.0: 상품 카테고리 수정/삭제 RLS 및 공지 열람 현황 조회 권한 |
+| 25 | `docs/TASK-067_korean_activity_logs.sql` | v3.66.0: 기존 활동 로그 상세 한글 별칭 백필 및 실제 발생 액션 라벨 |
+| 26 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
 
 ## 19. 개발 주의사항
 
@@ -843,13 +854,14 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 
 ```html
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-<script src="../config/public-config.js?v=VERSION"></script>
-<script src="../js/supabase-config.js?v=VERSION"></script>
-<script src="../js/activity-log.js?v=VERSION"></script>   <!-- auth.js보다 먼저! -->
-<script src="../js/codes.js?v=VERSION"></script>          <!-- 권한/상태/라벨 코드북 -->
-<script src="../js/auth.js?v=VERSION"></script>
-<script src="../js/theme.js?v=VERSION"></script>
-<script src="../js/nav.js?v=VERSION"></script>
+<script src="../config/public-config.js"></script>
+<script src="../js/supabase-config.js"></script>
+<script src="../js/activity-log.js"></script>   <!-- auth.js보다 먼저! -->
+<script src="../js/codes.js"></script>          <!-- 권한/상태/라벨 코드북 -->
+<script src="../js/auth.js"></script>
+<script src="../js/theme.js"></script>
+<script src="../js/nav.js"></script>
+<script src="../js/version.js"></script>        <!-- 최신 버전/자산 재검증 -->
 ```
 
 인라인 `<script>` 첫 줄에 `initSupabase();` 호출 필수. 누락 시 `_sb=null` → `loadAuthSession()` 즉시 null 반환.
