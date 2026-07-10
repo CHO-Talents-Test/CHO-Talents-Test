@@ -149,8 +149,9 @@
         const teachers = deptUsers.filter(u => u.user_type === 'teacher');
         const students = deptUsers.filter(u => u.user_type === 'student');
         const classLabel = d.class_count > 0 ? d.class_count + '개' : '없음';
+        const safeDeptName = String(d.name || '').replace(/'/g, "\\'");
 
-        return `<tr>
+        return `<tr style="cursor:pointer;" onclick="showMembers('${safeDeptName}','${d.id}')">
           <td><strong>${d.name}</strong></td>
           <td>${d.description || '-'}</td>
           <td>${classLabel}</td>
@@ -158,12 +159,12 @@
           <td>${teachers.length}명</td>
           <td>${students.length}명</td>
           <td>
-            <div class="mgmt-dropdown">
+            <div class="mgmt-dropdown" onclick="event.stopPropagation()">
               <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
               <div class="mgmt-menu">
-                <a onclick="showMembers('${d.name}','${d.id}')">👥 소속보기</a>
+                <a onclick="showMembers('${safeDeptName}','${d.id}')">👥 소속보기</a>
                 ${(myRank >= 90 || d.id === myManagedDept) ? `<a onclick="openEditModal('${d.id}')">✏️ 수정</a>` : ''}
-                ${myRank >= 90 ? `<a onclick="confirmDelete('${d.id}','${d.name}')">🗑️ 삭제</a>` : ''}
+                ${myRank >= 90 ? `<a onclick="confirmDelete('${d.id}','${safeDeptName}')">🗑️ 삭제</a>` : ''}
               </div>
             </div>
           </td>

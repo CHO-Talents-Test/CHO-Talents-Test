@@ -111,7 +111,14 @@
     let historyItems = [];
     let historyPage = 1;
     let historyPageSize = null;
+    let historyCreatorMap = {};
     let autoReceiveTriggered = false;
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
 
     function extractQrCodeValue(raw) {
       const text = String(raw || '').trim();
@@ -436,6 +443,17 @@
           .eq('user_id', session.id).eq('type', 'earn')
           .order('created_at', { ascending: false }).limit(100);
         historyItems = data || [];
+        historyCreatorMap = {};
+        const creatorIds = [...new Set(historyItems.map(t => t.created_by).filter(Boolean))];
+        if (creatorIds.length) {
+          const { data: creators } = await _sb.from('profiles').select('id, display_name, username').in('id', creatorIds);
+          (creators || []).forEach(c => {
+            const baseName = c.display_name || c.username || '관리자';
+            historyCreatorMap[c.id] = (session.permissionRank || 0) >= 100 && c.username
+              ? `${baseName} (${c.username})`
+              : baseName;
+          });
+        }
         historyPage = 1;
         renderHistory();
       } catch (e) { /* column may not exist yet */ }
@@ -468,7 +486,7 @@
           const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
           const srcLabel = t.source === 'qr'
             ? '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#d0ebff;color:#1971c2;margin-right:0.3rem;">📱 QR</span>'
-            : '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#fff3bf;color:#e67700;margin-right:0.3rem;">👨‍💼 관리자</span>';
+            : '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#fff3bf;color:#e67700;margin-right:0.3rem;">👨‍💼 ' + escapeHtml(historyCreatorMap[t.created_by] || '관리자') + '</span>';
           const desc = (t.description || '-').replace(/\[[0-9a-f-]{36}\]\s*/gi, '');
           return `<div class="scan-item">${srcLabel}<span>${dateStr} - ${desc}</span><span class="amt">+${t.amount || 0} 달란트</span></div>`;
         }).join('');

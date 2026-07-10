@@ -24,6 +24,7 @@
 4. `docs/TASK-057_code_master.sql`을 SQL Editor에서 이어서 실행한다.
 5. `docs/TASK-058_product_category_policy.sql`을 SQL Editor에서 이어서 실행한다.
 6. `docs/TASK-068_product_category_page_and_sort_order.sql`을 SQL Editor에서 이어서 실행한다.
+7. `docs/TASK-069_product_detail_image.sql`을 SQL Editor에서 이어서 실행한다.
 7. `admin_user / 1234`로 로그인하고 비밀번호를 바꾼다.
 
 ### PowerShell/psql
@@ -33,7 +34,7 @@
 .\scripts\install-supabase-database.ps1
 ```
 
-PowerShell 설치 스크립트는 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`을 함께 적용한다.
+PowerShell 설치 스크립트는 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 함께 적용한다.
 
 ### macOS/Linux bash/psql
 
@@ -41,7 +42,7 @@ PowerShell 설치 스크립트는 기본으로 `docs/TASK-057_code_master.sql`, 
 scripts/install-supabase-database.sh --app-config-env DEV
 ```
 
-셸 스크립트도 `.env.local`을 자동으로 읽고, 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`을 함께 적용한다.
+셸 스크립트도 `.env.local`을 자동으로 읽고, 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 함께 적용한다.
 
 SQL 파일만 생성할 수도 있다.
 
@@ -63,7 +64,7 @@ scripts/install-supabase-database.sh \
   --supabase-anon-key "YOUR_PUBLISHABLE_OR_ANON_KEY"
 ```
 
-생성된 합본 SQL에는 코드 마스터(`code_groups`, `code_items`), 상품 카테고리 추가 정책, 상품 정렬 순번 보강이 포함된다. v3.65.0~v3.66.0 보강 기능까지 새 DB에 바로 적용하려면 합본 실행 후 `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-067_korean_activity_logs.sql`을 추가로 실행한다.
+생성된 합본 SQL에는 코드 마스터(`code_groups`, `code_items`), 상품 카테고리 추가 정책, 상품 정렬 순번 보강, 상품 상세 설명 이미지 컬럼이 포함된다. v3.65.0~v3.66.0 보강 기능까지 새 DB에 바로 적용하려면 합본 실행 후 `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-067_korean_activity_logs.sql`을 추가로 실행한다.
 
 ## 부분 설치 복구
 
@@ -74,7 +75,8 @@ scripts/install-supabase-database.sh \
 3. `docs/TASK-057_code_master.sql`
 4. `docs/TASK-058_product_category_policy.sql`
 5. `docs/TASK-068_product_category_page_and_sort_order.sql`
-6. `scripts/verify-task-057-code-master.sql`
+6. `docs/TASK-069_product_detail_image.sql`
+7. `scripts/verify-task-057-code-master.sql`
 
 ## Slack Edge Function
 
@@ -94,6 +96,7 @@ scripts/install-supabase-database.sh \
 - 구매 취소 RPC `cancel_product_order`
 - 상품 카테고리 관리 페이지의 `products.category` 등록/수정/삭제 정책(구매 담당 교사 70+)
 - 상품 `products.sort_order` 정렬 순번
+- 상품 `products.detail_image_url` 상세 설명 이미지
 - QR 수령 RPC `scan_qr_talent`
 - `talent_transactions.source`
 - `role_page_access`, `role_page_features`, `page_permissions`

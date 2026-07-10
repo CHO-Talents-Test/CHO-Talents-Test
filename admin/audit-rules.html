@@ -37,7 +37,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📝 작업 이력 작성 룰</h1>
-      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v3.68.0 기준 상품 카테고리 관리, 공지 등록/수정/활성 토글/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 관리 작업으로 기록합니다.</p>
+      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v3.69.0 기준 상품 카테고리 관리, 썸네일/상세 이미지 연결, 공지 등록/수정/활성 토글/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 관리 작업으로 기록합니다.</p>
     </div>
 
     <!-- 개요 -->
@@ -118,7 +118,7 @@
           <tr><td>TALENT_RETURN</td><td>달란트 반환</td><td>잘못 지급된 달란트를 사유 입력 후 되돌린 경우 (부장 교사 80+ 권한, TALENT_USE와 별도 집계)</td></tr>
           <tr><td>ATTENDANCE_GIVE / ATTENDANCE_CANCEL</td><td>출석 달란트 지급/취소</td><td>출석 체크 관련</td></tr>
           <tr><td>TALENT_ITEM_CREATE / UPDATE / DELETE</td><td>달란트 항목 관리</td><td>적립 항목 CRUD</td></tr>
-          <tr><td>qr_create / qr_edit / qr_toggle / qr_scan</td><td>QR 관리</td><td>QR 달란트 코드 관련. 생성/수정 상세에는 지급 대상, 항목/금액, 유효 기간·지정 시간, 위치 제한 반경을 함께 남깁니다.</td></tr>
+          <tr><td>qr_create / qr_edit / qr_toggle / qr_scan</td><td>QR 관리</td><td>QR 달란트 코드 관련. 생성/수정 상세에는 지급 대상, 항목/금액, 유효 기간·지정 시간, 위치 제한 반경을 함께 남깁니다. 수령자 모달 조회는 사용자별 묶음과 유형/부서/검색 필터를 기준으로 분석합니다.</td></tr>
         </tbody>
       </table>
 
@@ -126,7 +126,8 @@
       <table class="rule-table">
         <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
         <tbody>
-          <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td>상품 CRUD</td><td>상품 등록/수정/삭제</td></tr>
+          <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td>상품 CRUD</td><td>상품 등록/수정/삭제. v3.69.0부터 상품 이미지는 구매 카드 썸네일과 상세 설명 이미지로 분리 관리</td></tr>
+          <tr><td>PRODUCT_IMAGE_UPDATE</td><td>상품 이미지 연결</td><td><code>details.필드</code>로 <code>image_url</code>(썸네일)과 <code>detail_image_url</code>(상세 이미지)을 구분</td></tr>
           <tr><td>PRODUCT_CATEGORY_CREATE</td><td>상품 카테고리 등록</td><td>상품 카테고리 관리 페이지에서 새 카테고리 추가</td></tr>
           <tr><td>PRODUCT_CATEGORY_UPDATE / PRODUCT_CATEGORY_DELETE</td><td>상품 카테고리 수정/삭제</td><td>상품 카테고리 관리 페이지에서 코드 마스터 항목 수정 또는 비활성화</td></tr>
           <tr><td>PRODUCT_DEACTIVATE / PRODUCT_SOFT_DELETE</td><td>상품 비활성화/소프트삭제</td><td>상품 숨김 처리</td></tr>
@@ -181,7 +182,7 @@
           <tr><td>ROLE_FEATURE_UPDATE</td><td>페이지 기능 권한 변경</td><td>역할별 기능 제한 수정</td></tr>
           <tr><td>PAGE_PERM_UPDATE</td><td>페이지 권한 업데이트</td><td>레거시 권한 매트릭스 수정</td></tr>
           <tr><td>ANNOUNCEMENT_CREATE / ANNOUNCEMENT_UPDATE / ANNOUNCEMENT_TOGGLE</td><td>공지 등록/수정/활성 토글</td><td>전도사님(90+) 이상이 운영 공지를 관리</td></tr>
-          <tr><td>ANNOUNCEMENT_READ_STATUS_VIEW</td><td>공지 열람 현황 조회</td><td>전도사님(90+) 이상이 공지별 확인/미확인 상태를 유형과 상태 필터로 조회</td></tr>
+          <tr><td>ANNOUNCEMENT_READ_STATUS_VIEW</td><td>공지 열람 현황 조회</td><td>전도사님(90+) 이상이 공지별 확인/미확인 상태를 사용자 유형과 전체/확인자/미확인자 콤보박스 필터로 조회</td></tr>
           <tr><td>REPORT_SAVE / REPORT_DELETE / REPORT_SEED</td><td>보고서 관리</td><td>보고서 저장/삭제/시드</td></tr>
         </tbody>
       </table>

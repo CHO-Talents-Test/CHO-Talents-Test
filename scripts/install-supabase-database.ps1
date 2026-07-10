@@ -123,6 +123,7 @@ if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
   $defaultCodeMasterSql = Join-Path $ScriptRoot '..\docs\TASK-057_code_master.sql'
   $defaultProductCategoryPolicySql = Join-Path $ScriptRoot '..\docs\TASK-058_product_category_policy.sql'
   $defaultProductCategoryPageSql = Join-Path $ScriptRoot '..\docs\TASK-068_product_category_page_and_sort_order.sql'
+  $defaultProductDetailImageSql = Join-Path $ScriptRoot '..\docs\TASK-069_product_detail_image.sql'
   if (Test-Path -LiteralPath $defaultCodeMasterSql) {
     $ExtraSqlPaths = @($defaultCodeMasterSql)
   }
@@ -131,6 +132,9 @@ if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
   }
   if (Test-Path -LiteralPath $defaultProductCategoryPageSql) {
     $ExtraSqlPaths += $defaultProductCategoryPageSql
+  }
+  if (Test-Path -LiteralPath $defaultProductDetailImageSql) {
+    $ExtraSqlPaths += $defaultProductDetailImageSql
   }
 }
 

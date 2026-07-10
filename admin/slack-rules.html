@@ -27,7 +27,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>🔔 Slack 알림 룰</h1>
-      <p>브라우저에서 발생한 운영 이벤트가 Supabase Edge Function을 거쳐 Slack 채널로 전송되는 기준입니다. v3.68.0 기준 WARN+ 로그 알림에는 최신 버전 세션 감지와 한글화된 로그 상세 정보도 포함됩니다.</p>
+      <p>브라우저에서 발생한 운영 이벤트가 Supabase Edge Function을 거쳐 Slack 채널로 전송되는 기준입니다. v3.69.0 기준 WARN+ 로그 알림에는 최신 버전 세션 감지, 상품 썸네일/상세 이미지 연결 실패, QR 수령자 조회 오류, 한글화된 로그 상세 정보도 포함됩니다.</p>
     </div>
 
     <div class="rule-section">
@@ -61,6 +61,7 @@
       </table>
       <div class="note-box">구매 상태의 화면 표시명은 공통 코드북/DB <code>product_orders.status</code> 코드 마스터를 따릅니다. Slack 발송 조건은 표시명이 아니라 상태 코드 전환을 기준으로 유지합니다.</div>
       <div class="note-box">로그 알림의 액션 라벨과 상세는 <code>js/activity-log.js</code>의 한글 라벨/상세 키 기준을 따르며, 원본 영문 키는 호환성을 위해 함께 유지됩니다.</div>
+      <div class="note-box">상품 관리에서 썸네일 이미지(<code>image_url</code>)와 상세 설명 이미지(<code>detail_image_url</code>)를 저장해도 정상 성공 건은 Slack 대상이 아닙니다. 업로드/저장 실패처럼 WARN 이상 로그가 남는 경우에만 <code>log_alert</code>로 운영 채널에 전송됩니다.</div>
       <div class="note-box">위치 제한 QR에서 위치 권한 차단이 발생하면 <code>QR_LOCATION_PERMISSION_BLOCKED</code>가 INFO 로그로 저장됩니다. INFO 로그는 기본 Slack WARN+ 알림 대상이 아니며, 현장 문의 분석은 로그 화면에서 action 필터로 확인합니다.</div>
     </div>
 

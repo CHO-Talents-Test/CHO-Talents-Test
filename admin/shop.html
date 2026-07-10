@@ -79,11 +79,11 @@
         <input type="text" id="mEmoji" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="🎁" />
       </div>
       <div style="margin-bottom:0.8rem;">
-        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품 이미지</label>
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">썸네일 이미지</label>
         <div id="dropZone" class="product-drop-zone">
           <div id="dropContent">
             <div style="font-size:2rem;margin-bottom:0.3rem;">📷</div>
-            <div class="drop-help">클릭하거나 이미지를 드래그해서 놓으세요</div>
+            <div class="drop-help">상품 구매 카드에 표시되는 이미지를 등록하세요</div>
             <div class="drop-meta">JPG, PNG, GIF, WebP (최대 5MB)</div>
           </div>
           <div id="imgPreview" style="display:none;"></div>
@@ -97,6 +97,26 @@
           </div>
         </div>
         <div id="uploadStatus" style="margin-top:0.3rem;font-size:0.8rem;text-align:center;"></div>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상세 설명 이미지</label>
+        <div id="detailDropZone" class="product-drop-zone">
+          <div id="detailDropContent">
+            <div style="font-size:2rem;margin-bottom:0.3rem;">🖼️</div>
+            <div class="drop-help">상품 상세 모달에서 설명 아래에 표시되는 이미지를 등록하세요</div>
+            <div class="drop-meta">JPG, PNG, GIF, WebP (최대 5MB)</div>
+          </div>
+          <div id="detailImgPreview" style="display:none;"></div>
+        </div>
+        <input type="file" id="mDetailImageFile" accept="image/*" style="display:none;" />
+        <input type="hidden" id="mDetailImageUrl" />
+        <div style="margin-top:0.4rem;">
+          <button type="button" onclick="toggleDetailUrlInput()" style="background:none;border:none;color:var(--admin-primary);cursor:pointer;font-size:0.8rem;text-decoration:underline;">URL 직접 입력</button>
+          <div id="detailUrlInputWrap" style="display:none;margin-top:0.4rem;">
+            <input type="text" id="mDetailImageUrlText" style="width:100%;padding:0.5rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.85rem;" placeholder="https://example.com/detail-image.jpg" />
+          </div>
+        </div>
+        <div id="detailUploadStatus" style="margin-top:0.3rem;font-size:0.8rem;text-align:center;"></div>
       </div>
       <div style="margin-bottom:0.8rem;">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">설명</label>
@@ -306,14 +326,21 @@
     function openAddModal() {
       editingId = null;
       document.getElementById('modalTitle').textContent = '상품 등록';
-      ['mName','mEmoji','mImageUrlText','mDesc'].forEach(id => document.getElementById(id).value = '');
+      ['mName','mEmoji','mImageUrlText','mDetailImageUrlText','mDesc'].forEach(id => document.getElementById(id).value = '');
       refreshProductCategorySelect('etc');
       document.getElementById('mTarget').value = 'student';
       document.getElementById('mPrice').value = '';
       document.getElementById('mSortOrder').value = '0';
       document.getElementById('mImageUrl').value = '';
       document.getElementById('mImageFile').value = '';
+      document.getElementById('mDetailImageUrl').value = '';
+      document.getElementById('mDetailImageFile').value = '';
+      document.getElementById('urlInputWrap').style.display = 'none';
+      document.getElementById('detailUrlInputWrap').style.display = 'none';
+      document.getElementById('uploadStatus').innerHTML = '';
+      document.getElementById('detailUploadStatus').innerHTML = '';
       resetImgPreview();
+      resetDetailImgPreview();
       document.querySelector('input[name="mIsActive"][value="true"]').checked = true;
       document.getElementById('activeWrap').style.display = 'none';
       document.getElementById('modalError').classList.remove('show');
@@ -333,6 +360,14 @@
       document.getElementById('mImageFile').value = '';
       document.getElementById('mImageUrlText').value = p.image_url || '';
       if (p.image_url) showImgPreview(p.image_url); else resetImgPreview();
+      document.getElementById('mDetailImageUrl').value = p.detail_image_url || '';
+      document.getElementById('mDetailImageFile').value = '';
+      document.getElementById('mDetailImageUrlText').value = p.detail_image_url || '';
+      if (p.detail_image_url) showDetailImgPreview(p.detail_image_url); else resetDetailImgPreview();
+      document.getElementById('urlInputWrap').style.display = p.image_url ? 'block' : 'none';
+      document.getElementById('detailUrlInputWrap').style.display = p.detail_image_url ? 'block' : 'none';
+      document.getElementById('uploadStatus').innerHTML = '';
+      document.getElementById('detailUploadStatus').innerHTML = '';
       document.getElementById('mDesc').value = p.description || '';
       document.querySelector('input[name="mIsActive"][value="' + String(p.is_active !== false) + '"]').checked = true;
       document.getElementById('activeWrap').style.display = 'block';
@@ -356,7 +391,13 @@
       const selectedFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
       let imageUrl = document.getElementById('mImageUrl').value.trim() || null;
       const urlText = document.getElementById('mImageUrlText').value.trim();
-      if (!selectedFile && !imageUrl && urlText) imageUrl = urlText;
+      if (!selectedFile && urlText) imageUrl = urlText;
+
+      const detailFileInput = document.getElementById('mDetailImageFile');
+      const selectedDetailFile = detailFileInput && detailFileInput.files && detailFileInput.files[0] ? detailFileInput.files[0] : null;
+      let detailImageUrl = document.getElementById('mDetailImageUrl').value.trim() || null;
+      const detailUrlText = document.getElementById('mDetailImageUrlText').value.trim();
+      if (!selectedDetailFile && detailUrlText) detailImageUrl = detailUrlText;
 
       if (editingId && selectedFile) {
         const statusEl = document.getElementById('uploadStatus');
@@ -365,6 +406,13 @@
         if (uploadErr) { statusEl.innerHTML = `<span style="color:#ff6b6b;">업로드 실패: ${uploadErr}</span>`; return; }
         imageUrl = url; statusEl.innerHTML = '';
       }
+      if (editingId && selectedDetailFile) {
+        const statusEl = document.getElementById('detailUploadStatus');
+        statusEl.innerHTML = '<span style="color:var(--admin-primary);">⏳ 상세 이미지 압축 및 업로드 중...</span>';
+        const { url, error: uploadErr } = await uploadProductImage(selectedDetailFile, { entityId: editingId, prefix: 'product_detail', context: '상품 상세 이미지' });
+        if (uploadErr) { statusEl.innerHTML = `<span style="color:#ff6b6b;">업로드 실패: ${uploadErr}</span>`; return; }
+        detailImageUrl = url; statusEl.innerHTML = '';
+      }
 
       const row = {
         name, target_role: document.getElementById('mTarget').value,
@@ -372,7 +420,9 @@
         price,
         sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
         image_emoji: document.getElementById('mEmoji').value.trim() || '🎁',
-        image_url: imageUrl, description: document.getElementById('mDesc').value.trim() || null
+        image_url: imageUrl,
+        detail_image_url: detailImageUrl,
+        description: document.getElementById('mDesc').value.trim() || null
       };
 
       if (editingId) row.is_active = document.querySelector('input[name="mIsActive"]:checked').value === 'true';
@@ -384,10 +434,11 @@
       } else {
         row.created_by = session.id;
         if (selectedFile) row.image_url = null;
+        if (selectedDetailFile) row.detail_image_url = null;
         const { data: createdProduct, error } = await createProduct(row);
         if (error) { await logError('PRODUCT_CREATE_FAIL', { 상품명: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
         await logInfo('PRODUCT_CREATE', { 상품명: name, 금액: price });
-        if (selectedFile && (!createdProduct || !createdProduct.id)) {
+        if ((selectedFile || selectedDetailFile) && (!createdProduct || !createdProduct.id)) {
           errEl.textContent = '상품 ID를 확인하지 못해 이미지 업로드를 진행할 수 없습니다.';
           errEl.classList.add('show');
           return;
@@ -410,6 +461,28 @@
               try { await _sb.storage.from('Talents_Items').remove([path]); } catch (e) {}
             }
             statusEl.innerHTML = `<span style="color:#ff6b6b;">이미지 연결 실패: ${imageUpdate.error}</span>`;
+            errEl.textContent = tErr(imageUpdate.error);
+            errEl.classList.add('show');
+            return;
+          }
+          statusEl.innerHTML = '';
+        }
+        if (selectedDetailFile) {
+          const statusEl = document.getElementById('detailUploadStatus');
+          statusEl.innerHTML = '<span style="color:var(--admin-primary);">⏳ 상품 ID 기준 상세 이미지 업로드 중...</span>';
+          const { url, error: uploadErr, path } = await uploadProductImage(selectedDetailFile, { entityId: createdProduct.id, prefix: 'product_detail', context: '상품 상세 이미지' });
+          if (uploadErr) {
+            statusEl.innerHTML = `<span style="color:#ff6b6b;">상품은 저장됐지만 상세 이미지 업로드 실패: ${uploadErr}</span>`;
+            errEl.textContent = '상품은 저장됐지만 상세 이미지 업로드에 실패했습니다. 다시 저장하면 같은 상품 ID로 재시도합니다.';
+            errEl.classList.add('show');
+            return;
+          }
+          const imageUpdate = await updateProductImageUrl(createdProduct.id, url, 'detail_image_url');
+          if (imageUpdate.error) {
+            if (path) {
+              try { await _sb.storage.from('Talents_Items').remove([path]); } catch (e) {}
+            }
+            statusEl.innerHTML = `<span style="color:#ff6b6b;">상세 이미지 연결 실패: ${imageUpdate.error}</span>`;
             errEl.textContent = tErr(imageUpdate.error);
             errEl.classList.add('show');
             return;
@@ -444,6 +517,17 @@
     function removeImage(e) { e.stopPropagation(); document.getElementById('mImageUrl').value = ''; document.getElementById('mImageFile').value = ''; document.getElementById('mImageUrlText').value = ''; resetImgPreview(); }
     function toggleUrlInput() { const w = document.getElementById('urlInputWrap'); w.style.display = w.style.display === 'none' ? 'block' : 'none'; }
 
+    function showDetailImgPreview(src) {
+      document.getElementById('detailDropContent').style.display = 'none';
+      const preview = document.getElementById('detailImgPreview');
+      preview.style.display = 'block';
+      preview.innerHTML = `<img src="${src}" style="max-width:220px;max-height:140px;border-radius:8px;" onerror="resetDetailImgPreview()" />
+        <div style="margin-top:0.3rem;"><button type="button" onclick="removeDetailImage(event)" style="background:#ff6b6b;color:#fff;border:none;padding:0.2rem 0.8rem;border-radius:6px;cursor:pointer;font-size:0.8rem;">상세 이미지 삭제</button></div>`;
+    }
+    function resetDetailImgPreview() { document.getElementById('detailDropContent').style.display = 'block'; const p = document.getElementById('detailImgPreview'); p.style.display = 'none'; p.innerHTML = ''; }
+    function removeDetailImage(e) { e.stopPropagation(); document.getElementById('mDetailImageUrl').value = ''; document.getElementById('mDetailImageFile').value = ''; document.getElementById('mDetailImageUrlText').value = ''; resetDetailImgPreview(); }
+    function toggleDetailUrlInput() { const w = document.getElementById('detailUrlInputWrap'); w.style.display = w.style.display === 'none' ? 'block' : 'none'; }
+
     const dropZone = document.getElementById('dropZone');
     const fileInput = document.getElementById('mImageFile');
     function resetDropZoneStyle() {
@@ -463,6 +547,25 @@
       document.getElementById('uploadStatus').innerHTML = `<span style="color:#636e72;">📎 ${file.name} (${(file.size/1024).toFixed(1)}KB)</span>`;
     }
     document.getElementById('mImageUrlText').addEventListener('input', function() { const u = this.value.trim(); if (u) { document.getElementById('mImageFile').value = ''; showImgPreview(u); } else resetImgPreview(); });
+    const detailDropZone = document.getElementById('detailDropZone');
+    const detailFileInput = document.getElementById('mDetailImageFile');
+    function resetDetailDropZoneStyle() {
+      detailDropZone.style.borderColor = 'var(--admin-border)';
+      detailDropZone.style.background = '';
+    }
+    detailDropZone.addEventListener('click', () => detailFileInput.click());
+    detailDropZone.addEventListener('dragover', e => { e.preventDefault(); detailDropZone.style.borderColor = 'var(--admin-primary)'; detailDropZone.style.background = 'var(--t-hover-bg, rgba(108,92,231,0.05))'; });
+    detailDropZone.addEventListener('dragleave', resetDetailDropZoneStyle);
+    detailDropZone.addEventListener('drop', e => { e.preventDefault(); resetDetailDropZoneStyle(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleDetailFileSelect(f); });
+    detailFileInput.addEventListener('change', () => { if (detailFileInput.files[0]) handleDetailFileSelect(detailFileInput.files[0]); });
+    function handleDetailFileSelect(file) {
+      const maxBytes = typeof MAX_IMAGE_UPLOAD_INPUT_BYTES === 'number' ? MAX_IMAGE_UPLOAD_INPUT_BYTES : 20*1024*1024;
+      if (file.size > maxBytes) { document.getElementById('detailUploadStatus').innerHTML = '<span style="color:#ff6b6b;">20MB 이하 이미지 파일만 업로드 가능합니다</span>'; return; }
+      const dt = new DataTransfer(); dt.items.add(file); detailFileInput.files = dt.files;
+      const reader = new FileReader(); reader.onload = e => showDetailImgPreview(e.target.result); reader.readAsDataURL(file);
+      document.getElementById('detailUploadStatus').innerHTML = `<span style="color:#636e72;">📎 ${file.name} (${(file.size/1024).toFixed(1)}KB)</span>`;
+    }
+    document.getElementById('mDetailImageUrlText').addEventListener('input', function() { const u = this.value.trim(); if (u) { document.getElementById('mDetailImageFile').value = ''; showDetailImgPreview(u); } else resetDetailImgPreview(); });
     document.getElementById('productModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
   </script>
   <div id="version-container"></div>
