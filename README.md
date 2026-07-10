@@ -12,12 +12,18 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v3.69.0` (`js/version.js` 기준, 2026-07-10) |
+| 현재 버전 | `v3.70.0` (`js/version.js` 기준, 2026-07-10) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
 
-- `APP_VERSION.current`는 `3.69.0`로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `3.70.0`로 갱신되어 있습니다.
+- **v3.70.0 주요 변경 사항**:
+  - `운영 > 로그` 아래에 부장 교사(80+) 이상 전용 `서비스 통계` 페이지를 추가했습니다.
+  - GitHub, Supabase, Kakao Developers, Slack의 무료 할당량, 현재/남은 값과 사용률, 기간 종료 예상 사용률, 30일 추이를 표시합니다.
+  - 공식 관리 API·Database 직접값·프로젝트 호출 계측을 6시간마다 병합하고, 70%·85%·95% 도달 시 운영관리 Slack 채널에 단계별 알림을 보냅니다.
+  - 페이지 트래픽, Supabase 요청/응답량, Kakao 지도 SDK/장소 검색, Slack Webhook 성공·실패를 개인정보 없이 누적합니다.
+  - TASK-070 서비스 통계 스키마/RLS/RPC, Edge Function, Cron/Vault 설정 SQL과 Secret 설정 문서를 추가했습니다.
 - **v3.69.0 주요 변경 사항**:
   - `공지 사항` 열람 현황의 확인자/미확인자 스위치를 `전체/확인자/미확인자` 콤보박스 필터로 변경했습니다.
   - `상품 관리` 이미지를 구매 카드용 썸네일과 상세 모달 설명 아래에 표시되는 상세 설명 이미지로 분리했습니다. DB에는 `products.detail_image_url` 컬럼을 추가합니다.
@@ -463,6 +469,7 @@ CHO-Talents/
 │   ├── purchases.html             # 구매 관리 (4단계 구매 흐름)
 │   ├── reports.html               # 작업 보고서 조회 + JS 시더
 │   ├── logs.html                  # 활동 로그 조회/확인/삭제 대기
+│   ├── service-stats.html         # 외부 서비스 무료 할당량/사용량 통계 (80+)
 │   ├── log-rules.html             # 로그 작성 룰 문서 (80+)
 │   ├── slack-rules.html           # Slack 알림 룰 문서 (80+)
 │   ├── audit-rules.html           # 작업 이력 작성 룰 문서 (80+)
@@ -503,6 +510,7 @@ CHO-Talents/
 - **Security:** RLS 정책과 `SECURITY DEFINER` RPC로 사용자/달란트/로그 등 민감 데이터 접근 제어
 - **에러 처리:** `tErr()` 함수로 영문 DB 에러를 한글로 자동 변환, 전체 기능에 `logError`/`logWarn`/`logInfo` 로깅
 - **Slack 알림:** 부서별/유형별 채널 분리 라우팅. 브라우저에서 `js/slack-notify.js` → Supabase Edge Function `slack-notify` → 채널별 Slack Webhook 경로로 전송
+- **서비스 통계:** 브라우저 계측 + Database 직접 집계 + `service-usage-collect` Edge Function의 GitHub/Supabase 공식 API 조회를 병합. 6시간 주기 수집과 70/85/95% 운영 채널 알림
 - **공통 코드 관리:** 브라우저는 `js/codes.js`의 기본 코드북을 우선 사용하고, DB에 `code_items`가 있으면 활성 코드/라벨/정렬/색상 값을 불러와 덮어씁니다.
 - **버전 관리:** 모든 페이지는 고정 `?v=` 쿼리 대신 `js/version.js`가 최신 버전을 조회하고, 구버전 자산/세션을 감지하면 자산 재검증 또는 재로그인을 유도합니다.
 
@@ -539,7 +547,8 @@ CHO-Talents/
 
 - **클라이언트:** `js/slack-notify.js`의 `sendSlackNotify(type, data)` — fire-and-forget 방식, 동일 알림 5초 throttle
 - **서버:** Supabase Edge Function `slack-notify` — 부서/유형 기반 Webhook Secret 동적 선택, Slack Block Kit 메시지 포맷
-- **배포 참고:** Edge Function 소스는 `docs/edge-function-slack-notify.ts`에 포함
+- **배포 참고:** Edge Function 진입점은 `supabase/functions/slack-notify/index.ts`, 공통 구현은 `supabase/functions/_shared/slack-notify.ts`
+- **사용량 수집:** `supabase/functions/service-usage-collect/index.ts`가 GitHub/Supabase API와 프로젝트 계측값을 수집하고 할당량 단계별 알림을 운영 채널에 전송
 - **부서 매핑:** Edge Function 내부에서 부서명(1부~5부, 예배부)을 Secret Name으로 변환하여 라우팅
 
 ## 사용자 권한 체계
@@ -603,6 +612,7 @@ flowchart TD
   Home --> PageFeatures["admin/page-features.html<br/>100+"]
   Home --> Audit["admin/audit.html<br/>100+"]
   Home --> Logs["admin/logs.html<br/>100+"]
+  Home --> ServiceStats["admin/service-stats.html<br/>80+"]
   Home -.-> PagePerms["admin/page-permissions.html<br/>100+ 직접 주소 접근"]
 ```
 
@@ -639,6 +649,7 @@ flowchart TD
 | `admin/notices.html` | 40 | 공지 사항 조회. 일반 교사는 활성 공지만 볼 수 있고, 전도사님(90+) 이상은 공지 등록/수정/삭제와 활성 토글을 처리합니다. 목록 행 선택 시 보기 모달이 열리며, 열람 현황 모달에서 등록일시/등록자, 사용자 유형, 전체/확인자/미확인자 콤보박스 필터를 확인할 수 있습니다. 활성 공지는 로그인 후 메인 화면에 팝업 표시되고 계정별 다시 열지 않음 상태를 저장 |
 | `admin/reports.html` | 80 | 작업 보고서 유형별 조회, 상세 보기, 등록/수정, 선택 삭제 |
 | `admin/logs.html` | 100 | 활동 로그 필터링(기본 1년) + 기간 프리셋, 상세 보기, 한글 액션 라벨 표시, 오류 로그 확인 처리, 소프트 삭제(삭제 대기) |
+| `admin/service-stats.html` | 80 | GitHub/Supabase/Kakao/Slack 무료 할당량, 현재·남은 사용량/비율, 예상 사용률, 30일 추이, 수집/Slack 알림 이력 조회와 즉시 수집 |
 | `admin/versions.html` | 80 | 배포 버전과 v1.0.0부터의 전체 변경 이력 확인 |
 | `admin/page-access.html` | 100 | 유형/권한별 페이지 접근/요소 가시성 설정 |
 | `admin/page-features.html` | 100 | 권한별 페이지 기능(수정/삭제/승인 등) 설정값 관리 |
@@ -794,6 +805,8 @@ flowchart TD
 | 공지 | `announcements` | 운영자가 등록한 공지 제목/내용, 활성 여부, 작성/수정자 기록 |
 | 공지 숨김 | `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. 전도사님(90+) 이상은 공지 열람 현황 조회와 확인/미확인 필터에 사용 |
 | 로그 | `activity_logs` | 오류/운영 활동 기록, 소프트 삭제, `activity_logs.action` 코드 라벨과 `details._actionLabel`/`details._actionKo` 및 한글 상세 키 저장 |
+| 서비스 통계 | `service_usage_metrics`, `service_usage_events`, `service_usage_snapshots` | 플랫폼별 한도 정의, 프로젝트 호출 계측, 6시간 수집 스냅샷 |
+| 서비스 통계 운영 | `service_usage_collection_runs`, `service_usage_alerts` | 수집 성공/오류와 70/85/95% Slack 알림 중복 방지/발송 이력 |
 | 보고서 | `reports` | 작업 계획, 검증, 테스트, 수정 보고서 |
 | 페이지 권한 | `page_permissions` | 페이지별 조회/관리 권한 설정 (레거시) |
 | 권한별 접근 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
@@ -803,6 +816,9 @@ flowchart TD
 | RPC | 목적 | 주요 호출 |
 |---|---|---|
 | `get_my_profile` | 로그인 사용자 프로필/권한 조회 | `auth.js`, `activity-log.js` |
+| `get_service_usage_dashboard` | 부장 교사 이상 서비스 사용량/한도 분석 조회 | `admin/service-stats.html` |
+| `get_service_usage_history` | 선택 지표의 최근 30일 수집 추이 조회 | `admin/service-stats.html` |
+| `record_service_usage_batch` | 공개/로그인 페이지의 비식별 사용량 이벤트 배치 적재 | `js/supabase-config.js` |
 | `update_last_login` | 로그인 성공 시 `profiles.last_login_at` 갱신 | `auth.js` |
 | `check_username_available` | 가입 신청 아이디 중복확인 | `register.html` |
 | `check_registration_status` | 미승인/거부 계정 로그인 안내 조회 | `login.html` |
@@ -838,9 +854,9 @@ flowchart TD
 |---|---|
 | `docs/INITIAL_DATABASE_SETUP.sql` | 현재 테이블, RPC, RLS, Storage 버킷, 기본 데이터를 새 DB에 설치 |
 | `docs/INITIAL_DATABASE_SETUP.md` | SQL Editor 방식과 PowerShell/psql 자동 설치 방법 |
-| `scripts/install-supabase-database.ps1` | `.env.local` 값을 읽어 새 프로젝트 공개 설정까지 반영하는 자동 설치 스크립트. 기본 실행 시 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`도 합본에 포함 |
+| `scripts/install-supabase-database.ps1` | `.env.local` 값을 읽어 새 프로젝트 공개 설정까지 반영하는 자동 설치 스크립트. 기본 실행 시 TASK-057/058/068/069와 `docs/TASK-070_service_usage_monitoring.sql`도 합본에 포함 |
 
-SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실행 후 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 이어서 실행합니다. PowerShell/Bash 설치 스크립트와 `-GenerateOnly` 합본 SQL은 네 파일을 기본 포함합니다.
+SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실행 후 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`, `docs/TASK-070_service_usage_monitoring.sql`을 이어서 실행합니다. PowerShell/Bash 설치 스크립트와 `-GenerateOnly` 합본 SQL도 이 파일들을 기본 포함합니다.
 
 아래 SQL 파일들은 과거 작업별 변경 이력이며, 빈 새 DB에는 위 단일 설치 SQL을 우선 사용합니다:
 
@@ -863,6 +879,9 @@ SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실�
 | `docs/TASK-065_registration_approval_contact.sql` | v3.65.0: 승인 대기 로그인 안내용 담당자 조회 RPC |
 | `docs/TASK-066_notice_reads_and_category_manage.sql` | v3.66.0: 상품 카테고리 수정/삭제 RLS와 공지 열람 현황 조회 권한 보강 |
 | `docs/TASK-069_product_detail_image.sql` | v3.69.0: `products.detail_image_url` 상세 설명 이미지 컬럼 추가 |
+| `docs/TASK-070_service_usage_monitoring.sql` | v3.70.0: 외부 서비스 할당량/사용량/수집/알림 테이블, RLS, RPC와 공식 무료 기준 |
+| `docs/TASK-070_service_usage_cron.sql` | v3.70.0: 00/06/12/18 KST Edge Function 예약 수집용 pg_cron/Vault 설정 |
+| `docs/TASK-070_SERVICE_USAGE_SETUP.md` | 서비스 통계 Edge Function Secret, 배포, Cron 설정과 값 해석 안내 |
 | `docs/TASK-067_korean_activity_logs.sql` | v3.66.0: 기존 활동 로그 상세 한글 별칭 백필 및 실제 발생 액션 라벨 보강 |
 | `docs/TASK-068_product_category_page_and_sort_order.sql` | v3.67.0: `products.sort_order` 컬럼/인덱스 추가와 상품 카테고리 관리 권한을 구매 담당 교사(70+) 이상으로 정렬 |
 

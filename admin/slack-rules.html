@@ -27,7 +27,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>🔔 Slack 알림 룰</h1>
-      <p>브라우저에서 발생한 운영 이벤트가 Supabase Edge Function을 거쳐 Slack 채널로 전송되는 기준입니다. v3.69.0 기준 WARN+ 로그 알림에는 최신 버전 세션 감지, 상품 썸네일/상세 이미지 연결 실패, QR 수령자 조회 오류, 한글화된 로그 상세 정보도 포함됩니다.</p>
+      <p>브라우저에서 발생한 운영 이벤트와 외부 서비스 무료 할당량 경고가 Supabase Edge Function을 거쳐 Slack 채널로 전송되는 기준입니다. v3.70.0부터 서비스 사용률 70%·85%·95% 알림과 Slack Webhook 성공/실패 계측을 포함합니다.</p>
     </div>
 
     <div class="rule-section">
@@ -40,7 +40,7 @@
         <tbody>
           <tr><td>브라우저 공통 유틸</td><td><code>js/slack-notify.js</code></td><td><code>sendSlackNotify(type, data)</code>를 제공하고 동일 알림을 5초 동안 중복 전송하지 않습니다.</td></tr>
           <tr><td>로그 알림</td><td><code>js/activity-log.js</code></td><td>WARN, ERROR, FATAL, CRITICAL 로그 기록 시 <code>log_alert</code>를 Edge Function으로 보냅니다. 권한 부족/세션 만료 리디렉트 중 WARN으로 남는 <code>AUTH_REDIRECT</code>와 구버전 세션 감지 <code>APP_VERSION_STALE_SESSION</code>도 운영 채널 알림 대상입니다.</td></tr>
-          <tr><td>Edge Function</td><td><code>docs/edge-function-slack-notify.ts</code></td><td>알림 유형과 부서명에 따라 사용할 Slack Webhook Secret을 선택하고 Block Kit 메시지를 구성합니다.</td></tr>
+          <tr><td>Edge Function</td><td><code>supabase/functions/_shared/slack-notify.ts</code></td><td>알림 유형과 부서명에 따라 사용할 Slack Webhook Secret을 선택하고 Block Kit 메시지를 구성하며 성공/실패 사용량을 기록합니다.</td></tr>
         </tbody>
       </table>
       <div class="note-box">Slack 호출은 fire-and-forget 방식입니다. 실패해도 구매, 가입, Q&amp;A 같은 사용자 작업은 중단하지 않고 브라우저 콘솔에 경고만 남깁니다.</div>
@@ -57,12 +57,14 @@
           <tr><td><code>dept_transfer</code></td><td><code>admin/users.html</code> 부서 이동 요청</td><td><code>data.이동부서</code></td><td><span class="route-badge">이동 대상 부서 채널</span></td></tr>
           <tr><td><code>log_alert</code></td><td><code>js/activity-log.js</code> WARN 이상 로그</td><td>로그 레벨. 예: <code>AUTH_REDIRECT</code>, <code>APP_VERSION_STALE_SESSION</code>, 로그인 실패, 권한 거부, ERROR+ 오류</td><td><span class="route-badge">운영 채널</span></td></tr>
           <tr><td><code>qna_new</code></td><td><code>qna.html</code> 새 질문 등록</td><td>고정 라우팅</td><td><span class="route-badge">Q&amp;A 채널</span></td></tr>
+          <tr><td><code>service_quota_alert</code></td><td><code>service-usage-collect</code> 6시간 수집</td><td>무료 한도 70%·85%·95% 최초 도달</td><td><span class="route-badge">운영 채널</span></td></tr>
         </tbody>
       </table>
       <div class="note-box">구매 상태의 화면 표시명은 공통 코드북/DB <code>product_orders.status</code> 코드 마스터를 따릅니다. Slack 발송 조건은 표시명이 아니라 상태 코드 전환을 기준으로 유지합니다.</div>
       <div class="note-box">로그 알림의 액션 라벨과 상세는 <code>js/activity-log.js</code>의 한글 라벨/상세 키 기준을 따르며, 원본 영문 키는 호환성을 위해 함께 유지됩니다.</div>
       <div class="note-box">상품 관리에서 썸네일 이미지(<code>image_url</code>)와 상세 설명 이미지(<code>detail_image_url</code>)를 저장해도 정상 성공 건은 Slack 대상이 아닙니다. 업로드/저장 실패처럼 WARN 이상 로그가 남는 경우에만 <code>log_alert</code>로 운영 채널에 전송됩니다.</div>
       <div class="note-box">위치 제한 QR에서 위치 권한 차단이 발생하면 <code>QR_LOCATION_PERMISSION_BLOCKED</code>가 INFO 로그로 저장됩니다. INFO 로그는 기본 Slack WARN+ 알림 대상이 아니며, 현장 문의 분석은 로그 화면에서 action 필터로 확인합니다.</div>
+      <div class="note-box">서비스 할당량 알림은 지표의 초기화 주기별로 각 임계값을 한 번만 발송합니다. 월/일 초기화가 시작되면 새 주기의 70%·85%·95% 알림을 다시 받을 수 있습니다.</div>
     </div>
 
     <div class="rule-section">
@@ -78,13 +80,14 @@
         </tbody>
       </table>
       <div class="note-box">Webhook URL 원문은 정적 HTML, JS, <code>app_config</code>에 저장하지 않습니다. Supabase Edge Function Secret 또는 서버 환경변수에만 저장합니다.</div>
+      <div class="note-box"><code>SLACK_WEBHOOK_OPERATIONS</code>는 WARN+ 로그와 서비스 할당량 70%·85%·95% 알림이 함께 사용하는 운영관리 채널입니다.</div>
     </div>
 
     <div class="rule-section">
       <h2>4. 신규 알림 추가 기준</h2>
       <ol style="font-size:0.88rem;line-height:1.7;padding-left:1.2rem;">
         <li>이벤트가 발생하는 화면에서 <code>sendSlackNotify('새_type', data)</code>를 호출합니다.</li>
-        <li><code>docs/edge-function-slack-notify.ts</code>의 라우팅 함수와 메시지 생성 로직에 새 type을 추가합니다.</li>
+        <li><code>supabase/functions/_shared/slack-notify.ts</code>의 라우팅 함수와 메시지 생성 로직에 새 type을 추가합니다.</li>
         <li>필요한 Webhook Secret을 Supabase Edge Function 환경변수에 추가합니다.</li>
         <li>운영 문서와 이 페이지에 라우팅 기준, 포함 정보, 실패 시 동작을 기록합니다.</li>
       </ol>
@@ -97,7 +100,8 @@
         <tbody>
           <tr><td>Slack 알림 룰 페이지 접근</td><td>부장 교사 이상(80+)</td><td><code>admin/slack-rules.html</code>, 네비게이션 운영 메뉴</td></tr>
           <tr><td>로그 알림 실제 로그 확인</td><td>관리자(100+)</td><td><code>admin/logs.html</code></td></tr>
-          <tr><td>Edge Function 소스 확인</td><td>저장소 접근 가능자</td><td><code>docs/edge-function-slack-notify.ts</code></td></tr>
+          <tr><td>서비스 할당량/발송 이력 확인</td><td>부장 교사 이상(80+)</td><td><code>admin/service-stats.html</code></td></tr>
+          <tr><td>Edge Function 소스 확인</td><td>저장소 접근 가능자</td><td><code>supabase/functions/slack-notify</code>, <code>supabase/functions/_shared/slack-notify.ts</code></td></tr>
           <tr><td>Secret 등록/변경</td><td>Supabase 프로젝트 관리자</td><td>Supabase Dashboard 또는 CLI</td></tr>
         </tbody>
       </table>

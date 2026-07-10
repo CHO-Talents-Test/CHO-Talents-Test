@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v3.69.0 / 2026-07-10. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v3.70.0 / 2026-07-10. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -90,7 +90,7 @@
         <tr><td>상품</td><td>상품 카테고리 관리</td><td><span class="badge b-70">70</span></td></tr>
         <tr><td>관리</td><td>대시보드, 사용자 관리, 부서 관리</td><td><span class="badge b-60">60</span></td></tr>
         <tr><td>관리</td><td>학생 일괄 등록, 관리자 관리</td><td><span class="badge b-80">80</span></td></tr>
-        <tr><td>운영</td><td>페이지 권한 룰, 로그 작성 룰, Slack 알림 룰, 작업 이력 작성 룰, 버전, 보고서</td><td><span class="badge b-80">80</span></td></tr>
+        <tr><td>운영</td><td>페이지 권한 룰, 로그 작성 룰, Slack 알림 룰, 작업 이력 작성 룰, 버전, 보고서, 서비스 통계</td><td><span class="badge b-80">80</span></td></tr>
         <tr><td>소개</td><td>공지 사항</td><td><span class="badge b-40">40</span></td></tr>
         <tr><td>운영</td><td>페이지 접근, 페이지 기능, 작업 이력, 로그</td><td><span class="badge b-100">100</span></td></tr>
       </tbody>
@@ -117,6 +117,7 @@
         <tr><td><code>admin/reports.html</code></td><td>보고서</td><td><span class="badge b-80">80</span></td><td>보고서 조회/등록/수정/삭제</td></tr>
         <tr><td><code>admin/versions.html</code></td><td>버전</td><td><span class="badge b-80">80</span></td><td>읽기 전용 버전 이력</td></tr>
         <tr><td><code>admin/slack-rules.html</code></td><td>Slack 알림 룰</td><td><span class="badge b-80">80</span></td><td>알림 라우팅 문서 열람</td></tr>
+        <tr><td><code>admin/service-stats.html</code></td><td>서비스 통계</td><td><span class="badge b-80">80</span></td><td><code>admin-service-stats</code> page_id. GitHub/Supabase/Kakao/Slack 무료 할당량, 사용량/남은 비율, 추이와 Slack 임계치 알림 이력을 조회하고 즉시 수집</td></tr>
         <tr><td><code>admin/talent-qr.html</code></td><td>달란트 QR 관리</td><td><span class="badge b-90">90</span></td><td>QR 생성/수정/비활성화. QR 항목 영역 클릭 시 수정 모달. 지정일 유효 시간, 위치 반경 100m~5km(기본 500m), QR 목록/수령자 팝업 페이징·페이지당 항목 수 콤보 지원. 수령자 팝업은 사용자별 묶음, 유형/부서/검색 필터, 선택 사용자 지급 항목 상세 표시</td></tr>
         <tr><td><code>admin/notices.html</code></td><td>공지 사항</td><td><span class="badge b-40">40</span></td><td><code>admin-notices</code> page_id. 일반 교사 이상은 활성 공지 조회, 전도사님(90+) 이상은 공지 등록/수정/삭제, 활성 토글, 열람 현황 조회. 열람 현황은 공지 등록 정보, 사용자 유형, 전체/확인자/미확인자 콤보박스 필터를 제공. 활성 공지는 로그인 후 메인 화면에 표시</td></tr>
         <tr><td><code>admin/page-access.html</code></td><td>페이지 접근</td><td><span class="badge b-100">100</span></td><td>role_page_access 관리</td></tr>

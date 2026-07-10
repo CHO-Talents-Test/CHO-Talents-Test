@@ -2,9 +2,22 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '3.69.0',
+  current: '3.70.0',
   date: '2026-07-10',
   history: [
+    {
+      version: '3.70.0',
+      date: '2026-07-10',
+      title: '외부 서비스 무료 할당량 통계와 사전 Slack 알림',
+      changes: [
+        '운영 메뉴의 로그 아래에 부장 교사(80+) 이상 전용 서비스 통계 페이지 추가',
+        'GitHub, Supabase, Kakao Developers, Slack의 무료 한도와 현재/남은 사용량, 사용률, 기간 종료 예상 사용률 표시',
+        'GitHub Billing/Actions/Traffic API와 Supabase Management API, Database/Storage/Auth 직접 조회값을 6시간마다 수집',
+        '전체 페이지 트래픽과 Supabase API/응답량, Kakao Map SDK/장소 검색, Slack Webhook 성공·실패를 프로젝트 내부 이벤트로 누적',
+        '70%, 85%, 95% 도달 시 주기별 중복을 방지하여 Slack 운영관리 채널에 단계별 알림 발송',
+        '서비스 통계 테이블/RLS/RPC, Edge Function, pg_cron/Vault 설정 SQL과 운영 설정 문서 추가'
+      ]
+    },
     {
       version: '3.69.0',
       date: '2026-07-10',

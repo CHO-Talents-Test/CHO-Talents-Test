@@ -66,7 +66,8 @@ const NAV_MENU = [
       { href: 'admin/versions.html', label: '버전', minPerm: 80 },
       { href: 'admin/reports.html', label: '보고서', minPerm: 80 },
       { href: 'admin/audit.html', label: '작업 이력', minPerm: 100 },
-      { href: 'admin/logs.html', label: '로그', minPerm: 100, id: 'navLogs', badgeId: 'navLogBadge' }
+      { href: 'admin/logs.html', label: '로그', minPerm: 100, id: 'navLogs', badgeId: 'navLogBadge' },
+      { href: 'admin/service-stats.html', label: '서비스 통계', minPerm: 80 }
     ]
   }
 ];
