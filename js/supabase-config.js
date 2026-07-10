@@ -38,6 +38,182 @@ let KAKAO_MAP_KEY = BOOTSTRAP_KAKAO_MAP_KEY || DEFAULT_PUBLIC_CONFIG.kakao.mapKe
 var _sb = null;
 var _remotePublicConfigPromise = null;
 
+/* ===== Service Usage Telemetry =====
+ * 브라우저가 실제로 사용한 GitHub Pages/Supabase/Kakao 호출을 작은 배치로 적재합니다.
+ * 쿼리 문자열, 입력값, 사용자명 등 개인정보는 저장하지 않습니다.
+ */
+const SERVICE_USAGE_QUEUE_KEY = 'cho_service_usage_queue_v1';
+const SERVICE_USAGE_SESSION_KEY = 'cho_service_usage_session_v1';
+const _serviceUsageNativeFetch = window.fetch.bind(window);
+let _serviceUsageStarted = false;
+let _serviceUsageFlushing = false;
+let _serviceUsageQueue = [];
+
+function _serviceUsageSessionId() {
+  try {
+    let id = sessionStorage.getItem(SERVICE_USAGE_SESSION_KEY);
+    if (!id) {
+      id = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      sessionStorage.setItem(SERVICE_USAGE_SESSION_KEY, id);
+    }
+    return id;
+  } catch (e) {
+    return `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  }
+}
+
+function _loadServiceUsageQueue() {
+  try {
+    const saved = JSON.parse(localStorage.getItem(SERVICE_USAGE_QUEUE_KEY) || '[]');
+    _serviceUsageQueue = Array.isArray(saved) ? saved.slice(0, 100) : [];
+  } catch (e) {
+    _serviceUsageQueue = [];
+  }
+}
+
+function _saveServiceUsageQueue() {
+  try { localStorage.setItem(SERVICE_USAGE_QUEUE_KEY, JSON.stringify(_serviceUsageQueue.slice(-100))); } catch (e) {}
+}
+
+function queueServiceUsage(service, metricKey, quantity = 1, metadata = {}, eventKey = null) {
+  const amount = Number(quantity);
+  if (!service || !metricKey || !Number.isFinite(amount) || amount <= 0) return;
+  const safeMetadata = metadata && typeof metadata === 'object' ? metadata : {};
+
+  if (!eventKey) {
+    const aggregate = _serviceUsageQueue.find(item =>
+      !item.event_key && item.service === service && item.metric_key === metricKey
+    );
+    if (aggregate) {
+      aggregate.quantity = Number(aggregate.quantity || 0) + amount;
+      _saveServiceUsageQueue();
+      return;
+    }
+  }
+
+  _serviceUsageQueue.push({
+    service,
+    metric_key: metricKey,
+    quantity: amount,
+    metadata: safeMetadata,
+    event_key: eventKey || null
+  });
+  if (_serviceUsageQueue.length > 100) _serviceUsageQueue = _serviceUsageQueue.slice(-100);
+  _saveServiceUsageQueue();
+}
+
+async function flushServiceUsageTelemetry() {
+  if (_serviceUsageFlushing || _serviceUsageQueue.length === 0 || !SUPABASE_URL || !SUPABASE_ANON_KEY) return;
+  _serviceUsageFlushing = true;
+  const batch = _serviceUsageQueue.slice(0, 30).map((item, index) => ({
+    ...item,
+    event_key: item.event_key || `batch:${_serviceUsageSessionId()}:${Date.now()}:${index}:${item.service}:${item.metric_key}`
+  }));
+
+  try {
+    const response = await _serviceUsageNativeFetch(`${SUPABASE_URL}/rest/v1/rpc/record_service_usage_batch`, {
+      method: 'POST',
+      headers: {
+        apikey: SUPABASE_ANON_KEY,
+        Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ p_events: batch }),
+      keepalive: true
+    });
+    if (response.ok) {
+      _serviceUsageQueue.splice(0, batch.length);
+      _saveServiceUsageQueue();
+    }
+  } catch (e) {
+    // 네트워크 복구 후 다음 주기에 재시도합니다.
+  } finally {
+    _serviceUsageFlushing = false;
+  }
+}
+
+async function _trackedSupabaseFetch(input, init) {
+  const url = typeof input === 'string' ? input : (input && input.url) || '';
+  const isSupabase = typeof url === 'string' && url.startsWith(SUPABASE_URL);
+  const isTelemetry = isSupabase && url.includes('/rpc/record_service_usage_batch');
+  const response = await _serviceUsageNativeFetch(input, init);
+
+  if (isSupabase && !isTelemetry) {
+    let pathType = 'other';
+    try {
+      const path = new URL(url).pathname;
+      if (path.startsWith('/rest/')) pathType = 'rest';
+      else if (path.startsWith('/auth/')) pathType = 'auth';
+      else if (path.startsWith('/storage/')) pathType = 'storage';
+      else if (path.startsWith('/functions/')) pathType = 'functions';
+    } catch (e) {}
+    queueServiceUsage('supabase', 'api_requests', 1, { type: pathType });
+
+    try {
+      response.clone().arrayBuffer().then(buffer => {
+        if (buffer.byteLength > 0) queueServiceUsage('supabase', 'egress_bytes', buffer.byteLength, { type: pathType });
+      }).catch(() => {});
+    } catch (e) {}
+  }
+  return response;
+}
+
+function recordKakaoUsage(metricKey, metadata = {}) {
+  const key = `kakao:${_serviceUsageSessionId()}:${Date.now()}:${metricKey}:${Math.random().toString(36).slice(2, 8)}`;
+  queueServiceUsage('kakao', 'monthly_api_calls', 1, metadata, `${key}:total`);
+  queueServiceUsage('kakao', metricKey, 1, metadata, `${key}:detail`);
+  setTimeout(flushServiceUsageTelemetry, 200);
+}
+
+function recordRealtimeUsage(messageCount, peakConnections) {
+  if (Number(messageCount) > 0) queueServiceUsage('supabase', 'realtime_messages', Number(messageCount));
+  if (Number(peakConnections) > 0) queueServiceUsage('supabase', 'realtime_peak_connections', Number(peakConnections));
+}
+
+function _recordPageUsage() {
+  const pageKey = `page:${_serviceUsageSessionId()}:${Math.round(performance.timeOrigin || Date.now())}`;
+  queueServiceUsage('github', 'pages_views', 1, { path: window.location.pathname }, `${pageKey}:view`);
+
+  let githubBytes = 0;
+  let cachedSupabaseBytes = 0;
+  try {
+    const entries = [...performance.getEntriesByType('navigation'), ...performance.getEntriesByType('resource')];
+    entries.forEach(entry => {
+      let parsed;
+      try { parsed = new URL(entry.name, window.location.href); } catch (e) { return; }
+      const bytes = Number(entry.transferSize || entry.encodedBodySize || 0);
+      if (bytes <= 0) return;
+      if (parsed.origin === window.location.origin) githubBytes += bytes;
+      if (parsed.href.startsWith(SUPABASE_URL) && parsed.pathname.includes('/storage/v1/object/')) cachedSupabaseBytes += bytes;
+    });
+  } catch (e) {}
+
+  if (githubBytes > 0) {
+    queueServiceUsage('github', 'pages_bandwidth_bytes', githubBytes, { path: window.location.pathname }, `${pageKey}:bytes`);
+  }
+  if (cachedSupabaseBytes > 0) {
+    queueServiceUsage('supabase', 'cached_egress_bytes', cachedSupabaseBytes, { type: 'storage_cdn' }, `${pageKey}:cached`);
+  }
+  flushServiceUsageTelemetry();
+}
+
+function startServiceUsageTelemetry() {
+  if (_serviceUsageStarted) return;
+  _serviceUsageStarted = true;
+  _loadServiceUsageQueue();
+  window.addEventListener('load', () => setTimeout(_recordPageUsage, 500), { once: true });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'hidden') flushServiceUsageTelemetry();
+  });
+  window.addEventListener('pagehide', flushServiceUsageTelemetry);
+  setInterval(flushServiceUsageTelemetry, 30000);
+}
+
+window.queueServiceUsage = queueServiceUsage;
+window.flushServiceUsageTelemetry = flushServiceUsageTelemetry;
+window.recordKakaoUsage = recordKakaoUsage;
+window.recordRealtimeUsage = recordRealtimeUsage;
+
 function initSupabase() {
   if (_sb) return _sb;
 
@@ -51,8 +227,10 @@ function initSupabase() {
         persistSession: true,
         autoRefreshToken: true,
         detectSessionInUrl: false
-      }
+      },
+      global: { fetch: _trackedSupabaseFetch }
     });
+    startServiceUsageTelemetry();
     loadRemotePublicConfig().catch(() => {});
     return _sb;
   } catch (err) {

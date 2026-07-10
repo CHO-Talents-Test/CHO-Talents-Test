@@ -572,6 +572,9 @@
         const finishLoad = () => {
           if (typeof kakao !== 'undefined' && kakao.maps && kakao.maps.services) {
             kakaoLoaded = true;
+            if (typeof recordKakaoUsage === 'function') {
+              recordKakaoUsage('map_sdk_daily', { feature: 'talent_qr_map' });
+            }
             resolve(true);
           } else {
             alert('카카오 맵 SDK가 정상 로드되지 않았습니다.\n\n브라우저 새로고침 후 다시 시도해주세요.\n문제가 계속되면 Kakao Developers의 JavaScript 키/도메인 설정을 확인해주세요:\n\n' + location.origin);
@@ -764,6 +767,9 @@
       if (!await loadKakaoSDK()) return;
 
       const ps = new kakao.maps.services.Places();
+      if (typeof recordKakaoUsage === 'function') {
+        recordKakaoUsage('local_keyword_daily', { feature: 'talent_qr_place_search' });
+      }
       ps.keywordSearch(query, function(data, status) {
         const box = document.getElementById(prefix + 'LocationResults');
         if (status !== kakao.maps.services.Status.OK || !data.length) {

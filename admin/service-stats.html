@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>서비스 통계 - 달란트 마을</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>" />
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <style>
+    .usage-page { max-width: 1500px; margin: 0 auto; }
+    .usage-header { display:flex; justify-content:space-between; align-items:flex-start; gap:1rem; margin-bottom:1rem; }
+    .usage-title h1 { font-size:1.55rem; color:var(--admin-primary); margin-bottom:.35rem; }
+    .usage-title p { color:var(--admin-text-muted); font-size:.88rem; line-height:1.55; }
+    .usage-actions { display:flex; gap:.45rem; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+    .collect-btn { border:0; border-radius:9px; padding:.62rem .95rem; background:var(--admin-primary); color:#fff; font-weight:700; cursor:pointer; }
+    .collect-btn:disabled { opacity:.55; cursor:wait; }
+    .last-collected { font-size:.76rem; color:var(--admin-text-muted); text-align:right; }
+    .threshold-strip { display:flex; align-items:center; flex-wrap:wrap; gap:.45rem .75rem; padding:.7rem .9rem; margin-bottom:1rem; background:var(--admin-card); border:1px solid var(--admin-border); border-radius:10px; font-size:.8rem; }
+    .threshold-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:.3rem; }
+    .dot-normal { background:#2f9e44; } .dot-caution { background:#f59f00; } .dot-warning { background:#f76707; } .dot-danger { background:#e03131; }
+    .schedule-note { margin-left:auto; color:var(--admin-text-muted); }
+
+    .platform-summary { display:grid; grid-template-columns:repeat(4,minmax(190px,1fr)); gap:.75rem; margin-bottom:1rem; }
+    .platform-card { --platform:#6c5ce7; position:relative; background:var(--admin-card); border:1px solid var(--admin-border); border-radius:13px; padding:1rem; cursor:pointer; overflow:hidden; transition:.18s ease; }
+    .platform-card::before { content:""; position:absolute; left:0; top:0; bottom:0; width:5px; background:var(--platform); }
+    .platform-card:hover { transform:translateY(-2px); box-shadow:var(--admin-shadow); }
+    .platform-card.active { outline:2px solid var(--platform); outline-offset:-2px; }
+    .platform-top { display:flex; justify-content:space-between; align-items:center; gap:.5rem; }
+    .platform-name { font-size:1rem; font-weight:800; }
+    .platform-icon { font-size:1.3rem; }
+    .platform-risk { margin-top:.65rem; font-size:1.55rem; font-weight:850; font-variant-numeric:tabular-nums; }
+    .platform-risk small { font-size:.72rem; color:var(--admin-text-muted); font-weight:600; }
+    .platform-meta { display:flex; justify-content:space-between; gap:.4rem; margin-top:.45rem; font-size:.72rem; color:var(--admin-text-muted); }
+    .connection-badge { padding:.2rem .5rem; border-radius:999px; font-size:.68rem; font-weight:700; background:var(--t-subtle-surface,#f1f3f5); }
+    .connection-badge.connected,.connection-badge.tracking { color:#087f5b; background:#d3f9d8; }
+    .connection-badge.partial { color:#d9480f; background:#fff3bf; }
+    .connection-badge.needs_secret { color:#c92a2a; background:#ffe3e3; }
+
+    .platform-tabs { display:flex; gap:.35rem; flex-wrap:wrap; margin-bottom:.85rem; }
+    .platform-tab { border:1px solid var(--admin-border); background:var(--admin-card); color:var(--admin-text); border-radius:999px; padding:.42rem .78rem; font-weight:700; font-size:.78rem; cursor:pointer; }
+    .platform-tab.active { background:var(--admin-primary); color:#fff; border-color:var(--admin-primary); }
+    .service-panel { background:var(--admin-card); border:1px solid var(--admin-border); border-radius:14px; padding:1rem; margin-bottom:1rem; }
+    .service-panel.hidden { display:none; }
+    .service-heading { display:flex; align-items:center; justify-content:space-between; gap:.8rem; margin-bottom:.7rem; }
+    .service-heading h2 { font-size:1.08rem; display:flex; align-items:center; gap:.4rem; }
+    .plan-features { display:flex; flex-wrap:wrap; gap:.35rem; margin-bottom:.9rem; }
+    .feature-chip { font-size:.7rem; padding:.25rem .5rem; border-radius:999px; background:var(--t-subtle-surface,#f1f3f5); color:var(--admin-text-muted); border:1px solid var(--admin-border); }
+    .metric-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(290px,1fr)); gap:.65rem; }
+    .metric-card { border:1px solid var(--admin-border); border-radius:11px; padding:.85rem; background:var(--t-card,var(--admin-card)); min-width:0; }
+    .metric-card.status-caution { border-color:#fcc419; } .metric-card.status-warning { border-color:#fd7e14; } .metric-card.status-danger { border-color:#fa5252; box-shadow:0 0 0 1px rgba(250,82,82,.13); }
+    .metric-head { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
+    .metric-label { font-weight:800; font-size:.88rem; line-height:1.3; }
+    .metric-category { font-size:.65rem; color:var(--admin-text-muted); background:var(--t-subtle-surface,#f1f3f5); border-radius:999px; padding:.15rem .4rem; white-space:nowrap; }
+    .metric-values { display:flex; justify-content:space-between; align-items:flex-end; gap:.5rem; margin:.75rem 0 .45rem; }
+    .metric-used { font-size:1.18rem; font-weight:850; font-variant-numeric:tabular-nums; }
+    .metric-limit { font-size:.7rem; color:var(--admin-text-muted); margin-top:.12rem; }
+    .metric-remaining { text-align:right; font-size:.7rem; color:var(--admin-text-muted); }
+    .metric-remaining strong { display:block; color:var(--admin-text); font-size:.98rem; }
+    .usage-bar { height:9px; background:var(--t-subtle-surface,#e9ecef); border-radius:999px; overflow:hidden; }
+    .usage-fill { height:100%; border-radius:inherit; min-width:0; background:#40c057; transition:width .35s ease; }
+    .status-caution .usage-fill { background:#fab005; } .status-warning .usage-fill { background:#f76707; } .status-danger .usage-fill { background:#e03131; }
+    .metric-foot { display:flex; justify-content:space-between; gap:.5rem; margin-top:.5rem; color:var(--admin-text-muted); font-size:.66rem; line-height:1.35; }
+    .metric-source { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:70%; }
+    .estimate-tag { color:#9c36b5; font-weight:700; }
+    .forecast { margin-top:.45rem; padding:.38rem .48rem; border-radius:7px; font-size:.68rem; background:var(--t-subtle-surface,#f8f9fa); color:var(--admin-text-muted); }
+    .forecast.risk { background:#fff3bf; color:#d9480f; font-weight:700; }
+    .metric-note { font-size:.67rem; color:var(--admin-text-muted); margin-top:.45rem; line-height:1.4; }
+    .metric-links { display:flex; gap:.45rem; margin-top:.55rem; }
+    .metric-link { border:0; padding:0; background:none; color:var(--admin-primary); font-size:.68rem; font-weight:700; cursor:pointer; text-decoration:none; }
+    .empty-panel { padding:2.5rem; text-align:center; color:var(--admin-text-muted); }
+
+    .activity-grid { display:grid; grid-template-columns:1fr 1.25fr; gap:.75rem; margin-top:1rem; }
+    .activity-card { background:var(--admin-card); border:1px solid var(--admin-border); border-radius:12px; padding:1rem; overflow:auto; }
+    .activity-card h3 { font-size:.92rem; margin-bottom:.65rem; }
+    .activity-table { width:100%; border-collapse:collapse; font-size:.73rem; }
+    .activity-table th,.activity-table td { padding:.42rem .35rem; text-align:left; border-bottom:1px solid var(--admin-border); white-space:nowrap; }
+    .run-status { font-weight:700; } .run-status.success,.run-status.sent { color:#2b8a3e; } .run-status.partial,.run-status.pending { color:#e67700; } .run-status.failed { color:#c92a2a; }
+
+    .history-modal .modal-content { max-width:720px; }
+    .chart-wrap { height:190px; border:1px solid var(--admin-border); border-radius:9px; padding:.5rem; margin:.8rem 0; background:var(--t-subtle-surface,#fafafa); }
+    .history-chart { width:100%; height:100%; }
+    .history-list { max-height:230px; overflow:auto; }
+    .setup-error { background:#fff3bf; color:#7c4a03; padding:1rem; border-radius:10px; line-height:1.6; }
+
+    @media (max-width:1050px) { .platform-summary { grid-template-columns:repeat(2,1fr); } }
+    @media (max-width:720px) {
+      .usage-header { flex-direction:column; } .usage-actions { justify-content:flex-start; } .last-collected { text-align:left; }
+      .platform-summary { grid-template-columns:1fr; } .metric-grid { grid-template-columns:1fr; }
+      .activity-grid { grid-template-columns:1fr; } .schedule-note { width:100%; margin-left:0; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+  <main class="admin-container usage-page">
+    <div class="usage-header">
+      <div class="usage-title">
+        <h1>📡 서비스 통계</h1>
+        <p>GitHub · Supabase · Kakao Developers · Slack 무료 할당량과 프로젝트 사용량을 함께 분석합니다.<br />공식 API 값과 프로젝트 계측 추정값은 출처를 구분해 표시합니다.</p>
+      </div>
+      <div class="usage-actions">
+        <div class="last-collected" id="lastCollected">마지막 수집: 확인 중...</div>
+        <button class="collect-btn" id="collectBtn" onclick="collectNow()">↻ 지금 수집</button>
+      </div>
+    </div>
+
+    <div class="threshold-strip">
+      <strong>Slack 알림 기준</strong>
+      <span><i class="threshold-dot dot-normal"></i>정상 70% 미만</span>
+      <span><i class="threshold-dot dot-caution"></i>주의 70%</span>
+      <span><i class="threshold-dot dot-warning"></i>경고 85%</span>
+      <span><i class="threshold-dot dot-danger"></i>위험 95%</span>
+      <span class="schedule-note">매일 00:00 · 06:00 · 12:00 · 18:00 (KST) 자동 수집</span>
+    </div>
+
+    <div class="platform-summary" id="platformSummary"></div>
+    <div class="platform-tabs" id="platformTabs"></div>
+    <div id="servicePanels"><div class="empty-panel">서비스 사용량을 불러오는 중...</div></div>
+
+    <div class="activity-grid">
+      <section class="activity-card">
+        <h3>🔔 최근 할당량 알림</h3>
+        <div id="recentAlerts"><div class="empty-panel">불러오는 중...</div></div>
+      </section>
+      <section class="activity-card">
+        <h3>🕒 최근 수집 이력</h3>
+        <div id="recentRuns"><div class="empty-panel">불러오는 중...</div></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal-overlay hidden history-modal" id="historyModal">
+    <div class="modal-content">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:.7rem;">
+        <div><h3 class="modal-title" id="historyTitle">사용량 추이</h3><div id="historySubtitle" style="font-size:.72rem;color:var(--admin-text-muted);"></div></div>
+        <button class="btn-cancel" onclick="closeHistory()">닫기</button>
+      </div>
+      <div class="chart-wrap" id="historyChart"></div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script>
+    initSupabase();
+    let session = null;
+    let metrics = [];
+    let runs = [];
+    let alerts = [];
+    let activeService = 'all';
+
+    const SERVICE_INFO = {
+      github: { name:'GitHub', icon:'🐙', color:'#24292f', features:['저장소 1개 통합 관리','공개/비공개 저장소 무제한','협업자 무제한','Community support'] },
+      supabase: { name:'Supabase', icon:'⚡', color:'#3ecf8e', features:['API 요청 무제한','Shared CPU · RAM 500MB','Free 활성 프로젝트 2개','Community support'] },
+      kakao: { name:'Kakao Developers', icon:'🟡', color:'#f9df00', features:['앱당 월 300만 기본 쿼터','Map SDK 일 30만','Local 키워드 검색 일 10만'] },
+      slack: { name:'Slack', icon:'💬', color:'#611f69', features:['최근 90일 메시지 내역','앱 최대 10개','1:1 미팅','1:1 외부 메시지'] }
+    };
+    const FORECAST_KEYS = new Set([
+      'actions_minutes','packages_transfer_bytes','lfs_bandwidth_bytes','pages_bandwidth_bytes','api_requests',
+      'egress_bytes','cached_egress_bytes','edge_function_invocations','realtime_messages','monthly_api_calls',
+      'map_sdk_daily','local_keyword_daily'
+    ]);
+
+    (async () => {
+      await navInit();
+      session = await initPage(80, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      updatePendingBadge(); updateNavOrderBadge(); updateLogBadge(); autoLogPageView();
+      await loadDashboard();
+    })();
+
+    async function loadDashboard() {
+      const [metricRes, runRes, alertRes] = await Promise.all([
+        _sb.rpc('get_service_usage_dashboard'),
+        _sb.from('service_usage_collection_runs').select('*').order('started_at', { ascending:false }).limit(8),
+        _sb.from('service_usage_alerts').select('*').order('created_at', { ascending:false }).limit(8)
+      ]);
+      if (metricRes.error) {
+        document.getElementById('servicePanels').innerHTML = `<div class="setup-error"><strong>서비스 통계 DB 구성이 필요합니다.</strong><br>${esc(metricRes.error.message)}<br><code>docs/TASK-070_service_usage_monitoring.sql</code> 적용 후 다시 시도하세요.</div>`;
+        document.getElementById('platformSummary').innerHTML = '';
+        document.getElementById('platformTabs').innerHTML = '';
+        return;
+      }
+      metrics = metricRes.data || [];
+      runs = runRes.data || [];
+      alerts = alertRes.data || [];
+      renderAll();
+    }
+
+    function renderAll() {
+      renderSummary(); renderTabs(); renderPanels(); renderRuns(); renderAlerts();
+      const dates = metrics.map(m => m.collected_at).filter(Boolean).sort();
+      document.getElementById('lastCollected').textContent = dates.length
+        ? `마지막 수집: ${formatKST(dates[dates.length - 1])}` : '마지막 수집: 수집 전';
+    }
+
+    function latestRunStatus(serviceKey) {
+      const latest = runs[0];
+      const info = latest && latest.service_status && latest.service_status[serviceKey];
+      return info || { status:'needs_secret', message:'수집 이력 없음' };
+    }
+
+    function renderSummary() {
+      document.getElementById('platformSummary').innerHTML = Object.entries(SERVICE_INFO).map(([key, info]) => {
+        const rows = metrics.filter(m => m.service === key && m.collected_at);
+        const limited = rows.filter(m => Number(m.quota_value) > 0 && m.reset_cycle !== 'policy');
+        const maxPct = limited.length ? Math.max(...limited.map(m => Number(m.usage_percent || 0))) : 0;
+        const risky = limited.filter(m => Number(m.usage_percent || 0) >= 70).length;
+        const connection = latestRunStatus(key);
+        return `<article class="platform-card ${activeService === key ? 'active' : ''}" style="--platform:${info.color}" onclick="selectService('${key}')">
+          <div class="platform-top"><span class="platform-name"><span class="platform-icon">${info.icon}</span> ${info.name}</span><span class="connection-badge ${esc(connection.status)}">${connectionLabel(connection.status)}</span></div>
+          <div class="platform-risk">${formatPercent(maxPct)} <small>최대 사용률</small></div>
+          <div class="platform-meta"><span>수집 ${rows.length}/${metrics.filter(m=>m.service===key).length}항목</span><span>${risky ? `주의 이상 ${risky}개` : '모두 안정'}</span></div>
+        </article>`;
+      }).join('');
+    }
+
+    function renderTabs() {
+      const tabs = [['all','전체'], ...Object.entries(SERVICE_INFO).map(([key,info]) => [key, `${info.icon} ${info.name}`])];
+      document.getElementById('platformTabs').innerHTML = tabs.map(([key,label]) =>
+        `<button class="platform-tab ${activeService===key?'active':''}" onclick="selectService('${key}')">${label}</button>`
+      ).join('');
+    }
+
+    function selectService(key) { activeService = key; renderSummary(); renderTabs(); renderPanels(); }
+
+    function renderPanels() {
+      document.getElementById('servicePanels').innerHTML = Object.entries(SERVICE_INFO).map(([key, info]) => {
+        const rows = metrics.filter(m => m.service === key);
+        const hidden = activeService !== 'all' && activeService !== key;
+        const connection = latestRunStatus(key);
+        return `<section class="service-panel ${hidden?'hidden':''}" id="panel-${key}">
+          <div class="service-heading"><h2>${info.icon} ${info.name}</h2><span class="connection-badge ${esc(connection.status)}" title="${esc(connection.message || '')}">${connectionLabel(connection.status)}</span></div>
+          <div class="plan-features">${info.features.map(feature=>`<span class="feature-chip">${esc(feature)}</span>`).join('')}</div>
+          <div class="metric-grid">${rows.map(renderMetric).join('')}</div>
+        </section>`;
+      }).join('');
+    }
+
+    function renderMetric(m) {
+      const collected = !!m.collected_at;
+      const quota = m.quota_value == null ? null : Number(m.quota_value);
+      const used = Number(m.usage_value || 0);
+      const pct = quota > 0 ? Number(m.usage_percent || 0) : null;
+      const remainPct = quota > 0 ? Number(m.remaining_percent || 0) : null;
+      const status = m.status || 'not_collected';
+      const progress = pct == null ? 0 : Math.min(Math.max(pct,0),100);
+      const reset = resetLabel(m.reset_cycle, m.period_end);
+      const forecast = forecastText(m);
+      const policy = m.reset_cycle === 'policy';
+      return `<article class="metric-card status-${esc(status)}">
+        <div class="metric-head"><div class="metric-label">${esc(m.label)}</div><span class="metric-category">${esc(m.category)}</span></div>
+        <div class="metric-values">
+          <div><div class="metric-used">${collected ? formatValue(used,m.unit) : '수집 전'}</div><div class="metric-limit">${policy ? '무료 플랜 정책' : quota == null ? '무료 한도 없음 · 누적 표시' : `한도 ${formatValue(quota,m.unit)}`}</div></div>
+          <div class="metric-remaining">${quota > 0 && !policy ? `<strong>${formatPercent(remainPct)}</strong>남음 · ${formatValue(Number(m.remaining_value||0),m.unit)}` : `<strong>${statusLabel(status)}</strong>${reset}`}</div>
+        </div>
+        ${quota > 0 && !policy ? `<div class="usage-bar" aria-label="사용률 ${formatPercent(pct)}"><div class="usage-fill" style="width:${progress}%"></div></div>` : ''}
+        ${forecast ? `<div class="forecast ${forecast.risk?'risk':''}">${forecast.text}</div>` : ''}
+        <div class="metric-foot"><span class="metric-source" title="${esc(m.source_label)}">${m.is_estimated?'<span class="estimate-tag">추정</span> · ':''}${esc(m.source_label)}</span><span>${reset}</span></div>
+        ${m.notes ? `<div class="metric-note">${esc(m.notes)}</div>` : ''}
+        <div class="metric-links"><button class="metric-link" onclick="openHistory('${m.service}','${m.metric_key}')">30일 추이</button>${m.official_url?`<a class="metric-link" href="${escAttr(m.official_url)}" target="_blank" rel="noopener">공식 기준 ↗</a>`:''}</div>
+      </article>`;
+    }
+
+    function forecastText(m) {
+      if (!m.collected_at || !FORECAST_KEYS.has(m.metric_key) || !m.period_start || !m.period_end || Number(m.quota_value) <= 0) return null;
+      const start = new Date(m.period_start).getTime(); const end = new Date(m.period_end).getTime(); const now = Date.now();
+      if (!(end > start) || now <= start) return null;
+      const ratio = Math.min(Math.max((now-start)/(end-start), .02), 1);
+      const projected = Number(m.usage_value||0) / ratio;
+      const projectedPct = projected / Number(m.quota_value) * 100;
+      return { risk:projectedPct>=70, text:`현재 속도 기준 주기 종료 예상 ${formatValue(projected,m.unit)} · ${formatPercent(projectedPct)}` };
+    }
+
+    function renderAlerts() {
+      const el = document.getElementById('recentAlerts');
+      if (!alerts.length) { el.innerHTML='<div class="empty-panel">아직 발송된 할당량 알림이 없습니다.</div>'; return; }
+      el.innerHTML=`<table class="activity-table"><thead><tr><th>시간</th><th>항목</th><th>기준</th><th>상태</th></tr></thead><tbody>${alerts.map(a=>{
+        const metric=metrics.find(m=>m.service===a.service&&m.metric_key===a.metric_key);
+        return `<tr><td>${formatKSTShort(a.created_at)}</td><td>${esc((SERVICE_INFO[a.service]||{}).name||a.service)} · ${esc(metric?metric.label:a.metric_key)}</td><td>${Number(a.threshold)}% (${Number(a.usage_percent).toFixed(1)}%)</td><td class="run-status ${esc(a.status)}">${alertStatusLabel(a.status)}</td></tr>`;
+      }).join('')}</tbody></table>`;
+    }
+
+    function renderRuns() {
+      const el=document.getElementById('recentRuns');
+      if(!runs.length){el.innerHTML='<div class="empty-panel">아직 수집 이력이 없습니다.</div>';return;}
+      el.innerHTML=`<table class="activity-table"><thead><tr><th>시작</th><th>구분</th><th>상태</th><th>오류</th></tr></thead><tbody>${runs.map(r=>`<tr><td>${formatKST(r.started_at)}</td><td>${r.trigger_type==='manual'?'수동':'예약'}</td><td class="run-status ${esc(r.status)}">${runStatusLabel(r.status)}</td><td>${Array.isArray(r.errors)?r.errors.length:0}건</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    async function collectNow() {
+      const btn=document.getElementById('collectBtn'); btn.disabled=true; btn.textContent='수집 중...';
+      try {
+        if (typeof flushServiceUsageTelemetry==='function') await flushServiceUsageTelemetry();
+        const { data,error }=await _sb.functions.invoke('service-usage-collect',{body:{trigger:'manual'}});
+        if(error) throw error;
+        if(data && data.errors && data.errors.length) alert(`수집은 완료되었지만 ${data.errors.length}개 항목은 연결 또는 권한 확인이 필요합니다.`);
+        await loadDashboard();
+      } catch(error) {
+        await logError('SERVICE_USAGE_COLLECT_FAIL',{오류:error.message||String(error)});
+        alert('서비스 사용량 수집 실패: '+tErr(error.message||String(error)));
+      } finally { btn.disabled=false; btn.textContent='↻ 지금 수집'; }
+    }
+
+    async function openHistory(serviceKey, metricKey) {
+      const metric=metrics.find(m=>m.service===serviceKey&&m.metric_key===metricKey); if(!metric)return;
+      document.getElementById('historyModal').classList.remove('hidden');
+      document.getElementById('historyTitle').textContent=`${SERVICE_INFO[serviceKey].icon} ${metric.label} · 30일 추이`;
+      document.getElementById('historySubtitle').textContent=`${metric.source_label}${metric.is_estimated?' · 추정값':''}`;
+      document.getElementById('historyChart').innerHTML='<div class="empty-panel">불러오는 중...</div>';
+      const {data,error}=await _sb.rpc('get_service_usage_history',{p_service:serviceKey,p_metric_key:metricKey,p_days:30});
+      if(error){document.getElementById('historyChart').innerHTML=`<div class="setup-error">${esc(error.message)}</div>`;return;}
+      renderHistoryChart(data||[],metric);
+    }
+
+    function renderHistoryChart(rows,metric) {
+      const chart=document.getElementById('historyChart'); const list=document.getElementById('historyList');
+      if(!rows.length){chart.innerHTML='<div class="empty-panel">아직 추이 데이터가 없습니다.</div>';list.innerHTML='';return;}
+      const values=rows.map(r=>Number(r.usage_value||0)); const max=Math.max(...values,Number(metric.quota_value||0),1); const min=Math.min(...values,0);
+      const points=values.map((v,i)=>{const x=rows.length===1?50:5+i*(90/(rows.length-1));const y=92-(v-min)/(max-min||1)*82;return `${x},${y}`;}).join(' ');
+      const quotaY=metric.quota_value?92-(Number(metric.quota_value)-min)/(max-min||1)*82:null;
+      chart.innerHTML=`<svg class="history-chart" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="5" y1="92" x2="95" y2="92" stroke="var(--admin-border)" stroke-width=".6"/>${quotaY!=null?`<line x1="5" y1="${quotaY}" x2="95" y2="${quotaY}" stroke="#e03131" stroke-width=".5" stroke-dasharray="2 2"/>`:''}<polyline points="${points}" fill="none" stroke="var(--admin-primary)" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+      list.innerHTML=`<table class="activity-table"><thead><tr><th>수집 시각</th><th>사용량</th><th>한도</th><th>출처</th></tr></thead><tbody>${rows.slice().reverse().map(r=>`<tr><td>${formatKST(r.collected_at)}</td><td>${formatValue(Number(r.usage_value),metric.unit)}</td><td>${r.quota_value==null?'-':formatValue(Number(r.quota_value),metric.unit)}</td><td>${r.is_estimated?'추정 · ':''}${esc(r.source)}</td></tr>`).join('')}</tbody></table>`;
+    }
+
+    function closeHistory(){document.getElementById('historyModal').classList.add('hidden');}
+    document.getElementById('historyModal').addEventListener('click',e=>{if(e.target.classList.contains('modal-overlay'))closeHistory();});
+
+    function formatValue(value,unit){
+      const n=Number(value||0); if(unit==='bytes'){const units=['B','KB','MB','GB','TB'];let i=0,v=n;while(v>=1024&&i<units.length-1){v/=1024;i++;}return `${v.toLocaleString('ko-KR',{maximumFractionDigits:i?2:0})} ${units[i]}`;}
+      if(unit==='usd')return `$${n.toLocaleString('ko-KR',{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+      if(unit==='krw')return `${Math.round(n).toLocaleString('ko-KR')}원`;
+      const labels={minutes:'분',hours:'core-hour',gb_month:'GB-month',days:'일'};
+      return `${n.toLocaleString('ko-KR',{maximumFractionDigits:2})}${labels[unit]?` ${labels[unit]}`:''}`;
+    }
+    function formatPercent(value){return `${Number(value||0).toLocaleString('ko-KR',{maximumFractionDigits:1})}%`;}
+    function resetLabel(cycle,end){const map={hourly:'매시간 초기화',daily:'매일 초기화',monthly:'매월 초기화',rolling_14d:'최근 14일',rolling_90d:'최근 90일',cumulative:'누적',policy:'플랜 정책'};return map[cycle]||(end?formatKSTShort(end):'-');}
+    function statusLabel(s){return ({normal:'정상',caution:'주의',warning:'경고',danger:'위험',unlimited:'누적',policy:'정책',not_collected:'수집 전'})[s]||s;}
+    function connectionLabel(s){return ({connected:'API 연결',tracking:'프로젝트 계측',partial:'일부 연결',needs_secret:'Secret 필요'})[s]||'확인 필요';}
+    function runStatusLabel(s){return ({running:'수집 중',success:'성공',partial:'일부 성공',failed:'실패'})[s]||s;}
+    function alertStatusLabel(s){return ({pending:'발송 대기',sent:'발송 완료',failed:'발송 실패'})[s]||s;}
+    function formatKST(value){return new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
+    function formatKSTShort(value){return new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hour12:false});}
+    function esc(value){const d=document.createElement('div');d.textContent=value==null?'':String(value);return d.innerHTML;}
+    function escAttr(value){return esc(value).replace(/"/g,'&quot;');}
+  </script>
+  <div id="version-container"></div>
+  <script src="../js/version.js"></script>
+</body>
+</html>

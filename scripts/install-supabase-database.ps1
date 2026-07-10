@@ -124,6 +124,7 @@ if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
   $defaultProductCategoryPolicySql = Join-Path $ScriptRoot '..\docs\TASK-058_product_category_policy.sql'
   $defaultProductCategoryPageSql = Join-Path $ScriptRoot '..\docs\TASK-068_product_category_page_and_sort_order.sql'
   $defaultProductDetailImageSql = Join-Path $ScriptRoot '..\docs\TASK-069_product_detail_image.sql'
+  $defaultServiceUsageSql = Join-Path $ScriptRoot '..\docs\TASK-070_service_usage_monitoring.sql'
   if (Test-Path -LiteralPath $defaultCodeMasterSql) {
     $ExtraSqlPaths = @($defaultCodeMasterSql)
   }
@@ -135,6 +136,9 @@ if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
   }
   if (Test-Path -LiteralPath $defaultProductDetailImageSql) {
     $ExtraSqlPaths += $defaultProductDetailImageSql
+  }
+  if (Test-Path -LiteralPath $defaultServiceUsageSql) {
+    $ExtraSqlPaths += $defaultServiceUsageSql
   }
 }
 

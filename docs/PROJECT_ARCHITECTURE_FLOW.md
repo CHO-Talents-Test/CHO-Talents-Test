@@ -40,6 +40,11 @@ flowchart LR
 
   SlackJS --> EdgeFn["Supabase Edge Function<br/>slack-notify"]
   EdgeFn --> Slack["채널별 Slack Webhook<br/>(부서/상품관리/운영/Q&A)"]
+  Pages --> UsageTelemetry["공통 사용량 계측<br/>Pages/Supabase/Kakao"]
+  UsageTelemetry --> UsageDB["service_usage_events / snapshots"]
+  UsageCollector["Edge Function<br/>service-usage-collect<br/>6시간 주기"] --> UsageDB
+  UsageCollector --> ExternalUsage["GitHub Billing/Actions/Traffic<br/>Supabase Management API"]
+  UsageCollector --> Slack
 
   AuthJS --> Auth["Supabase Auth"]
   UserMgmt --> RPC["Supabase RPC"]
@@ -110,6 +115,7 @@ flowchart LR
 | `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공지 열람 현황 조회, 공통 페이지당 항목 수 설정을 사용. 열람 현황 모달은 등록일시/등록자, 사용자 유형 열, 전체/확인자/미확인자 콤보박스 필터를 제공한다. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
 | `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`)와 상세 모달 한글 키 우선 표시. 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
+| `admin/service-stats.html` | 80등급 이상 GitHub/Supabase/Kakao/Slack 무료 할당량, 현재·남은 사용량/비율, 기간 종료 예상 사용률, 30일 추이, 수집/Slack 알림 이력 조회와 즉시 수집 |
 | `admin/versions.html` | 80등급 이상 버전 이력 확인. `js/version.js`의 v1.0.0 이후 전체 변경 이력을 표시 |
 | `admin/page-access.html` | 100등급 이상 유형/권한별 페이지 접근/요소 가시성 설정 |
 | `admin/page-features.html` | 100등급 이상 권한별 페이지 기능 설정값 관리 |
@@ -121,7 +127,8 @@ flowchart LR
 | `js/version.js` | 공통 버전 footer, v1.0.0 이후 버전 이력, 최신 `version.js` 조회, 로드된 CSS/JS 자산 `cache: reload` 재검증, 구버전 세션 재로그인 안내 |
 | `js/slack-notify.js` | Slack 알림 공통 유틸리티. `sendSlackNotify(type, data)`로 Edge Function `slack-notify` 호출. fire-and-forget, 동일 알림 5초 throttle. 부서/유형별 채널 라우팅은 Edge Function에서 수행 |
 | `js/` | 테마(`theme.js`), 네비게이션(`nav.js` - `#navHeaderActions` 내부 햄버거·테마·로그인/로그아웃, 처리 가능 건수 배지 + Q&A 미답변 배지 자동 호출 포함), 코드북(`codes.js`), 페이지 크기(`page-size.js`), Slack 알림(`slack-notify.js`), Supabase 설정, 인증/24h 세션 타임아웃/tErr, 로그, 사용자/달란트/상품/버전 모듈 |
-| `docs/edge-function-slack-notify.ts` | Supabase Edge Function `slack-notify` 배포용 소스. 부서별/유형별 Webhook Secret 동적 선택, Slack Block Kit 메시지 포맷 |
+| `supabase/functions/slack-notify/index.ts`, `supabase/functions/_shared/slack-notify.ts` | Supabase Edge Function `slack-notify` 배포 진입점/공통 구현. 부서별/유형별 Webhook Secret 선택, Block Kit, 성공·실패 계측 |
+| `supabase/functions/service-usage-collect/index.ts` | 6시간 서비스 사용량 수집, 공식 API/DB/프로젝트 계측 병합, 70/85/95% 운영 채널 알림 |
 | `admin/slack-rules.html` | 80등급 이상 Slack 알림 룰 문서. 구매/가입/부서이동/Q&A/WARN+ 로그 알림 type과 채널 라우팅 설명 |
 | `docs/SLACK_NOTIFICATION_RULES.md` | Slack 알림 type, 라우팅, Secret 기준 문서 |
 | `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 다른 Supabase 프로젝트에서 새로 시작하기 위한 설치 절차 |
@@ -234,6 +241,7 @@ flowchart TD
   Home --> PageFeatures["admin/page-features.html<br/>100+"]
   Home --> Audit["admin/audit.html<br/>100+"]
   Home --> Logs["admin/logs.html<br/>100+"]
+  Home --> ServiceStats["admin/service-stats.html<br/>80+"]
   Home -.-> PagePerms["admin/page-permissions.html<br/>100+ 직접 주소 접근"]
 ```
 
@@ -802,7 +810,7 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 17. 부서 이동이 수정 모달이 아닌 부서 이동 버튼으로만 되는지 확인한다.
 18. 60등급 이상이 `admin/users.html`, `admin/shop.html`, `admin/purchases.html`을 사용할 수 있고, 70등급 이상만 `admin/product-categories.html`에 접근 가능한지 확인한다.
 19. 60등급 이상이 대시보드를, 80등급 이상이 관리자, 보고서, 버전 화면을 사용할 수 있는지 확인한다.
-20. 100등급 이상만 `admin/page-access.html`, `admin/page-features.html`, `admin/audit.html`, `admin/logs.html`에 접근 가능한지 확인한다.
+20. 100등급 이상만 `admin/page-access.html`, `admin/page-features.html`, `admin/audit.html`, `admin/logs.html`에 접근 가능하고, 부장 교사(80+) 이상은 `admin/service-stats.html`에 접근 가능한지 확인한다.
 21. 80등급 이상이 `docs/page-permission-rules.html`, `admin/log-rules.html`, `admin/slack-rules.html`, `admin/audit-rules.html`에 접근 가능한지 확인한다.
 22. 소개 메뉴에 `가이드` 항목 하나만 표시되고, 비로그인은 학생 가이드, 로그인 사용자는 권한별 가이드(교사/부서 담당/구매 담당/부장/전도사님/관리자)로 연결되는지 확인한다.
 23. `qna.html`에서 공개 FAQ, 로그인 질문 등록, 60등급 이상 댓글(답변)/FAQ 등록/직접 FAQ 추가, 90등급 이상 삭제가 동작하는지 확인한다.
@@ -847,7 +855,8 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 | 25 | `docs/TASK-067_korean_activity_logs.sql` | v3.66.0: 기존 활동 로그 상세 한글 별칭 백필 및 실제 발생 액션 라벨 |
 | 26 | `docs/TASK-068_product_category_page_and_sort_order.sql` | v3.67.0: 상품 정렬 순번 컬럼/인덱스와 상품 카테고리 관리 70+ 정책 |
 | 27 | `docs/TASK-069_product_detail_image.sql` | v3.69.0: `products.detail_image_url` 상세 설명 이미지 컬럼 추가 |
-| 28 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 28 | `docs/TASK-070_service_usage_monitoring.sql`, `docs/TASK-070_service_usage_cron.sql` | v3.70.0: 외부 서비스 사용량/한도/알림 스키마와 6시간 예약 수집 |
+| 29 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
 
 ## 19. 개발 주의사항
 

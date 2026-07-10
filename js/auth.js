@@ -441,6 +441,7 @@ function detectCurrentPageId() {
   if (path.includes('admin/purchase-stats.html')) return 'admin-purchase-stats';
   if (path.includes('admin/reports.html')) return 'admin-reports';
   if (path.includes('admin/logs.html')) return 'admin-logs';
+  if (path.includes('admin/service-stats.html')) return 'admin-service-stats';
   if (path.includes('admin/log-rules.html')) return 'admin-log-rules';
   if (path.includes('admin/slack-rules.html')) return 'admin-slack-rules';
   if (path.includes('admin/notices.html')) return 'admin-notices';
