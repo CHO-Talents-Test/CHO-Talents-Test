@@ -14,8 +14,8 @@ Supabase SQL Editor에서 다음 파일을 실행합니다.
 ## 2. Edge Function 배포
 
 ```powershell
-supabase functions deploy service-usage-collect --project-ref blitrrcdkkkszvgylnus
-supabase functions deploy slack-notify --project-ref blitrrcdkkkszvgylnus
+supabase functions deploy service-usage-collect --project-ref <PROJECT_REF>
+supabase functions deploy slack-notify --project-ref <PROJECT_REF>
 ```
 
 `slack-notify`를 다시 배포해야 기존 구매·가입·로그·Q&A 알림 성공/실패도 Slack 프로젝트 사용량에 포함됩니다.
@@ -29,8 +29,8 @@ supabase functions deploy slack-notify --project-ref blitrrcdkkkszvgylnus
 | `GITHUB_TOKEN` | 예 | GitHub Billing, Actions 저장공간, 저장소 Traffic API 조회 |
 | `GITHUB_OWNER` | 예 | `CHO-Talents` |
 | `GITHUB_REPO` | 예 | `CHO-Talents` |
-| `SUPABASE_ACCESS_TOKEN` | 예 | Supabase Management API 공식 API 요청 통계 조회 |
-| `SUPABASE_PROJECT_REF` | 예 | `blitrrcdkkkszvgylnus` |
+| `SB_MANAGEMENT_ACCESS_TOKEN` | 예 | Supabase Management API 공식 API 요청 통계 조회 |
+| `SB_PROJECT_REF` | 예 | Supabase Dashboard URL의 프로젝트 ref. 캡쳐 화면 기준 `rabakjtjtkelpskptnvi` |
 | `SLACK_WEBHOOK_OPERATIONS` | 예 | 70/85/95% 알림을 보낼 운영관리 채널 |
 | `SERVICE_STATS_URL` | 선택 | Slack 알림의 상세 페이지 링크. 미설정 시 운영 GitHub Pages URL 사용 |
 
@@ -39,12 +39,12 @@ supabase functions deploy slack-notify --project-ref blitrrcdkkkszvgylnus
 예시 명령의 값은 로컬 환경에서만 치환합니다.
 
 ```powershell
-supabase secrets set --project-ref blitrrcdkkkszvgylnus `
+supabase secrets set --project-ref <PROJECT_REF> `
   GITHUB_TOKEN="<GITHUB_FINE_GRAINED_TOKEN>" `
   GITHUB_OWNER="CHO-Talents" `
   GITHUB_REPO="CHO-Talents" `
-  SUPABASE_ACCESS_TOKEN="<SUPABASE_ACCESS_TOKEN>" `
-  SUPABASE_PROJECT_REF="blitrrcdkkkszvgylnus" `
+  SB_MANAGEMENT_ACCESS_TOKEN="<SUPABASE_MANAGEMENT_ACCESS_TOKEN>" `
+  SB_PROJECT_REF="<PROJECT_REF>" `
   SLACK_WEBHOOK_OPERATIONS="<OPERATIONS_WEBHOOK_URL>" `
   SERVICE_STATS_URL="https://cho-talents.github.io/CHO-Talents/admin/service-stats.html"
 ```
