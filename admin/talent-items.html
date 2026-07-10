@@ -201,7 +201,7 @@
         if (i.is_active && (session.permissionRank || 0) >= 80) {
           actions.push(`<a onclick='event.stopPropagation();setQuickButton(${idJson})'>${isQuick ? '⚡퀵 해제' : '⚡퀵 지정'}</a>`);
         }
-        return `<tr${!i.is_active ? ' style="opacity:0.5;"' : ''}>
+        return `<tr style="cursor:pointer;${!i.is_active ? 'opacity:0.5;' : ''}" onclick='openEditModal(${itemJson})'>
         <td>${i.sort_order}</td>
         <td><strong>${i.name}</strong>${isQuick ? ' <span style="font-size:0.7rem;background:#e7f5ff;color:#1971c2;padding:0.1rem 0.4rem;border-radius:4px;">⚡퀵</span>' : ''}</td>
         <td style="font-weight:700;color:#2b8a3e;">+${i.talent_amount}</td>
@@ -212,7 +212,7 @@
         </td>
         <td>${i.is_active ? '<span class="level-badge INFO">활성</span>' : '<span class="level-badge FATAL">비활성</span>'}</td>
         <td>
-          <div class="mgmt-dropdown">
+          <div class="mgmt-dropdown" onclick="event.stopPropagation()">
             <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
             <div class="mgmt-menu">${actions.join('')}</div>
           </div>

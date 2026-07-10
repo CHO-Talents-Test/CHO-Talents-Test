@@ -217,20 +217,11 @@
       <div class="notice-read-meta" id="noticeReadMeta"></div>
       <div class="notice-read-summary" id="noticeReadSummary">열람 현황을 불러오는 중입니다.</div>
       <div class="notice-read-filters">
-        <label class="notice-filter-switch" title="미확인 사용자를 표시합니다.">
-          <span>미확인자</span>
-          <span class="notice-switch">
-            <input type="checkbox" id="noticeReadUncheckedSwitch" checked onchange="onNoticeReadStatusFilterChange()" />
-            <span class="notice-slider"></span>
-          </span>
-        </label>
-        <label class="notice-filter-switch" title="확인 사용자를 표시합니다.">
-          <span>확인자</span>
-          <span class="notice-switch">
-            <input type="checkbox" id="noticeReadCheckedSwitch" checked onchange="onNoticeReadStatusFilterChange()" />
-            <span class="notice-slider"></span>
-          </span>
-        </label>
+        <select id="noticeReadStatusFilter" onchange="onNoticeReadFilterChange()">
+          <option value="">전체 확인 상태</option>
+          <option value="checked">확인자</option>
+          <option value="unchecked">미확인자</option>
+        </select>
         <select id="noticeReadUserTypeFilter" onchange="onNoticeReadFilterChange()">
           <option value="">전체 사용자 유형</option>
           <option value="teacher">교사</option>
@@ -293,8 +284,7 @@
     let noticeReadPageSize = 20;
     let noticeReadUserType = '';
     let noticeReadDeptId = '';
-    let noticeReadShowChecked = true;
-    let noticeReadShowUnchecked = true;
+    let noticeReadStatus = '';
 
     (async () => {
       await navInit();
@@ -503,7 +493,7 @@
           checked: !!noticeReadDismissalMap[user.id],
           checkedAt: noticeReadDismissalMap[user.id] || null
         }))
-        .filter(row => (row.checked && noticeReadShowChecked) || (!row.checked && noticeReadShowUnchecked))
+        .filter(row => !noticeReadStatus || (noticeReadStatus === 'checked' ? row.checked : !row.checked))
         .sort((a, b) => {
           if (a.checked !== b.checked) return a.checked ? 1 : -1;
           const typeCompare = noticeReadUserTypeLabel(a.user).localeCompare(noticeReadUserTypeLabel(b.user), 'ko');
@@ -521,14 +511,11 @@
       noticeReadPage = 1;
       noticeReadUserType = '';
       noticeReadDeptId = '';
-      noticeReadShowChecked = true;
-      noticeReadShowUnchecked = true;
+      noticeReadStatus = '';
       const typeFilter = document.getElementById('noticeReadUserTypeFilter');
       if (typeFilter) typeFilter.value = '';
-      const checkedSwitch = document.getElementById('noticeReadCheckedSwitch');
-      const uncheckedSwitch = document.getElementById('noticeReadUncheckedSwitch');
-      if (checkedSwitch) checkedSwitch.checked = true;
-      if (uncheckedSwitch) uncheckedSwitch.checked = true;
+      const statusFilter = document.getElementById('noticeReadStatusFilter');
+      if (statusFilter) statusFilter.value = '';
       document.getElementById('noticeReadTitle').textContent = `열람 현황: ${notice.title || '공지'}`;
       document.getElementById('noticeReadMeta').textContent =
         `등록 ${formatKSTShort(notice.created_at)} · 등록자 ${notice.created_by_name || noticeAuthor(notice)}`;
@@ -597,13 +584,7 @@
     function onNoticeReadFilterChange() {
       noticeReadUserType = document.getElementById('noticeReadUserTypeFilter').value || '';
       noticeReadDeptId = document.getElementById('noticeReadDeptFilter').value || '';
-      noticeReadPage = 1;
-      renderNoticeReadStatus();
-    }
-
-    function onNoticeReadStatusFilterChange() {
-      noticeReadShowChecked = document.getElementById('noticeReadCheckedSwitch').checked;
-      noticeReadShowUnchecked = document.getElementById('noticeReadUncheckedSwitch').checked;
+      noticeReadStatus = document.getElementById('noticeReadStatusFilter').value || '';
       noticeReadPage = 1;
       renderNoticeReadStatus();
     }

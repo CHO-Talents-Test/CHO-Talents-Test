@@ -273,13 +273,14 @@
         const isSuperAdmin = u.is_super_admin || false;
         const targetRank = getPermRank(u.permission_level, isSuperAdmin);
         const canManage = myRank > 80 && (isSelf || (myRank > targetRank));
-        return `<tr>
+        const rowClick = canManage ? ` onclick="openEditModal('${u.id}')" style="cursor:pointer;"` : '';
+        return `<tr${rowClick}>
           <td><span class="level-badge ${rb.cls}">${rb.emoji} ${rb.label}</span></td>
           <td>${dn}${(isSelf || _isAdmin()) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
           <td>${ownDept ? ownDept.name : '-'}</td>
           <td>${mgrDept ? mgrDept.name : '<span style="color:var(--admin-text-muted);">-</span>'}</td>
           <td>
-            ${canManage ? `<button class="filter-btn" onclick="openEditModal('${u.id}')">수정</button>` : ''}
+            ${canManage ? `<button class="filter-btn" onclick="event.stopPropagation();openEditModal('${u.id}')">수정</button>` : ''}
           </td>
         </tr>`;
       }).join('');

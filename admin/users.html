@@ -221,6 +221,13 @@
     let detailOrderPage = 1;
     let detailTalentPageSize = null;
     let detailOrderPageSize = null;
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
     (async () => {
       await navInit();
       session = await initPage(60, '../login.html');
@@ -486,14 +493,14 @@
           if (myRank >= 80) items.push(`<a onclick="confirmDelete('${u.id}','${(dn).replace(/'/g,"\\'")}')">🗑️ 삭제</a>`);
         }
         const permCol = groupKey !== 'student' ? `<td><span class="level-badge ${rb.cls}">${permEmoji} ${permLabel}</span></td>` : '';
-        return `<tr>
+        return `<tr class="user-row" style="cursor:pointer;" onclick="openDetailModal('${u.id}')">
           ${permCol}
           <td>${dn}${(isSelf || _isAdmin()) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
           <td>${getDeptName(u.department_id)}</td>
           <td>${getClassLabel(u.class_number)}</td>
           <td style="font-weight:700;">${fmtNum(u.talent_balance || 0)}</td>
           <td>
-            <div class="mgmt-dropdown">
+            <div class="mgmt-dropdown" onclick="event.stopPropagation()">
               <button class="filter-btn" onclick="toggleMgmtMenu(event, this)">관리 ▾</button>
               <div class="mgmt-menu">${items.join('')}</div>
             </div>
@@ -986,9 +993,11 @@
       tbody.innerHTML = allRequests.map(r => {
         const rb = ROLE_BADGES[badgeKeyForUser({ permission_level: r.permission_level || 'student', user_type: r.user_type })] || ROLE_BADGES.student;
         const canProcess = myRank >= 90 || myDepts.has(r.department_id);
+        const displayName = escapeHtml(r.display_name || '-');
+        const adminUsername = _isAdmin() && r.username ? ` <span style="font-size:0.72rem;color:#868e96;">(${escapeHtml(r.username)})</span>` : '';
         return `<tr>
           <td><span class="level-badge ${rb.cls}">${rb.emoji} ${rb.label}</span></td>
-          <td>${r.display_name}</td>
+          <td>${displayName}${adminUsername}</td>
           <td>${getDeptName(r.department_id)}</td>
           <td style="font-size:0.8rem;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="${r.reason || ''}">${r.reason || '-'}</td>
           <td>${formatKSTShort(r.created_at)}</td>

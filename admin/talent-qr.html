@@ -8,7 +8,7 @@
   <link rel="stylesheet" href="../css/admin.css" />
   <style>
     .qr-tabs { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; }
-    .qr-item-card { background: #fff; border: 1px solid var(--admin-border); border-radius: 12px; padding: 1rem; margin-bottom: 0.8rem; display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; }
+    .qr-item-card { background: #fff; border: 1px solid var(--admin-border); border-radius: 12px; padding: 1rem; margin-bottom: 0.8rem; display: flex; align-items: flex-start; gap: 1rem; flex-wrap: wrap; cursor: pointer; }
     .qr-item-card.inactive { opacity: 0.5; }
     .qr-img-wrap { flex-shrink: 0; width: 100px; height: 100px; display: flex; align-items: center; justify-content: center; background: var(--t-card, #fff); border-radius: 8px; border: 1px solid var(--t-border, #e9ecef); overflow: hidden; position: relative; }
     .qr-img-wrap img, .qr-img-wrap canvas { max-width: 100%; max-height: 100%; }
@@ -61,7 +61,7 @@
     .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; align-items: center; justify-content: center; }
     .modal-overlay.show { display: flex; }
     .modal-box { background: #fff; border-radius: 16px; padding: 1.5rem; max-width: 520px; width: 92%; max-height: 85vh; overflow-y: auto; box-shadow: 0 8px 32px rgba(0,0,0,0.15); }
-    .modal-box.wide { max-width: 600px; }
+    .modal-box.wide { max-width: 760px; }
     .modal-box h3 { margin-bottom: 1rem; }
     .modal-box .form-grid { grid-template-columns: 1fr; }
     .modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
@@ -73,6 +73,16 @@
     .scan-list-table th, .scan-list-table td { padding: 0.5rem 0.6rem; text-align: left; border-bottom: 1px solid var(--t-border, #e9ecef); }
     .scan-list-table th { background: #f8f9fa; font-weight: 600; font-size: 0.8rem; color: var(--admin-text-muted); }
     .scan-list-table tr:hover td { background: #f1f3f5; }
+    .scan-list-table tr.scan-user-row { cursor: pointer; }
+    .scan-list-table tr.scan-user-row.selected td { background: #e7f5ff; }
+    .scan-filter-bar { display: flex; gap: 0.4rem; flex-wrap: wrap; align-items: center; margin-bottom: 0.6rem; }
+    .scan-filter-bar input, .scan-filter-bar select { padding: 0.4rem 0.6rem; border: 1px solid var(--admin-border); border-radius: 8px; font-size: 0.82rem; background: var(--t-input-bg, #fff); color: var(--t-text, #212529); }
+    .scan-filter-bar input { flex: 1; min-width: 140px; }
+    .scan-summary { font-size: 0.82rem; color: var(--admin-text-muted); margin-bottom: 0.5rem; }
+    .scan-detail-box { margin-top: 0.8rem; border: 1px solid var(--t-border, #e9ecef); border-radius: 10px; padding: 0.8rem; background: var(--t-bg, #f8f9fa); }
+    .scan-detail-box h4 { margin: 0 0 0.5rem; font-size: 0.92rem; }
+    .scan-detail-item { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 0.5rem; align-items: center; padding: 0.45rem 0; border-top: 1px solid var(--t-border, #e9ecef); font-size: 0.82rem; }
+    .scan-detail-item:first-of-type { border-top: 0; }
     .scan-empty { text-align: center; padding: 1.5rem; color: var(--admin-text-muted); font-size: 0.9rem; }
     .form-input { width: 100%; padding: 0.5rem; border: 1px solid var(--admin-border); border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; }
     @media (max-width: 480px) {
@@ -109,6 +119,9 @@
     [data-theme="dark"] .scan-list-table th { background: #2a2a3e; color: #aaa; }
     [data-theme="dark"] .scan-list-table td { border-color: #444; }
     [data-theme="dark"] .scan-list-table tr:hover td { background: #333; }
+    [data-theme="dark"] .scan-list-table tr.scan-user-row.selected td { background: rgba(25, 113, 194, 0.22); }
+    [data-theme="dark"] .scan-detail-box { background: #2a2a3e; border-color: #444; }
+    [data-theme="dark"] .scan-detail-item { border-color: #444; }
     [data-theme="dark"] .filter-bar input, [data-theme="dark"] .filter-bar select { background: #2a2a3e; border-color: #444; color: #ddd; }
     [data-theme="dark"] .form-input, [data-theme="dark"] .form-grid input, [data-theme="dark"] .form-grid select { background: #1e1e2e; border-color: #444; color: #ddd; }
     [data-theme="dark"] .period-row input { background: #1e1e2e; border-color: #444; color: #ddd; }
@@ -485,9 +498,22 @@
   <div class="modal-overlay" id="scanListModal">
     <div class="modal-box wide">
       <h3>👥 수령자 목록 <span id="scanListTitle" style="font-size:0.85rem;font-weight:400;color:var(--admin-text-muted);"></span></h3>
+      <div class="scan-filter-bar">
+        <select id="scanUserTypeFilter" onchange="onScanListFilterChange()">
+          <option value="">전체 유형</option>
+          <option value="teacher">교사</option>
+          <option value="student">학생</option>
+        </select>
+        <select id="scanDeptFilter" onchange="onScanListFilterChange()">
+          <option value="">전체 부서</option>
+        </select>
+        <input type="text" id="scanSearchInput" placeholder="이름/아이디 검색" oninput="onScanListFilterChange()" />
+      </div>
+      <div id="scanListSummary" class="scan-summary"></div>
       <div id="scanListPageSizeWrap" style="margin-bottom:0.5rem;"></div>
       <div id="scanListContent"><div class="scan-empty">불러오는 중...</div></div>
       <div id="scanListPaging" style="margin-top:0.5rem;"></div>
+      <div id="scanUserDetail" class="scan-detail-box" style="display:none;"></div>
       <div class="modal-actions">
         <button class="admin-btn" onclick="closeScanListModal()">닫기</button>
       </div>
@@ -1195,7 +1221,7 @@
         const safeDesc = (q.description || '').replace(/'/g, "\\'").replace(/"/g, '&quot;');
         const usedText = q.max_uses > 0 ? (q.used_count || 0) + '/' + q.max_uses : String(q.used_count || 0);
         const repeatText = getRepeatText(q);
-        return '<div class="qr-item-card' + (q.is_active ? '' : ' inactive') + '">'
+        return '<div class="qr-item-card' + (q.is_active ? '' : ' inactive') + '" onclick="openEditModal(\'' + q.id + '\')">'
           + '<div class="qr-img-wrap" id="qr-img-' + idx + '"></div>'
           + '<div class="qr-info">'
           + (isAdmin ? '<div class="qr-code-label">' + q.code + '</div>' : '')
@@ -1210,7 +1236,7 @@
           + '<span>📍 ' + getLocationText(q) + '</span>'
           + '<span>' + (q.is_active ? '🟢 활성' : '🔴 비활성') + '</span>'
           + '</div></div>'
-          + '<div class="qr-actions">'
+          + '<div class="qr-actions" onclick="event.stopPropagation()">'
           + '<button class="info" onclick="openScanListModal(\'' + q.id + '\',\'' + safeDesc + '\')">👥 수령자</button>'
           + '<button onclick="printQR(\'' + q.code + '\',\'' + safeDesc + '\',' + q.amount + ')">🖨️ 인쇄</button>'
           + '<button class="edit" onclick="openEditModal(\'' + q.id + '\')">✏️ 수정</button>'
@@ -1290,8 +1316,22 @@
     }
 
     /* ── Scan List Modal ── */
-    let _scanListData = [], _scanProfileMap = {}, _scanDeptMap = {}, _scanReturnedSet = new Set();
-    let _scanListPage = 1, _scanListPageSize = 10;
+    let _scanListData = [], _scanProfileMap = {}, _scanDeptMap = {}, _scanReturnedSet = new Set(), _scanEarnMap = {};
+    let _scanListPage = 1, _scanListPageSize = 10, _selectedScanUserId = null;
+    let _scanFilterUserType = '', _scanFilterDept = '', _scanFilterSearch = '';
+
+    function escapeScanHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[ch]));
+    }
+
+    function formatScanTime(value) {
+      if (!value) return '-';
+      const dt = new Date(value);
+      return dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0')
+        + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
+    }
 
     async function openScanListModal(qrId, desc) {
       document.getElementById('scanListModal').classList.add('show');
@@ -1299,6 +1339,17 @@
       document.getElementById('scanListContent').innerHTML = '<div class="scan-empty">불러오는 중...</div>';
       document.getElementById('scanListPaging').innerHTML = '';
       document.getElementById('scanListPageSizeWrap').innerHTML = '';
+      document.getElementById('scanListSummary').textContent = '';
+      document.getElementById('scanUserDetail').style.display = 'none';
+      document.getElementById('scanUserDetail').innerHTML = '';
+      document.getElementById('scanUserTypeFilter').value = '';
+      document.getElementById('scanDeptFilter').innerHTML = '<option value="">전체 부서</option>';
+      document.getElementById('scanDeptFilter').value = '';
+      document.getElementById('scanSearchInput').value = '';
+      _scanFilterUserType = '';
+      _scanFilterDept = '';
+      _scanFilterSearch = '';
+      _selectedScanUserId = null;
       _scanListPage = 1;
       _scanListPageSize = await loadPageSize('qr_scan_list', 10);
       try {
@@ -1308,10 +1359,9 @@
           document.getElementById('scanListContent').innerHTML = '<div class="scan-empty">수령자가 없습니다.</div>';
           return;
         }
-        _scanListData = scans;
         const userIds = [...new Set(scans.map(s => s.user_id))];
         const { data: profiles } = await _sb.from('profiles')
-          .select('id, display_name, username, department_id').in('id', userIds);
+          .select('id, display_name, username, user_type, department_id').in('id', userIds);
         _scanProfileMap = {};
         (profiles || []).forEach(p => { _scanProfileMap[p.id] = p; });
         const deptIds = [...new Set((profiles || []).map(p => p.department_id).filter(Boolean))];
@@ -1320,10 +1370,15 @@
           const { data: depts } = await _sb.from('departments').select('id, name').in('id', deptIds);
           (depts || []).forEach(d => { _scanDeptMap[d.id] = d.name; });
         }
+        const deptFilter = document.getElementById('scanDeptFilter');
+        deptFilter.innerHTML = '<option value="">전체 부서</option>' + Object.entries(_scanDeptMap)
+          .sort((a, b) => a[1].localeCompare(b[1], 'ko'))
+          .map(([id, name]) => '<option value="' + escapeScanHtml(id) + '">' + escapeScanHtml(name) + '</option>')
+          .join('');
 
         const qr = allQR.find(x => x.id === qrId);
         let earnQuery = _sb.from('talent_transactions')
-          .select('id, user_id, created_at').in('user_id', userIds).eq('type', 'earn').eq('source', 'qr');
+          .select('id, user_id, amount, description, talent_item_id, created_at').in('user_id', userIds).eq('type', 'earn').eq('source', 'qr');
         if (qr && qr.talent_item_id) earnQuery = earnQuery.eq('talent_item_id', qr.talent_item_id);
         const { data: earnTxns } = await earnQuery;
 
@@ -1336,11 +1391,14 @@
         });
 
         _scanReturnedSet = new Set();
-        scans.forEach(s => {
+        _scanEarnMap = {};
+        _scanListData = scans.map(s => {
           const scanTime = new Date(s.scanned_at).getTime();
           const userEarns = (earnTxns || []).filter(t => t.user_id === s.user_id);
           const matched = userEarns.find(t => Math.abs(new Date(t.created_at).getTime() - scanTime) < 120000);
+          if (matched) _scanEarnMap[s.id] = matched;
           if (matched && returnedEarnIds.has(matched.id)) _scanReturnedSet.add(s.id);
+          return Object.assign({}, s, { _qr: qr || null, _earn: matched || null });
         });
 
         renderScanListPage();
@@ -1349,35 +1407,105 @@
       }
     }
 
+    function getFilteredScanUserRows() {
+      const grouped = {};
+      _scanListData.forEach(scan => {
+        const profile = _scanProfileMap[scan.user_id] || {};
+        if (_scanFilterUserType && profile.user_type !== _scanFilterUserType) return;
+        if (_scanFilterDept && profile.department_id !== _scanFilterDept) return;
+        const searchTarget = ((profile.display_name || '') + ' ' + (profile.username || '')).toLowerCase();
+        if (_scanFilterSearch && !searchTarget.includes(_scanFilterSearch)) return;
+        if (!grouped[scan.user_id]) grouped[scan.user_id] = { userId: scan.user_id, profile, scans: [], totalAmount: 0, returnedCount: 0, lastScannedAt: scan.scanned_at };
+        const row = grouped[scan.user_id];
+        row.scans.push(scan);
+        row.totalAmount += Number((scan._earn && scan._earn.amount) || (scan._qr && scan._qr.amount) || 0);
+        if (_scanReturnedSet.has(scan.id)) row.returnedCount += 1;
+        if (new Date(scan.scanned_at) > new Date(row.lastScannedAt)) row.lastScannedAt = scan.scanned_at;
+      });
+      return Object.values(grouped).sort((a, b) => new Date(b.lastScannedAt) - new Date(a.lastScannedAt));
+    }
+
     function renderScanListPage() {
-      const scans = _scanListData;
-      const totalPages = Math.max(1, Math.ceil(scans.length / _scanListPageSize));
+      const rows = getFilteredScanUserRows();
+      const totalScans = rows.reduce((sum, row) => sum + row.scans.length, 0);
+      const totalReturned = rows.reduce((sum, row) => sum + row.returnedCount, 0);
+      document.getElementById('scanListSummary').textContent =
+        '표시 사용자 ' + rows.length + '명 · 지급 항목 ' + totalScans + '건' + (totalReturned ? ' · 반환 ' + totalReturned + '건' : '');
+      const totalPages = Math.max(1, Math.ceil(rows.length / _scanListPageSize));
       if (_scanListPage > totalPages) _scanListPage = totalPages;
       const start = (_scanListPage - 1) * _scanListPageSize;
-      const pageScans = scans.slice(start, start + _scanListPageSize);
+      const pageRows = rows.slice(start, start + _scanListPageSize);
       const isAdmin = (session.permissionRank || 0) >= 100;
 
-      let html = '<table class="scan-list-table"><thead><tr><th>#</th><th>이름</th>' + (isAdmin ? '<th>아이디</th>' : '') + '<th>부서</th><th>수령 시간</th><th>상태</th></tr></thead><tbody>';
-      pageScans.forEach((s, i) => {
-        const p = _scanProfileMap[s.user_id] || {};
-        const dt = new Date(s.scanned_at);
-        const ts = dt.getFullYear() + '-' + String(dt.getMonth()+1).padStart(2,'0') + '-' + String(dt.getDate()).padStart(2,'0')
-          + ' ' + String(dt.getHours()).padStart(2,'0') + ':' + String(dt.getMinutes()).padStart(2,'0');
-        const isReturned = _scanReturnedSet.has(s.id);
-        const statusBadge = isReturned
-          ? '<span style="padding:0.1rem 0.4rem;border-radius:4px;font-size:0.75rem;background:#fff0f6;color:#c2255c;font-weight:600;">반환</span>'
+      if (!pageRows.length) {
+        document.getElementById('scanListContent').innerHTML = '<div class="scan-empty">조건에 맞는 수령자가 없습니다.</div>';
+        document.getElementById('scanListPaging').innerHTML = '';
+        document.getElementById('scanListPageSizeWrap').innerHTML = renderPageSizeSelector('qr_scan_list', _scanListPageSize, 'onScanListPageSizeChange(this.value)');
+        document.getElementById('scanUserDetail').style.display = 'none';
+        return;
+      }
+
+      if (!_selectedScanUserId || !rows.some(row => row.userId === _selectedScanUserId)) {
+        _selectedScanUserId = pageRows[0].userId;
+      }
+
+      let html = '<table class="scan-list-table"><thead><tr><th>#</th><th>유형</th><th>이름</th>' + (isAdmin ? '<th>아이디</th>' : '') + '<th>부서</th><th>항목</th><th>최근 수령</th><th>상태</th></tr></thead><tbody>';
+      pageRows.forEach((row, i) => {
+        const p = row.profile || {};
+        const typeLabel = p.user_type === 'teacher' ? '교사' : p.user_type === 'student' ? '학생' : '-';
+        const statusBadge = row.returnedCount > 0
+          ? '<span style="padding:0.1rem 0.4rem;border-radius:4px;font-size:0.75rem;background:#fff0f6;color:#c2255c;font-weight:600;">반환 ' + row.returnedCount + '</span>'
           : '<span style="font-size:0.75rem;color:#2b8a3e;">수령</span>';
-        html += '<tr><td>' + (start + i + 1) + '</td><td>' + (p.display_name||'-') + '</td>' + (isAdmin ? '<td>' + (p.username||'-') + '</td>' : '') + '<td>' + (_scanDeptMap[p.department_id]||'-') + '</td><td>' + ts + '</td><td>' + statusBadge + '</td></tr>';
+        html += '<tr class="scan-user-row' + (row.userId === _selectedScanUserId ? ' selected' : '') + '" onclick="selectScanUser(\'' + row.userId + '\')"><td>' + (start + i + 1) + '</td><td>' + typeLabel + '</td><td>' + escapeScanHtml(p.display_name||'-') + '</td>' + (isAdmin ? '<td>' + escapeScanHtml(p.username||'-') + '</td>' : '') + '<td>' + escapeScanHtml(_scanDeptMap[p.department_id]||'-') + '</td><td>' + row.scans.length + '건 · ' + row.totalAmount + ' 달란트</td><td>' + formatScanTime(row.lastScannedAt) + '</td><td>' + statusBadge + '</td></tr>';
       });
       html += '</tbody></table>';
-      const returnedCount = scans.filter(s => _scanReturnedSet.has(s.id)).length;
-      html += '<div style="margin-top:0.5rem;font-size:0.82rem;color:var(--admin-text-muted);">총 ' + scans.length + '명 수령' + (returnedCount > 0 ? ' (반환 ' + returnedCount + '명)' : '') + '</div>';
       document.getElementById('scanListContent').innerHTML = html;
       document.getElementById('scanListPaging').innerHTML = buildPagingButtons(_scanListPage, totalPages, 'goScanListPage(__PAGE__)');
       document.getElementById('scanListPageSizeWrap').innerHTML = renderPageSizeSelector('qr_scan_list', _scanListPageSize, 'onScanListPageSizeChange(this.value)');
+      renderSelectedScanUserDetail();
     }
 
     function goScanListPage(p) { _scanListPage = p; renderScanListPage(); }
+
+    function selectScanUser(userId) {
+      _selectedScanUserId = userId;
+      renderScanListPage();
+    }
+
+    function renderSelectedScanUserDetail() {
+      const detail = document.getElementById('scanUserDetail');
+      const rows = getFilteredScanUserRows();
+      const row = rows.find(x => x.userId === _selectedScanUserId);
+      if (!row) {
+        detail.style.display = 'none';
+        detail.innerHTML = '';
+        return;
+      }
+      const p = row.profile || {};
+      const title = (p.display_name || p.username || '사용자') + ' 지급 항목';
+      const items = row.scans.slice().sort((a, b) => new Date(b.scanned_at) - new Date(a.scanned_at)).map(scan => {
+        const earn = scan._earn || {};
+        const qr = scan._qr || {};
+        const isReturned = _scanReturnedSet.has(scan.id);
+        const desc = earn.description || qr.description || '-';
+        const amount = Number(earn.amount || qr.amount || 0);
+        const status = isReturned
+          ? '<span style="font-size:0.75rem;color:#c2255c;font-weight:700;">반환</span>'
+          : '<span style="font-size:0.75rem;color:#2b8a3e;font-weight:700;">수령</span>';
+        return '<div class="scan-detail-item"><span>' + escapeScanHtml(desc) + '</span><strong>+' + amount + '</strong><span>' + formatScanTime(scan.scanned_at) + ' · ' + status + '</span></div>';
+      }).join('');
+      detail.style.display = '';
+      detail.innerHTML = '<h4>' + escapeScanHtml(title) + '</h4>' + items;
+    }
+
+    function onScanListFilterChange() {
+      _scanFilterUserType = document.getElementById('scanUserTypeFilter').value || '';
+      _scanFilterDept = document.getElementById('scanDeptFilter').value || '';
+      _scanFilterSearch = (document.getElementById('scanSearchInput').value || '').trim().toLowerCase();
+      _scanListPage = 1;
+      _selectedScanUserId = null;
+      renderScanListPage();
+    }
 
     async function onScanListPageSizeChange(val) {
       _scanListPageSize = parseInt(val) || 10;

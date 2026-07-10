@@ -20,7 +20,7 @@
       background: var(--t-card, #fff); color: var(--t-text, #212529); border: 1px solid var(--t-border, #e9ecef);
       border-radius: 10px; box-shadow: 0 18px 50px rgba(0,0,0,0.22); max-height: 90vh; overflow: hidden;
     }
-    .product-detail-modal { width: min(760px, 96vw); display: flex; flex-direction: column; }
+    .product-detail-modal { width: min(720px, 96vw); display: flex; flex-direction: column; }
     .product-detail-head, .image-zoom-head {
       padding: 1rem 1.1rem; border-bottom: 1px solid var(--t-border, #e9ecef);
       display: flex; justify-content: space-between; align-items: flex-start; gap: 0.8rem;
@@ -31,8 +31,9 @@
       width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto;
     }
     .product-detail-body { padding: 1rem 1.1rem 1.1rem; overflow-y: auto; }
-    .product-detail-layout { display: grid; grid-template-columns: minmax(240px, 1fr) minmax(0, 1.2fr); gap: 1rem; align-items: start; }
-    .product-detail-media img {
+    .product-detail-layout { display: block; }
+    .product-detail-detail-image { margin-top: 1rem; display: none; }
+    .product-detail-detail-image img {
       width: 100%; max-height: 360px; object-fit: contain; display: block; border: 1px solid var(--t-border, #e9ecef);
       border-radius: 10px; background: var(--t-bg, #f8f9fa); cursor: zoom-in;
     }
@@ -54,7 +55,6 @@
     .shop-category-heading .section-title { margin: 0; }
     .shop-category-count { font-size: 0.75rem; color: var(--t-text-muted, #868e96); font-weight: 700; }
     @media (max-width: 720px) {
-      .product-detail-layout { grid-template-columns: 1fr; }
       .product-detail-emoji { min-height: 180px; }
     }
   </style>
@@ -127,13 +127,11 @@
       </div>
       <div class="product-detail-body">
         <div class="product-detail-layout">
-          <div class="product-detail-media" id="productDetailMedia"></div>
-          <div>
-            <div class="product-detail-meta" id="productDetailMeta"></div>
-            <div class="product-detail-price" id="productDetailPrice"></div>
-            <div class="product-detail-desc" id="productDetailDesc"></div>
-            <div class="product-detail-actions" id="productDetailActions"></div>
-          </div>
+          <div class="product-detail-meta" id="productDetailMeta"></div>
+          <div class="product-detail-price" id="productDetailPrice"></div>
+          <div class="product-detail-desc" id="productDetailDesc"></div>
+          <div class="product-detail-detail-image" id="productDetailDetailImage"></div>
+          <div class="product-detail-actions" id="productDetailActions"></div>
         </div>
       </div>
     </div>
@@ -364,11 +362,14 @@
         `<span>대상: ${escapeHtml(getProductTargetLabel(product.target_role || 'student'))}</span>`;
       document.getElementById('productDetailPrice').textContent = `${fmtNum(product.price)} 달란트`;
       document.getElementById('productDetailDesc').textContent = product.description || '설명이 없습니다.';
-      const media = document.getElementById('productDetailMedia');
-      if (product.image_url) {
-        media.innerHTML = `<img src="${escapeAttr(product.image_url)}" alt="${escapeAttr(product.name)}" onclick="openImageZoom('${escapeAttr(product.image_url)}','${escapeAttr(product.name)}')" />`;
+      const detailImage = document.getElementById('productDetailDetailImage');
+      const detailImageUrl = product.detail_image_url || '';
+      if (detailImageUrl) {
+        detailImage.style.display = 'block';
+        detailImage.innerHTML = `<img src="${escapeAttr(detailImageUrl)}" alt="${escapeAttr(product.name)} 상세 이미지" onclick="openImageZoom('${escapeAttr(detailImageUrl)}','${escapeAttr(product.name)} 상세 이미지')" />`;
       } else {
-        media.innerHTML = `<div class="product-detail-emoji">${escapeHtml(product.image_emoji || '🎁')}</div>`;
+        detailImage.style.display = 'none';
+        detailImage.innerHTML = '';
       }
       const available = _userBalance - _userPending;
       const isTeacherBuyingStudent = _shopSession && _shopSession.userType === 'teacher' && product.target_role === 'student';

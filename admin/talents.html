@@ -397,9 +397,9 @@
         const sm = talentSummaryMap[u.id] || { earned: 0, used: 0, returned: 0 };
         const attendDone = _attendanceGivenThisWeek.has(u.id);
         const attendBtn = canGiveTalent(u)
-          ? `<button class="filter-btn" style="background:${attendDone?'#e03131':'#51cf66'};color:#fff;border-color:${attendDone?'#e03131':'#51cf66'};" onclick="${attendDone ? `cancelAttendance('${u.id}','${dn.replace(/'/g,"\\'")}')` : `giveAttendance('${u.id}','${dn.replace(/'/g,"\\'")}')` }">${attendDone?'✓출석 취소':'출석'}</button>`
+          ? `<button class="filter-btn" style="background:${attendDone?'#e03131':'#51cf66'};color:#fff;border-color:${attendDone?'#e03131':'#51cf66'};" onclick="event.stopPropagation();${attendDone ? `cancelAttendance('${u.id}','${dn.replace(/'/g,"\\'")}')` : `giveAttendance('${u.id}','${dn.replace(/'/g,"\\'")}')` }">${attendDone?'✓출석 취소':'출석'}</button>`
           : '';
-        return `<tr>
+        return `<tr style="cursor:pointer;" onclick="openDetailModal('${u.id}','${dn.replace(/'/g,"\\'")}')">
         <td>${dn}${(isSelf || isAdminLevel(session)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
         <td>${getDeptName(u.department_id)}</td>
         <td>${classLabel}</td>
@@ -408,7 +408,7 @@
         <td class="hide-mobile" style="color:#1971c2;">${fmtNum(sm.earned)}</td>
         <td>
           ${attendBtn}
-          <div class="mgmt-dropdown">
+          <div class="mgmt-dropdown" onclick="event.stopPropagation()">
             <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
             <div class="mgmt-menu">
               ${canGiveTalent(u) ? `<a onclick="openTalentModal('${u.id}','${dn.replace(/'/g,"\\'")}',${u.talent_balance || 0})">💰 달란트 지급</a>` : ''}

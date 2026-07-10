@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.68.0 기준 인증/권한 리디렉트 원인, 최신 버전 세션 감지, QR 위치 권한 차단, 상품 카테고리 관리, 공지 사항 관리/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.69.0 기준 인증/권한 리디렉트 원인, 최신 버전 세션 감지, QR 위치 권한 차단, 상품 카테고리 관리, 공지 사항 관리/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -207,6 +207,44 @@
       </table>
     </div>
 
+    <div class="rule-section">
+      <h2>🧭 페이지별 로그 작성 표</h2>
+      <p style="font-size:0.88rem;color:var(--admin-text-muted);margin-bottom:1rem;">실제 화면별 로그 작성 발생 조건, 저장되는 주요 액션, 데이터 참조 위치, Slack 알림 대상을 요약합니다. WARN 이상 로그는 공통적으로 <code>log_alert</code> 운영 채널 알림 대상입니다.</p>
+      <table class="rule-table">
+        <thead>
+          <tr>
+            <th>화면</th>
+            <th>로그 작성 발생 조건</th>
+            <th>로그 작성 항목</th>
+            <th>항목별 데이터 참조 위치</th>
+            <th>Slack 알림 항목</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td><code>login.html</code></td><td>로그인 성공, 인증 실패, 로그인 예외</td><td><code>LOGIN_SUCCESS</code>, <code>LOGIN_FAIL</code>, <code>LOGIN_ERROR</code></td><td>Supabase Auth 결과, <code>profiles</code>/<code>get_my_profile</code>, 입력 아이디</td><td>WARN+ 공통 <code>log_alert</code></td></tr>
+          <tr><td><code>register.html</code></td><td>가입 신청 제출 성공/실패</td><td><code>REGISTER_REQUEST</code>, <code>REGISTER_REQUEST_FAIL</code></td><td><code>registration_requests</code>, 입력 아이디/이름/부서, 부서명 조회 결과</td><td><code>user_register</code> 신청 부서 채널</td></tr>
+          <tr><td><code>admin/users.html</code></td><td>사용자 등록/수정/삭제, 비밀번호 초기화, 가입 승인/거절, 부서 이동 요청/승인/거절/즉시 이동</td><td><code>USER_*</code>, <code>PASSWORD_RESET</code>, <code>REGISTER_APPROVE</code>, <code>REGISTER_REJECT</code>, <code>DEPT_TRANSFER_*</code></td><td><code>profiles</code>, <code>registration_requests</code>, <code>department_transfer_requests</code>, <code>admin_*_user</code> RPC 결과</td><td><code>dept_transfer</code> 이동 대상 부서 채널, WARN+ 공통</td></tr>
+          <tr><td><code>admin/managers.html</code></td><td>운영 권한 부여/수정, 권한 변경 실패</td><td><code>MANAGER_UPDATE</code>, <code>MANAGER_PROMOTE</code>, 실패/오류 액션</td><td><code>profiles</code>, <code>departments</code>, <code>admin_update_user</code> RPC</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/departments.html</code></td><td>부서 등록/수정/삭제/비활성화, 부서 저장 실패</td><td><code>DEPT_CREATE</code>, <code>DEPT_UPDATE</code>, <code>DEPT_DELETE</code>, <code>DEPT_DEACTIVATE</code></td><td><code>departments</code>, 부서명/설명/반 개수, 관련 RPC/REST 결과</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/talents.html</code>, <code>js/talent.js</code></td><td>달란트 지급/사용/반환, 출석 지급/취소, 예외 지급 요청, 주간 제한/권한 거부</td><td><code>TALENT_GIVE*</code>, <code>TALENT_MANUAL_GIVE</code>, <code>TALENT_RETURN</code>, <code>ATTENDANCE_GIVE</code>, <code>ATTENDANCE_CANCEL</code>, <code>TALENT_EXCEPTION_REQUEST</code></td><td><code>profiles</code>, <code>talent_items</code>, <code>talent_transactions</code>, <code>talent_exception_requests</code>, <code>give_talent</code>/<code>use_talent</code> RPC</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/talent-adjustments.html</code></td><td>예외 지급 요청 승인/거절, 처리 실패</td><td><code>TALENT_EXCEPTION_APPROVE</code>, <code>TALENT_EXCEPTION_REJECT</code>, 실패/오류 액션</td><td><code>talent_exception_requests</code>, <code>talent_transactions</code>, 승인자/거절 사유</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/talent-items.html</code></td><td>달란트 항목 등록/수정/활성 토글/퀵 버튼 지정</td><td><code>TALENT_ITEM_CREATE</code>, <code>TALENT_ITEM_UPDATE</code>, <code>TALENT_ITEM_TOGGLE</code>, <code>TALENT_ITEM_QUICKBTN</code></td><td><code>talent_items</code>, 항목명/금액/대상/정렬/퀵 버튼 설정</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>talent-receive.html</code></td><td>QR 수령 성공, 위치 권한 차단, QR/RPC 실패</td><td><code>qr_scan</code>, <code>QR_LOCATION_PERMISSION_BLOCKED</code>, 실패/오류 액션</td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>, <code>scan_qr_talent</code> RPC, Geolocation 결과</td><td>WARN+ 공통. 위치 권한 차단은 INFO라 기본 Slack 제외</td></tr>
+          <tr><td><code>admin/talent-qr.html</code></td><td>QR 생성/수정/활성 토글, 수령자 조회 실패</td><td><code>qr_create</code>, <code>qr_edit</code>, <code>qr_toggle</code>, <code>QR_CREATE_*</code></td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>, 선택 항목/기간/위치/반복/수령자 필터</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>shop.html</code></td><td>상품 구매 신청/대리 구매 성공, 잔액 부족/거부, 주문 RPC 오류, 대리 구매 대상 조회 실패</td><td><code>ORDER_REQUEST_SUCCESS</code>, <code>ORDER_REQUEST_DENIED</code>, <code>ORDER_REQUEST_FAIL</code>, <code>PROXY_ORDER_*</code>, <code>PROXY_USER_LOAD_*</code></td><td><code>products</code>, <code>profiles.talent_balance/pending_talent</code>, <code>product_orders</code>, <code>request_product_order</code> RPC</td><td><code>purchase_new</code> 신청자 부서 채널, WARN+ 공통</td></tr>
+          <tr><td><code>admin/shop.html</code>, <code>js/product.js</code></td><td>상품 등록/수정/삭제/비활성화, 썸네일/상세 이미지 업로드 및 이미지 URL 연결</td><td><code>PRODUCT_CREATE</code>, <code>PRODUCT_UPDATE</code>, <code>PRODUCT_IMAGE_UPDATE</code>, <code>PRODUCT_DEACTIVATE</code>, <code>IMAGE_UPLOAD*</code></td><td><code>products</code>, <code>products.image_url</code>, <code>products.detail_image_url</code>, Storage <code>Talents_Items</code>, 이미지 압축/업로드 결과</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/product-categories.html</code>, <code>js/product.js</code></td><td>상품 카테고리 등록/수정/삭제/사용 중 삭제 실패</td><td><code>PRODUCT_CATEGORY_CREATE</code>, <code>PRODUCT_CATEGORY_UPDATE</code>, <code>PRODUCT_CATEGORY_DELETE</code>, 실패/오류 액션</td><td><code>code_groups</code>/<code>code_items</code>의 <code>products.category</code>, <code>products.category</code> 사용 여부</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/purchases.html</code></td><td>주문 상태 변경, 되돌리기, 구매 확정, 일괄 준비/구매/지급 처리</td><td><code>ORDER_STATUS_CHANGE</code>, <code>ORDER_REVERT</code>, <code>ORDER_PURCHASE_CONFIRM</code>, <code>ORDER_BULK_*</code></td><td><code>product_orders</code>, <code>confirm_product_purchase</code> RPC, 상태 코드 <code>product_orders.status</code></td><td><code>purchase_status</code> 구매 신청→상품 준비 전환만 상품 관리 채널, WARN+ 공통</td></tr>
+          <tr><td><code>my-orders.html</code></td><td>본인 주문 취소, 취소 RPC 실패/폴백, 환불 실패</td><td><code>order_cancel</code>, <code>ORDER_CANCEL_*</code>, <code>ORDER_CANCEL_REFUND_FAIL</code></td><td><code>product_orders</code>, <code>cancel_product_order</code> RPC, <code>profiles.pending_talent</code></td><td>WARN+ 공통</td></tr>
+          <tr><td><code>qna.html</code></td><td>질문/댓글/답변 등록, FAQ 지정, 삭제</td><td><code>QNA_CREATE</code>, <code>QNA_ANSWER</code>, <code>QNA_COMMENT</code>, <code>QNA_DELETE</code>, <code>QNA_FAQ_SET</code></td><td><code>qna</code>, <code>qna_comments</code>, 작성자 프로필, FAQ 플래그</td><td><code>qna_new</code> Q&amp;A 채널, WARN+ 공통</td></tr>
+          <tr><td><code>admin/notices.html</code>, <code>index.html</code></td><td>공지 등록/수정/삭제/활성 토글, 공지 보기, 열람 현황 조회, 다시 열지 않음</td><td><code>ANNOUNCEMENT_CREATE</code>, <code>ANNOUNCEMENT_UPDATE</code>, <code>ANNOUNCEMENT_TOGGLE</code>, <code>ANNOUNCEMENT_DELETE</code>, <code>ANNOUNCEMENT_VIEW</code>, <code>ANNOUNCEMENT_READ_STATUS_VIEW</code>, <code>ANNOUNCEMENT_DISMISS</code></td><td><code>announcements</code>, <code>announcement_dismissals</code>, <code>profiles</code>, 열람 현황 사용자 유형/확인상태 필터</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/logs.html</code>, <code>admin/audit.html</code></td><td>로그 확인/일괄 확인, 범위/선택 삭제, 복원, 작업 이력 조회</td><td><code>LOG_ACKNOWLEDGED</code>, <code>LOG_BULK_ACK</code>, <code>LOG_RANGE_DELETE</code>, <code>LOG_SELECT_DELETE</code>, <code>LOG_RESTORE</code></td><td><code>activity_logs</code>, 확인자/확인 메모, <code>is_deleted</code>/<code>is_acknowledged</code></td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/page-access.html</code>, <code>admin/page-features.html</code>, <code>admin/page-permissions.html</code></td><td>역할별 페이지 접근/기능/권한 매트릭스 변경</td><td><code>ROLE_ACCESS_UPDATE</code>, <code>ROLE_FEATURE_UPDATE</code>, <code>PAGE_PERM_UPDATE</code></td><td><code>role_page_access</code>, <code>role_page_features</code>, <code>page_permissions</code>, 권한 코드/등급</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/reports.html</code></td><td>보고서 조회/저장/삭제/시드 등록</td><td><code>REPORT_VIEW</code>, <code>REPORT_SAVE</code>, <code>REPORT_DELETE</code>, <code>REPORT_SEED</code>, 실패/오류 액션</td><td><code>reports</code>, 보고서 유형/제목/내용, 작성자</td><td>WARN+ 공통</td></tr>
+        </tbody>
+      </table>
+    </div>
+
     <!-- 도메인별 로그 -->
     <div class="rule-section">
       <h2>📂 도메인별 로그 액션 목록</h2>
@@ -286,7 +324,7 @@
           <tr><td>ANNOUNCEMENT_VIEW</td><td><span class="level-tag info">INFO</span></td><td>공지 사항에서 기존 공지 보기</td></tr>
           <tr><td>ANNOUNCEMENT_CREATE / ANNOUNCEMENT_UPDATE</td><td><span class="level-tag info">INFO</span></td><td>공지 등록/수정 성공</td></tr>
           <tr><td>ANNOUNCEMENT_TOGGLE</td><td><span class="level-tag info">INFO</span></td><td>공지 활성/비활성 토글 성공</td></tr>
-          <tr><td>ANNOUNCEMENT_READ_STATUS_VIEW</td><td><span class="level-tag info">INFO</span></td><td>전도사님(90+) 이상이 공지 열람 현황을 조회하며 유형 열과 확인/미확인 필터를 사용</td></tr>
+          <tr><td>ANNOUNCEMENT_READ_STATUS_VIEW</td><td><span class="level-tag info">INFO</span></td><td>전도사님(90+) 이상이 공지 열람 현황을 조회하며 유형 열과 전체/확인자/미확인자 콤보박스 필터를 사용</td></tr>
           <tr><td>ANNOUNCEMENT_DISMISS</td><td><span class="level-tag info">INFO</span></td><td>사용자가 로그인 공지 팝업에서 다시 열지 않음 선택</td></tr>
           <tr><td>ANNOUNCEMENT_LOAD_FAIL / ANNOUNCEMENT_CREATE_FAIL / ANNOUNCEMENT_UPDATE_FAIL / ANNOUNCEMENT_TOGGLE_FAIL / ANNOUNCEMENT_DISMISS_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>공지 조회, 저장, 토글, 숨김 처리 실패</td></tr>
         </tbody>

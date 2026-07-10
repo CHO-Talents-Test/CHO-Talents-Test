@@ -319,18 +319,19 @@ async function updateProduct(id, updates) {
   }
 }
 
-async function updateProductImageUrl(id, imageUrl) {
+async function updateProductImageUrl(id, imageUrl, fieldName = 'image_url') {
   if (!_sb) return { data: null, error: 'Supabase not initialized' };
+  const safeField = fieldName === 'detail_image_url' ? 'detail_image_url' : 'image_url';
   try {
-    const { data, error } = await _sb.from('products').update({ image_url: imageUrl }).eq('id', id).select();
+    const { data, error } = await _sb.from('products').update({ [safeField]: imageUrl }).eq('id', id).select();
     if (error) {
-      await logError('PRODUCT_IMAGE_UPDATE_FAIL', { id, 오류: error.message });
+      await logError('PRODUCT_IMAGE_UPDATE_FAIL', { id, 필드: safeField, 오류: error.message });
       return { data: null, error: error.message };
     }
-    await logInfo('PRODUCT_IMAGE_UPDATE', { id, 이미지: !!imageUrl });
+    await logInfo('PRODUCT_IMAGE_UPDATE', { id, 필드: safeField, 이미지: !!imageUrl });
     return { data: data && data[0] ? data[0] : null, error: null };
   } catch (err) {
-    await logError('PRODUCT_IMAGE_UPDATE_ERROR', { id, 오류: String(err) });
+    await logError('PRODUCT_IMAGE_UPDATE_ERROR', { id, 필드: safeField, 오류: String(err) });
     return { data: null, error: String(err) };
   }
 }
