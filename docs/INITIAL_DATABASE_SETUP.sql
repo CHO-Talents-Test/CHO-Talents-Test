@@ -2059,7 +2059,7 @@ VALUES
   ('PROD', 'GITHUB_REPO', 'CHO-Talents', false, true, 'GitHub 저장소 이름 메타데이터'),
   ('PROD', 'GITHUB_BRANCH', 'develop', false, true, '기본 배포/형상관리 브랜치 메타데이터'),
   ('PROD', 'GITHUB_PAT', 'env:GITHUB_PAT', true, false, '비밀 원문 저장 금지. 로컬 .env.local 또는 Edge Function 환경변수에 저장'),
-  ('PROD', 'SUPABASE_ACCESS_TOKEN', 'env:SUPABASE_ACCESS_TOKEN', true, false, '비밀 원문 저장 금지. Supabase CLI/Management API 실행 환경변수에 저장'),
+  ('PROD', 'SB_MANAGEMENT_ACCESS_TOKEN', 'env:SB_MANAGEMENT_ACCESS_TOKEN', true, false, '비밀 원문 저장 금지. Supabase Management API 실행 환경변수에 저장'),
   ('PROD', 'SUPABASE_SERVICE_ROLE_KEY', 'env:SUPABASE_SERVICE_ROLE_KEY', true, false, '서버 전용 키. Edge Function/서버 환경변수 또는 Supabase Vault에 저장'),
   ('PROD', 'SUPABASE_DB_CONNECTION_STRING', 'env:SUPABASE_DB_CONNECTION_STRING', true, false, 'DB 관리/마이그레이션 전용. 로컬/CI 비밀 저장소에서만 사용'),
   ('PROD', 'SLACK_WEBHOOK_PART1', 'env:SLACK_WEBHOOK_PART1', true, false, 'Slack 1부 채널 Webhook. Edge Function Secret에 원문 저장'),

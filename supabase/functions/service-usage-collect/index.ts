@@ -6,8 +6,8 @@ const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN") || Deno.env.get("GITHUB_PAT") || "";
 const GITHUB_OWNER = Deno.env.get("GITHUB_OWNER") || "CHO-Talents";
 const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "CHO-Talents";
-const SUPABASE_ACCESS_TOKEN = Deno.env.get("SUPABASE_ACCESS_TOKEN") || "";
-const SUPABASE_PROJECT_REF = Deno.env.get("SUPABASE_PROJECT_REF") || "";
+const SB_MANAGEMENT_ACCESS_TOKEN = Deno.env.get("SB_MANAGEMENT_ACCESS_TOKEN") || "";
+const SB_PROJECT_REF = Deno.env.get("SB_PROJECT_REF") || "";
 const SLACK_WEBHOOK_OPERATIONS = Deno.env.get("SLACK_WEBHOOK_OPERATIONS") || "";
 const SERVICE_STATS_URL = Deno.env.get("SERVICE_STATS_URL") ||
   "https://cho-talents.github.io/CHO-Talents/admin/service-stats.html";
@@ -234,14 +234,14 @@ async function collectGitHub(errors: ErrorItem[]): Promise<Json> {
 }
 
 async function collectSupabaseManagement(errors: ErrorItem[]): Promise<Json> {
-  if (!SUPABASE_ACCESS_TOKEN || !SUPABASE_PROJECT_REF) {
-    return { status: "needs_secret", message: "SUPABASE_ACCESS_TOKEN 또는 SUPABASE_PROJECT_REF 미설정" };
+  if (!SB_MANAGEMENT_ACCESS_TOKEN || !SB_PROJECT_REF) {
+    return { status: "needs_secret", message: "SB_MANAGEMENT_ACCESS_TOKEN or SB_PROJECT_REF is not set" };
   }
 
   try {
     const response = await fetch(
-      `https://api.supabase.com/v1/projects/${encodeURIComponent(SUPABASE_PROJECT_REF)}/analytics/endpoints/usage.api-counts?interval=1d`,
-      { headers: { Authorization: `Bearer ${SUPABASE_ACCESS_TOKEN}` } },
+      `https://api.supabase.com/v1/projects/${encodeURIComponent(SB_PROJECT_REF)}/analytics/endpoints/usage.api-counts?interval=1d`,
+      { headers: { Authorization: `Bearer ${SB_MANAGEMENT_ACCESS_TOKEN}` } },
     );
     if (!response.ok) throw new Error(`Supabase ${response.status}: ${(await response.text()).slice(0, 300)}`);
     const payload = await response.json() as Json;

@@ -65,7 +65,7 @@ Supabase 접속 이후에는 `app_config` 테이블의 공개 설정을 `get_pub
 ```text
 GITHUB_PAT=...
 GITHUB_TOKEN=...
-SUPABASE_ACCESS_TOKEN=...
+SB_MANAGEMENT_ACCESS_TOKEN=...
 SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_DB_CONNECTION_STRING=...
 ```
@@ -82,14 +82,14 @@ Supabase `app_config` 테이블에는 비밀 원문을 넣지 않는다. 대신 
 |---|---|---|
 | `GITHUB_PAT` | `env:GITHUB_PAT` | 로컬 `.env.local`, CI secret, 서버/Edge Function 환경변수 |
 | `GITHUB_TOKEN` | 미저장 | 서비스 통계용 GitHub fine-grained token. Edge Function Secret |
-| `SUPABASE_ACCESS_TOKEN` | `env:SUPABASE_ACCESS_TOKEN` | 로컬 `.env.local`, CI secret |
+| `SB_MANAGEMENT_ACCESS_TOKEN` | `env:SB_MANAGEMENT_ACCESS_TOKEN` | 로컬 `.env.local`, CI secret |
 | `SUPABASE_SERVICE_ROLE_KEY` | `env:SUPABASE_SERVICE_ROLE_KEY` | 서버/Edge Function 환경변수 또는 Supabase Vault |
 | `SUPABASE_DB_CONNECTION_STRING` | `env:SUPABASE_DB_CONNECTION_STRING` | 로컬/CI 비밀 저장소 |
 | `SLACK_WEBHOOK_PART1` ~ `SLACK_WEBHOOK_PART5` | `env:SLACK_WEBHOOK_PART1` 등 | Supabase Edge Function Secret |
 | `SLACK_WEBHOOK_WORSHIP` | `env:SLACK_WEBHOOK_WORSHIP` | Supabase Edge Function Secret |
 | `SLACK_WEBHOOK_PRODUCT_MANAGEMENT` | `env:SLACK_WEBHOOK_PRODUCT_MANAGEMENT` | Supabase Edge Function Secret |
 | `SLACK_WEBHOOK_OPERATIONS` | `env:SLACK_WEBHOOK_OPERATIONS` | Supabase Edge Function Secret |
-| `SUPABASE_PROJECT_REF` | 미저장 | 서비스 통계용 Supabase Management API 프로젝트 식별자 |
+| `SB_PROJECT_REF` | 미저장 | 서비스 통계용 Supabase Management API 프로젝트 식별자 |
 | `SERVICE_STATS_URL` | 미저장 | 서비스 할당량 Slack 알림의 상세 페이지 링크 |
 | `SLACK_WEBHOOK_ANSWER` | `env:SLACK_WEBHOOK_ANSWER` | Supabase Edge Function Secret |
 
@@ -137,7 +137,7 @@ Slack 알림은 브라우저에서 Webhook URL을 직접 호출하지 않는다.
 |---|---|
 | RLS를 무시하는 서버/로컬 CRUD | `SUPABASE_SERVICE_ROLE_KEY` |
 | SQL 실행, 마이그레이션, 백업 | `SUPABASE_DB_CONNECTION_STRING` 또는 DB password |
-| Supabase CLI 프로젝트 연결 | `SUPABASE_ACCESS_TOKEN` + `SUPABASE_PROJECT_REF` |
+| 서비스 통계 Supabase Management API 연결 | `SB_MANAGEMENT_ACCESS_TOKEN` + `SB_PROJECT_REF` |
 
 ## 8. 보안 원칙
 
