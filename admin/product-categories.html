@@ -16,7 +16,10 @@
     .mgmt-menu.show{display:block;}
     .mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text,#333);text-decoration:none;cursor:pointer;white-space:nowrap;}
     .mgmt-menu a:hover{background:var(--t-hover-bg,#f1f3f5);}
+    .category-row{cursor:pointer;}
+    .category-row:hover{background:var(--t-hover-bg,#f8f9fa);}
     .category-row.inactive{opacity:0.55;}
+    [data-theme="dark"] .category-row:hover{background:#1f2937;}
     [data-theme="dark"] .category-stat{background:#101827;}
   </style>
 </head>
@@ -53,7 +56,6 @@
         <thead>
           <tr>
             <th>순번</th>
-            <th>코드</th>
             <th>명칭</th>
             <th>이모지</th>
             <th>사용 상품</th>
@@ -61,7 +63,7 @@
             <th>관리</th>
           </tr>
         </thead>
-        <tbody id="categoryList"><tr><td colspan="7" class="empty-state">로딩 중...</td></tr></tbody>
+        <tbody id="categoryList"><tr><td colspan="6" class="empty-state">로딩 중...</td></tr></tbody>
       </table>
       <div id="categoryPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
     </div>
@@ -181,7 +183,7 @@
 
       const tbody = document.getElementById('categoryList');
       if (!pageRows.length) {
-        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">등록된 카테고리가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">등록된 카테고리가 없습니다.</td></tr>';
         document.getElementById('categoryPaging').innerHTML = '';
         renderPageSizeControl(totalPages);
         return;
@@ -200,15 +202,14 @@
         items.push(deleteDisabled
           ? `<a style="opacity:0.45;cursor:not-allowed;" title="기본 카테고리이거나 사용 중인 카테고리는 삭제할 수 없습니다.">삭제 불가</a>`
           : `<a onclick='event.stopPropagation();deleteCategory(${keyJson}, ${labelJson})'>삭제</a>`);
-        return `<tr class="category-row${isActive ? '' : ' inactive'}">
+        return `<tr class="category-row${isActive ? '' : ' inactive'}" tabindex="0" role="button" onclick='openEditModal(${rowJson})' onkeydown='handleCategoryRowKey(event, ${rowJson})'>
           <td style="font-weight:700;">${escapeHtml(order)}</td>
-          <td><code>${escapeHtml(key)}</code></td>
           <td>${escapeHtml(label)}</td>
           <td>${escapeHtml(row.emoji || '🏷️')}</td>
           <td>${fmtNum(row.usageCount || 0)}건</td>
           <td>${isActive ? '<span class="level-badge INFO">활성</span>' : '<span class="level-badge FATAL">비활성</span>'}</td>
           <td>
-            <div class="mgmt-dropdown">
+            <div class="mgmt-dropdown" onclick="event.stopPropagation()">
               <button class="filter-btn" onclick="toggleMgmt(event,this)">관리 ▾</button>
               <div class="mgmt-menu">${items.join('')}</div>
             </div>
@@ -234,6 +235,12 @@
     function goCategoryPage(page) {
       categoryPage = page;
       renderCategories();
+    }
+
+    function handleCategoryRowKey(event, row) {
+      if (event.key !== 'Enter' && event.key !== ' ') return;
+      event.preventDefault();
+      openEditModal(row);
     }
 
     function toggleMgmt(e, btn) {
