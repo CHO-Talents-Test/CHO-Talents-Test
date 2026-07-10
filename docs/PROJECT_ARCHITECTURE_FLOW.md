@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-07-08 KST 현재 코드 기준 (v3.67.0)
+작성 기준: 2026-07-10 KST 현재 코드 기준 (v3.68.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -12,12 +12,12 @@ CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시
 |---|---|
 | 역할별 화면 분리 | 사용자 권한에 따라 필요한 메뉴와 화면만 표시한다. |
 | 달란트 운영 관리 | 적립/사용/반환 내역과 잔액을 `profiles`, `talent_transactions` 중심으로 관리한다. |
-| 상품 구매 시스템 | 4단계 구매 흐름(신청→준비→구매→지급)으로 상품 교환을 관리하며, 되돌리기와 구매 취소(cancelled)도 가능하다. 취소는 RPC 우선 시도 + .select() 기반 결과 검증으로 안전하게 처리된다. |
+| 상품 구매 시스템 | 4단계 구매 흐름(신청→준비→구매→지급)으로 상품 교환을 관리하며, 되돌리기와 구매 취소(cancelled)도 가능하다. 상품 구매 화면은 최초 로드 시 카테고리 순번으로 그룹화하고 같은 카테고리 안에서는 상품 정렬 순번을 우선한다. 취소는 RPC 우선 시도 + .select() 기반 결과 검증으로 안전하게 처리된다. |
 | 승인 기반 계정 운영 | 신규 사용자는 신청 후 관리자 승인으로 계정이 생성된다. |
 | 부서 이동 관리 | 부서 변경은 요청→승인 흐름으로 처리한다 (90등급 이상은 즉시 이동). |
 | 운영 추적 | 로그인, 인증/권한 리디렉트, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
 | Slack 알림 | 부서별/유형별 채널로 구매/가입/부서이동/WARN+ 로그/Q&A 등 운영 이벤트를 Edge Function 경유 분리 전송한다. |
-| 공지 사항 | 일반 교사(40+) 이상이 활성 공지를 확인하고, 전도사님(90+) 이상이 공지를 등록/수정/삭제/활성화한다. 활성 공지는 로그인 후 메인 화면 팝업으로 표시한다. |
+| 공지 사항 | 일반 교사(40+) 이상이 활성 공지를 확인하고, 전도사님(90+) 이상이 공지를 등록/수정/삭제/활성화한다. 열람 현황은 공지 등록일시/등록자, 사용자 유형, 확인/미확인 필터를 함께 표시한다. 활성 공지는 로그인 후 메인 화면 팝업으로 표시한다. |
 | 코드 마스터 | 권한/유형/상태/카테고리/로그 액션 같은 구분값을 `code_groups`, `code_items`, `js/codes.js`로 통합 관리한다. |
 | 에러 한글화 | 영문 DB/RPC 에러를 `tErr()` 함수로 한글 변환하여 사용자에게 표시한다. |
 | 보안 강화 | Supabase Auth, RLS, SECURITY DEFINER RPC로 민감 데이터 접근을 제한한다. |
@@ -90,7 +90,7 @@ flowchart LR
 | `admin-guide.html` | 관리자 가이드. 부서 담당 교사(60+) 이상만 접근 가능, 운영 권한 전체 요약 |
 | `qna.html` | Q&A/FAQ. 공개 FAQ 조회, 관리자 FAQ 직접 등록, 로그인 사용자 질문/답변 등록, 60등급 이상 답변+FAQ 등록, 90등급 이상 삭제 |
 | `earn-talents.html` | 달란트 적립 방법 안내. 항목 카드 그리드(모바일 3열, PC 5열)와 `talent_items` 활성 항목 지급 수량 배지 표시. 로그인 사용자의 `user_type`에 따라 학생/교사 탭 기본 선택 |
-| `shop.html` | 상점 조회 + 구매 신청 + 대리 구매. 비로그인은 학생용, 교사는 교사용 기본 필터 |
+| `shop.html` | 상점 조회 + 구매 신청 + 대리 구매. 비로그인은 학생용, 교사는 교사용 기본 필터. 최초 상품 목록은 카테고리 순번 그룹화 후 상품 정렬 순번 → 상품명 기준으로 표시 |
 | `talent-receive.html` | 로그인 사용자 QR 달란트 수령. 카메라 스캔 또는 코드 입력, 대상/기간/시간/반복/위치 조건 검증, 최근 수령 내역 페이징. 카메라 스캔 결과 메시지는 카메라 영역 위에 표시하며 위치 권한 차단 시 alert와 `QR_LOCATION_PERMISSION_BLOCKED` 로그를 남김 |
 | `my-talents.html` | 로그인 사용자 본인의 사용 가능 달란트/상품 수령 예정/사용 대기/사용 완료/반환/예외/누적 적립 달란트, 달란트 내역(적립·예외·사용·반환 배지), 구매 내역. `fetchTalentSummary()`의 `returned` 필드와 `override_week_limit` 이력으로 반환/예외 요약 표시. 지급 취소 이력의 트랜잭션 ID는 숨김 |
 | `my-orders.html` | 로그인 사용자 본인의 구매 신청 내역과 4단계 상태 조회. 공통 페이징과 페이지당 항목 수 설정 |
@@ -104,13 +104,13 @@ flowchart LR
 | `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). QR 목록과 수령자 팝업 모두 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
 | `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 상품 정렬 순번 열 표시, 대상 열 삭제. 상품 등록/수정/이미지 업로드/정렬 순번 관리. 로우 클릭 시 수정 창 열림. 관리 드롭다운(수정/삭제). 상품 삭제는 소프트 삭제 |
-| `admin/product-categories.html` | 70등급 이상 상품 카테고리 관리. `products.category` 코드 항목 등록·수정·삭제(비활성화), 카테고리 정렬 순번 관리. 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제 불가 |
+| `admin/product-categories.html` | 70등급 이상 상품 카테고리 관리. `products.category` 코드 항목 등록·수정·삭제(비활성화), 카테고리 정렬 순번 관리. 그리드는 내부 코드 열을 숨기고 로우 클릭 시 수정 모달을 연다. 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제 불가 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
 | `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
-| `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공지 열람 현황 조회, 공통 페이지당 항목 수 설정을 사용. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
+| `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공지 열람 현황 조회, 공통 페이지당 항목 수 설정을 사용. 열람 현황 모달은 등록일시/등록자, 사용자 유형 열, 확인자/미확인자 스위치 필터를 제공한다. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
 | `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`)와 상세 모달 한글 키 우선 표시. 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
-| `admin/versions.html` | 80등급 이상 버전 이력 확인 |
+| `admin/versions.html` | 80등급 이상 버전 이력 확인. `js/version.js`의 v1.0.0 이후 전체 변경 이력을 표시 |
 | `admin/page-access.html` | 100등급 이상 유형/권한별 페이지 접근/요소 가시성 설정 |
 | `admin/page-features.html` | 100등급 이상 권한별 페이지 기능 설정값 관리 |
 | `admin/audit.html` | 100등급 이상 관리 작업 이력 조회 (기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년), 자동 조회, 10개 카테고리 필터, 한글 작업 유형 라벨, 한글 상세 키 우선 표시). 공통 페이징(PC 20/모바일 10) |
@@ -118,7 +118,7 @@ flowchart LR
 | `admin/change-password.html` | 로그인 사용자 비밀번호 변경 |
 | `css/` | 테마(`themes.css`), 메인(`style.css`), 공통(`common.css`), 관리자(`admin.css`) 스타일 |
 | `js/codes.js` | 권한/유형/상태/카테고리/로그 액션 공통 코드북. DB `code_items`가 있으면 활성 코드의 라벨, 정렬, 색상, 이모지, rank 메타를 우선 적용 |
-| `js/version.js` | 공통 버전 footer, 버전 이력, 최신 `version.js` 조회, 로드된 CSS/JS 자산 `cache: reload` 재검증, 구버전 세션 재로그인 안내 |
+| `js/version.js` | 공통 버전 footer, v1.0.0 이후 버전 이력, 최신 `version.js` 조회, 로드된 CSS/JS 자산 `cache: reload` 재검증, 구버전 세션 재로그인 안내 |
 | `js/slack-notify.js` | Slack 알림 공통 유틸리티. `sendSlackNotify(type, data)`로 Edge Function `slack-notify` 호출. fire-and-forget, 동일 알림 5초 throttle. 부서/유형별 채널 라우팅은 Edge Function에서 수행 |
 | `js/` | 테마(`theme.js`), 네비게이션(`nav.js` - `#navHeaderActions` 내부 햄버거·테마·로그인/로그아웃, 처리 가능 건수 배지 + Q&A 미답변 배지 자동 호출 포함), 코드북(`codes.js`), 페이지 크기(`page-size.js`), Slack 알림(`slack-notify.js`), Supabase 설정, 인증/24h 세션 타임아웃/tErr, 로그, 사용자/달란트/상품/버전 모듈 |
 | `docs/edge-function-slack-notify.ts` | Supabase Edge Function `slack-notify` 배포용 소스. 부서별/유형별 Webhook Secret 동적 선택, Slack Block Kit 메시지 포맷 |
@@ -357,7 +357,7 @@ flowchart TD
 - 공지 사항 페이지 진입은 `initPage(40, '../login.html')`로 제한한다.
 - 활성 공지는 일반 교사 이상이 조회할 수 있고, 비활성 공지 조회/등록/수정/삭제/활성 토글은 90등급 이상 UI 권한과 RLS 정책으로 제한한다.
 - 공지 등록, 수정, 활성 토글은 `ANNOUNCEMENT_CREATE`, `ANNOUNCEMENT_UPDATE`, `ANNOUNCEMENT_TOGGLE` 로그로 남아 작업 이력에서 확인할 수 있다.
-- 공지 열람 현황은 90등급 이상이 `announcement_dismissals`를 조회해 사용자별 확인/미확인 상태를 표시하며, 조회 시 `ANNOUNCEMENT_READ_STATUS_VIEW` 로그를 남긴다.
+- 공지 열람 현황은 90등급 이상이 `announcement_dismissals`를 조회해 사용자별 확인/미확인 상태를 표시하며, 등록일시/등록자 메타, 사용자 유형 열, 확인자/미확인자 스위치 필터를 제공한다. 조회 시 `ANNOUNCEMENT_READ_STATUS_VIEW` 로그를 남긴다.
 
 ## 7. 신규 계정 신청 흐름
 
@@ -540,7 +540,7 @@ flowchart TD
   ConfirmRPC --> Delivered["✅ 상품 지급 (status: delivered)<br/>일괄 처리 가능"]
 ```
 
-상품 구매 흐름에서 `products.target_role`, `products.category`, `products.sort_order`, `product_orders.status`는 코드/정렬 기준으로 표시한다. 상점, 상품 관리, 내 구매 상품, 구매 관리, 구매 통계는 같은 `products.category`와 `product_orders.status` 코드 그룹을 사용하므로 라벨, 색상, 정렬 순서가 동일하다. v3.67.0부터 카테고리 등록·수정·삭제와 카테고리 순번 관리는 `admin/product-categories.html`에서 처리하고, 상품 관리 목록은 카테고리 순번 → 상품 정렬 순번 → 상품명 순으로 기본 정렬한다.
+상품 구매 흐름에서 `products.target_role`, `products.category`, `products.sort_order`, `product_orders.status`는 코드/정렬 기준으로 표시한다. 상점, 상품 관리, 내 구매 상품, 구매 관리, 구매 통계는 같은 `products.category`와 `product_orders.status` 코드 그룹을 사용하므로 라벨, 색상, 정렬 순서가 동일하다. v3.67.0부터 카테고리 등록·수정·삭제와 카테고리 순번 관리는 `admin/product-categories.html`에서 처리하고, 상품 관리 목록은 카테고리 순번 → 상품 정렬 순번 → 상품명 순으로 기본 정렬한다. v3.68.0부터 사용자 상품 구매 화면의 최초 목록도 같은 기준으로 카테고리 그룹 안 상품 정렬 순번을 우선한다.
 
 구매 관리 권한:
 
@@ -712,7 +712,7 @@ flowchart TD
 | `talent_qr_codes` | QR 코드 생성/관리. `target_type`(학생/교사), `valid_from`/`valid_until` 기간 또는 지정일 시간 범위, `max_uses` (0=무제한, N=선착순), `location_*` 위치 제한(100m~5km, 기본 500m), `repeat_type`(none/daily/weekday/week_weekday), `repeat_days` INT[], `repeat_weeks` INT[] |
 | `talent_qr_scans` | QR 코드 스캔 이력. 반복 수령 시 오늘 기준 중복 체크 |
 | `announcements` | 공지 제목/내용, 활성 여부, 작성자/수정자와 시각. 활성 공지는 로그인 사용자 조회 가능, 관리 작업은 90등급 이상 |
-| `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. `(announcement_id, user_id)` 기본키로 중복 저장 방지. 90등급 이상 공지 열람 현황 조회에서 확인/미확인 판정에 사용 |
+| `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. `(announcement_id, user_id)` 기본키로 중복 저장 방지. 90등급 이상 공지 열람 현황 조회에서 확인/미확인 판정과 스위치 필터에 사용 |
 | `activity_logs` | 활동/오류 로그. `is_deleted`/`deleted_at` 소프트 삭제, `user_name` 기록, `action` 코드 라벨과 `details._actionLabel`/`details._actionKo`, 한글 상세 키 별칭 저장. 작업 이력도 이 테이블을 필터링해 표시 |
 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
 | `role_page_features` | 권한 등급별 페이지 기능 설정값 |

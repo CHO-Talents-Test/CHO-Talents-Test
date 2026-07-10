@@ -253,6 +253,8 @@
         if (ao !== bo) return (ao - bo) * dir;
         const labelCmp = getProductCategoryLabel(a.category || 'etc').localeCompare(getProductCategoryLabel(b.category || 'etc'), 'ko');
         if (labelCmp !== 0) return labelCmp * dir;
+        const sortCmp = (getProductSortOrder(a) - getProductSortOrder(b)) * dir;
+        if (sortCmp !== 0) return sortCmp;
         return (a.name || '').localeCompare(b.name || '', 'ko');
       };
       if (shopSortState.key === 'category') return categoryCompare();

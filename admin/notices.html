@@ -71,6 +71,7 @@
     .notice-image-preview .notice-image-caption button { border: 0; background: transparent; color: #d63031; cursor: pointer; padding: 0; font-size: 0.75rem; font-weight: 700; }
     .notice-modal-header { display: flex; align-items: center; justify-content: space-between; gap: 0.8rem; margin-bottom: 1rem; }
     .notice-modal-header h3 { margin: 0; }
+    .notice-read-meta { color: var(--admin-text-muted); font-size: 0.8rem; margin-bottom: 0.35rem; }
     .notice-read-summary { color: var(--admin-text-muted); font-size: 0.84rem; margin-bottom: 0.75rem; }
     .notice-read-filters { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.75rem; }
     .notice-read-filters select { padding: 0.45rem 0.65rem; border: 1px solid var(--admin-border); border-radius: 8px; background: var(--t-input-bg, #fff); color: var(--t-text, #333); font-size: 0.84rem; }
@@ -213,8 +214,23 @@
         <h3 class="modal-title" id="noticeReadTitle">공지 열람 현황</h3>
         <button class="btn-cancel" onclick="closeNoticeReadStatus()">닫기</button>
       </div>
+      <div class="notice-read-meta" id="noticeReadMeta"></div>
       <div class="notice-read-summary" id="noticeReadSummary">열람 현황을 불러오는 중입니다.</div>
       <div class="notice-read-filters">
+        <label class="notice-filter-switch" title="미확인 사용자를 표시합니다.">
+          <span>미확인자</span>
+          <span class="notice-switch">
+            <input type="checkbox" id="noticeReadUncheckedSwitch" checked onchange="onNoticeReadStatusFilterChange()" />
+            <span class="notice-slider"></span>
+          </span>
+        </label>
+        <label class="notice-filter-switch" title="확인 사용자를 표시합니다.">
+          <span>확인자</span>
+          <span class="notice-switch">
+            <input type="checkbox" id="noticeReadCheckedSwitch" checked onchange="onNoticeReadStatusFilterChange()" />
+            <span class="notice-slider"></span>
+          </span>
+        </label>
         <select id="noticeReadUserTypeFilter" onchange="onNoticeReadFilterChange()">
           <option value="">전체 사용자 유형</option>
           <option value="teacher">교사</option>
@@ -229,13 +245,14 @@
         <table class="notice-read-table">
           <thead>
             <tr>
+              <th>유형</th>
               <th>사용자 이름</th>
               <th>확인 여부</th>
               <th>확인 일시</th>
             </tr>
           </thead>
           <tbody id="noticeReadList">
-            <tr><td colspan="3" class="empty-state">로딩 중...</td></tr>
+            <tr><td colspan="4" class="empty-state">로딩 중...</td></tr>
           </tbody>
         </table>
       </div>
@@ -276,6 +293,8 @@
     let noticeReadPageSize = 20;
     let noticeReadUserType = '';
     let noticeReadDeptId = '';
+    let noticeReadShowChecked = true;
+    let noticeReadShowUnchecked = true;
 
     (async () => {
       await navInit();
@@ -290,6 +309,7 @@
       applyNoticePermissions();
       noticePageSize = await loadPageSize('notices', 20);
       noticeReadPageSize = await loadPageSize('notice_reads', 20);
+      if (typeof loadCodeItems === 'function') await loadCodeItems(['profiles.user_type']);
       await loadNotices();
     })();
 
@@ -459,6 +479,13 @@
       return name + username;
     }
 
+    function noticeReadUserTypeLabel(user) {
+      const type = user && user.user_type;
+      if (!type) return '-';
+      if (typeof getCodeLabel === 'function') return getCodeLabel('profiles.user_type', type, type);
+      return type === 'teacher' ? '교사' : type === 'student' ? '학생' : type;
+    }
+
     function populateNoticeReadDeptFilter() {
       const select = document.getElementById('noticeReadDeptFilter');
       if (!select) return;
@@ -476,8 +503,11 @@
           checked: !!noticeReadDismissalMap[user.id],
           checkedAt: noticeReadDismissalMap[user.id] || null
         }))
+        .filter(row => (row.checked && noticeReadShowChecked) || (!row.checked && noticeReadShowUnchecked))
         .sort((a, b) => {
           if (a.checked !== b.checked) return a.checked ? 1 : -1;
+          const typeCompare = noticeReadUserTypeLabel(a.user).localeCompare(noticeReadUserTypeLabel(b.user), 'ko');
+          if (typeCompare !== 0) return typeCompare;
           return noticeReadUserName(a.user).localeCompare(noticeReadUserName(b.user), 'ko');
         });
     }
@@ -491,11 +521,19 @@
       noticeReadPage = 1;
       noticeReadUserType = '';
       noticeReadDeptId = '';
+      noticeReadShowChecked = true;
+      noticeReadShowUnchecked = true;
       const typeFilter = document.getElementById('noticeReadUserTypeFilter');
       if (typeFilter) typeFilter.value = '';
+      const checkedSwitch = document.getElementById('noticeReadCheckedSwitch');
+      const uncheckedSwitch = document.getElementById('noticeReadUncheckedSwitch');
+      if (checkedSwitch) checkedSwitch.checked = true;
+      if (uncheckedSwitch) uncheckedSwitch.checked = true;
       document.getElementById('noticeReadTitle').textContent = `열람 현황: ${notice.title || '공지'}`;
+      document.getElementById('noticeReadMeta').textContent =
+        `등록 ${formatKSTShort(notice.created_at)} · 등록자 ${notice.created_by_name || noticeAuthor(notice)}`;
       document.getElementById('noticeReadSummary').textContent = '열람 현황을 불러오는 중입니다.';
-      document.getElementById('noticeReadList').innerHTML = '<tr><td colspan="3" class="empty-state">로딩 중...</td></tr>';
+      document.getElementById('noticeReadList').innerHTML = '<tr><td colspan="4" class="empty-state">로딩 중...</td></tr>';
       document.getElementById('noticeReadPaging').innerHTML = '';
       document.getElementById('noticeReadModal').classList.remove('hidden');
 
@@ -507,12 +545,12 @@
 
       if (userRes.error) {
         document.getElementById('noticeReadList').innerHTML =
-          '<tr><td colspan="3" class="empty-state" style="color:#d63031;">사용자 목록을 불러오지 못했습니다.<br>' + escapeHtml(tErr(userRes.error.message)) + '</td></tr>';
+          '<tr><td colspan="4" class="empty-state" style="color:#d63031;">사용자 목록을 불러오지 못했습니다.<br>' + escapeHtml(tErr(userRes.error.message)) + '</td></tr>';
         return;
       }
       if (dismissalRes.error) {
         document.getElementById('noticeReadList').innerHTML =
-          '<tr><td colspan="3" class="empty-state" style="color:#d63031;">공지 열람 기록을 불러오지 못했습니다. docs/TASK-066_notice_reads_and_category_manage.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(dismissalRes.error.message)) + '</td></tr>';
+          '<tr><td colspan="4" class="empty-state" style="color:#d63031;">공지 열람 기록을 불러오지 못했습니다. docs/TASK-066_notice_reads_and_category_manage.sql 적용 여부를 확인해주세요.<br>' + escapeHtml(tErr(dismissalRes.error.message)) + '</td></tr>';
         return;
       }
 
@@ -540,12 +578,13 @@
       const pageRows = rows.slice(start, start + noticeReadPageSize);
       const tbody = document.getElementById('noticeReadList');
       if (!pageRows.length) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty-state">해당 조건의 사용자가 없습니다.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">해당 조건의 사용자가 없습니다.</td></tr>';
         document.getElementById('noticeReadPaging').innerHTML = '';
         return;
       }
       tbody.innerHTML = pageRows.map(row => `
         <tr>
+          <td>${escapeHtml(noticeReadUserTypeLabel(row.user))}</td>
           <td>${escapeHtml(noticeReadUserName(row.user))}</td>
           <td><span class="notice-read-status ${row.checked ? 'done' : 'pending'}">${row.checked ? '확인' : '미확인'}</span></td>
           <td>${row.checkedAt ? escapeHtml(formatKSTShort(row.checkedAt)) : '-'}</td>
@@ -558,6 +597,13 @@
     function onNoticeReadFilterChange() {
       noticeReadUserType = document.getElementById('noticeReadUserTypeFilter').value || '';
       noticeReadDeptId = document.getElementById('noticeReadDeptFilter').value || '';
+      noticeReadPage = 1;
+      renderNoticeReadStatus();
+    }
+
+    function onNoticeReadStatusFilterChange() {
+      noticeReadShowChecked = document.getElementById('noticeReadCheckedSwitch').checked;
+      noticeReadShowUnchecked = document.getElementById('noticeReadUncheckedSwitch').checked;
       noticeReadPage = 1;
       renderNoticeReadStatus();
     }
