@@ -33,10 +33,13 @@ const NAV_MENU = [
     label: '상품',
     items: [
       { href: 'shop.html', label: '상품 구매' },
+      { href: 'product-suggestions.html', label: '상품 추천', authOnly: true },
       { href: 'my-orders.html', label: '내 구매 상품', id: 'navMyOrders', authOnly: true },
       { href: 'admin/shop.html', label: '상품 관리', minPerm: 60 },
+      { href: 'admin/product-bulk-register.html', label: '상품 일괄 등록', minPerm: 70 },
       { href: 'admin/product-categories.html', label: '상품 카테고리 관리', minPerm: 70 },
       { href: 'admin/purchases.html', label: '구매 관리', minPerm: 60, badgeId: 'navOrderBadge' },
+      { href: 'admin/product-suggestion-votes.html', label: '상품 추천 투표', minPerm: 60, badgeId: 'navProductSuggestionVoteBadge' },
       { href: 'admin/purchase-stats.html', label: '구매 통계', minPerm: 60 }
     ]
   },
@@ -49,7 +52,8 @@ const NAV_MENU = [
       { href: 'admin/users.html', label: '사용자 관리', minPerm: 60, id: 'navUsers', badgeId: 'navUserBadge' },
       { href: 'admin/bulk-register.html', label: '학생 일괄 등록', minPerm: 80 },
       { href: 'admin/managers.html', label: '관리자 관리', minPerm: 80 },
-      { href: 'admin/departments.html', label: '부서 관리', minPerm: 60 }
+      { href: 'admin/departments.html', label: '부서 관리', minPerm: 60 },
+      { href: 'admin/user-stats.html', label: '사용자 통계', minPerm: 100 }
     ]
   },
   {
@@ -63,7 +67,7 @@ const NAV_MENU = [
       { href: 'admin/log-rules.html', label: '로그 작성 룰', minPerm: 80 },
       { href: 'admin/slack-rules.html', label: 'Slack 알림 룰', minPerm: 80 },
       { href: 'admin/audit-rules.html', label: '작업 이력 작성 룰', minPerm: 80 },
-      { href: 'admin/versions.html', label: '버전', minPerm: 80 },
+      { href: 'admin/versions.html', label: '버전', minPerm: 100 },
       { href: 'admin/reports.html', label: '보고서', minPerm: 80 },
       { href: 'admin/audit.html', label: '작업 이력', minPerm: 100 },
       { href: 'admin/logs.html', label: '로그', minPerm: 100, id: 'navLogs', badgeId: 'navLogBadge' },
@@ -81,6 +85,30 @@ const GUIDE_HREFS = [
   'evangelist-guide.html',
   'admin-guide.html'
 ];
+
+const GUIDE_MIN_RANK = {
+  'guide.html': 0,
+  'teacher-guide.html': 40,
+  'dept-teacher-guide.html': 60,
+  'purchase-teacher-guide.html': 70,
+  'chief-teacher-guide.html': 80,
+  'evangelist-guide.html': 90,
+  'admin-guide.html': 100
+};
+
+function applyGuideSwitcherAccess(rank) {
+  const permissionRank = Number(rank || 0);
+  document.querySelectorAll('.guide-switcher a').forEach(link => {
+    const href = (link.getAttribute('href') || '').split('?')[0].split('#')[0];
+    const guideName = href.split('/').pop();
+    const minRank = GUIDE_MIN_RANK[guideName];
+    if (minRank === undefined) return;
+    const visible = permissionRank >= minRank;
+    link.hidden = !visible;
+    link.style.display = visible ? '' : 'none';
+    link.setAttribute('aria-hidden', String(!visible));
+  });
+}
 
 function _navBasePath() {
   const path = window.location.pathname;
@@ -303,6 +331,7 @@ function navUpdateAuth(session) {
       if (typeof updatePendingBadge === 'function') updatePendingBadge();
       if (typeof updateTalentExceptionBadge === 'function') updateTalentExceptionBadge();
       if (typeof updateNavOrderBadge === 'function') updateNavOrderBadge();
+      if (typeof updateNavProductSuggestionVoteBadge === 'function') updateNavProductSuggestionVoteBadge();
       if (typeof updateQnaBadge === 'function') updateQnaBadge();
     }
     if (rank >= 80) {

@@ -13,6 +13,7 @@ VALUES
   ('activity_logs.action', 'APP_VERSION_STALE_SESSION', '구버전 세션 감지', 7018, '{"category":"AUTH","emoji":"🔄"}'),
   ('activity_logs.action', 'LOGIN_FAIL', '로그인 실패', 7011, '{"category":"AUTH","emoji":"🔒"}'),
   ('activity_logs.action', 'LOGIN_ERROR', '로그인 오류', 7012, '{"category":"AUTH","emoji":"⚠️"}'),
+  ('activity_logs.action', 'LOGIN_PENDING_APPROVAL', '가입 승인 대기', 7019, '{"category":"AUTH","emoji":"⏳"}'),
   ('activity_logs.action', 'AUTH_SESSION_MISSING', '인증 세션 없음', 7013, '{"category":"AUTH","emoji":"⏱️"}'),
   ('activity_logs.action', 'AUTH_PROFILE_LOAD_FAIL', '인증 프로필 조회 실패', 7014, '{"category":"AUTH","emoji":"⚠️"}'),
   ('activity_logs.action', 'AUTH_REDIRECT', '인증/권한 리디렉트', 7015, '{"category":"AUTH","emoji":"↪️"}'),
@@ -20,7 +21,10 @@ VALUES
   ('activity_logs.action', 'QR_LOCATION_PERMISSION_BLOCKED', 'QR 위치 권한 차단', 7017, '{"category":"AUTH","emoji":"📍"}'),
   ('activity_logs.action', 'USER_ID_CHECK_FAIL', '아이디 중복 확인 실패', 1060, '{"category":"USER","emoji":"🔎"}'),
   ('activity_logs.action', 'USER_ID_CHECK_DUPLICATE', '아이디 중복', 1070, '{"category":"USER","emoji":"🔎"}'),
-  ('activity_logs.action', 'BULK_REGISTER', '학생 일괄 등록', 2040, '{"category":"REGISTER","emoji":"📥"}')
+  ('activity_logs.action', 'BULK_REGISTER', '학생 일괄 등록', 2040, '{"category":"REGISTER","emoji":"📥"}'),
+  ('activity_logs.action', 'ORDER_CANCEL', '주문 취소', 5055, '{"category":"ORDER","emoji":"❌"}'),
+  ('activity_logs.action', 'ORDER_CANCEL_REFUND_FAIL', '주문 취소 환불 실패', 5056, '{"category":"ORDER","emoji":"⚠️"}'),
+  ('activity_logs.action', 'SERVICE_USAGE_COLLECT_FAIL', '서비스 사용량 수집 실패', 9090, '{"category":"PERM","emoji":"📊"}')
 ON CONFLICT (group_key, code_key) DO UPDATE
 SET code_value = EXCLUDED.code_value,
     sort_order = EXCLUDED.sort_order,
@@ -73,6 +77,7 @@ BEGIN
   FOR entry IN SELECT * FROM jsonb_each(v) LOOP
     key_label := CASE entry.key
       WHEN 'message' THEN '메시지'
+      WHEN 'id' THEN 'ID'
       WHEN 'details' THEN '상세'
       WHEN 'detail' THEN '상세'
       WHEN 'error' THEN '오류'
@@ -111,6 +116,8 @@ BEGIN
       WHEN 'currentVersion' THEN '현재 버전'
       WHEN 'latestVersion' THEN '최신 버전'
       WHEN 'sessionVersion' THEN '세션 버전'
+      WHEN 'currentPageVersion' THEN '현재 페이지 버전'
+      WHEN 'redirectTarget' THEN '이동 대상'
       WHEN '현재페이지버전' THEN '현재 페이지 버전'
       WHEN '최신버전' THEN '최신 버전'
       WHEN '세션버전' THEN '세션 버전'
@@ -123,10 +130,13 @@ BEGIN
       WHEN 'count' THEN '건수'
       WHEN 'total' THEN '전체'
       WHEN 'totalCount' THEN '전체 건수'
+      WHEN 'items' THEN '항목 목록'
       WHEN 'itemId' THEN '항목 ID'
       WHEN 'itemName' THEN '항목명'
+      WHEN 'managers' THEN '담당자'
       WHEN 'taskId' THEN '작업 ID'
       WHEN 'taskTitle' THEN '작업 제목'
+      WHEN 'reportId' THEN '보고서 ID'
       WHEN 'product_id' THEN '상품 ID'
       WHEN 'productId' THEN '상품 ID'
       WHEN 'product_name' THEN '상품명'
@@ -138,6 +148,12 @@ BEGIN
       WHEN 'sort_order' THEN '표시 순번'
       WHEN 'sortOrder' THEN '표시 순번'
       WHEN 'displayOrder' THEN '표시 순번'
+      WHEN 'max_uses' THEN '최대 사용 횟수'
+      WHEN 'mode' THEN '모드'
+      WHEN 'new_state' THEN '변경 상태'
+      WHEN 'qr_id' THEN 'QR ID'
+      WHEN 'qrCodeId' THEN 'QR 코드 ID'
+      WHEN 'qrId' THEN 'QR ID'
       WHEN 'orderId' THEN '주문 ID'
       WHEN 'orderNo' THEN '주문번호'
       WHEN 'status' THEN '상태'
@@ -153,6 +169,10 @@ BEGIN
       WHEN 'talent_balance' THEN '달란트 잔액'
       WHEN 'pendingTalent' THEN '보류 달란트'
       WHEN 'pending_talent' THEN '보류 달란트'
+      WHEN 'requestId' THEN '요청 ID'
+      WHEN 'talentItemId' THEN '달란트 항목 ID'
+      WHEN 'targetUser' THEN '대상 사용자'
+      WHEN 'txnId' THEN '거래 ID'
       WHEN 'department' THEN '부서'
       WHEN 'departmentId' THEN '부서 ID'
       WHEN 'departmentName' THEN '부서명'
@@ -173,6 +193,17 @@ BEGIN
       WHEN 'isActive' THEN '활성 상태'
       WHEN 'is_deleted' THEN '삭제 상태'
       WHEN 'isDeleted' THEN '삭제 상태'
+      WHEN 'acknowledgedBy' THEN '확인자'
+      WHEN 'acknowledgedAt' THEN '확인 일시'
+      WHEN 'resolutionNote' THEN '해결 사항'
+      WHEN 'ip' THEN 'IP'
+      WHEN 'browser' THEN '브라우저'
+      WHEN 'os' THEN 'OS'
+      WHEN 'screenRes' THEN '화면 해상도'
+      WHEN 'windowSize' THEN '창 크기'
+      WHEN 'deviceType' THEN '기기 유형'
+      WHEN 'language' THEN '언어'
+      WHEN 'userAgent' THEN '사용자 에이전트'
       ELSE NULL
     END;
 

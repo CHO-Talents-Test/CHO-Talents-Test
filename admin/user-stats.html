@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>사용자 통계 - 달란트 마을</title>
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <style>
+    .user-stats-summary { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:0.7rem; margin:1rem 0; }
+    .user-stats-card { padding:1rem; background:var(--t-card,#fff); border:1px solid var(--t-border,#e9ecef); border-radius:12px; }
+    .user-stats-card span { display:block; color:var(--admin-text-muted,var(--t-text-muted,#868e96)); font-size:0.8rem; font-weight:700; }
+    .user-stats-card strong { display:block; margin-top:0.25rem; font-size:1.5rem; color:var(--t-text,#212529); font-variant-numeric:tabular-nums; }
+    .user-stats-tabs { display:flex; gap:0.4rem; flex-wrap:wrap; margin:1rem 0; }
+    .user-stats-tabs .filter-btn.active { background:#228be6; border-color:#228be6; color:#fff; }
+    .user-stats-table { width:100%; border-collapse:collapse; font-size:0.88rem; }
+    .user-stats-table th, .user-stats-table td { padding:0.7rem 0.8rem; border-bottom:1px solid var(--t-border,#e9ecef); text-align:left; }
+    .user-stats-table th { background:var(--t-subtle-surface,#f1f3f5); font-size:0.8rem; }
+    .user-stats-table tbody tr:nth-child(even) { background:var(--t-subtle-surface,#fafbfc); }
+    .user-stats-table tbody tr.user-stats-row { cursor:pointer; }
+    .user-stats-table tbody tr.user-stats-row:hover { background:var(--t-hover-bg,#e7f5ff); }
+    .user-stats-table tbody tr.user-stats-row:focus { outline:2px solid var(--admin-primary,#228be6); outline-offset:-2px; }
+    .user-stats-table .num { text-align:right; font-variant-numeric:tabular-nums; font-weight:700; }
+    .user-stats-note { margin:0.35rem 0 0; color:var(--admin-text-muted,var(--t-text-muted,#868e96)); font-size:0.82rem; }
+    .user-stats-detail-btn { padding:0.3rem 0.65rem; font-size:0.78rem; white-space:nowrap; }
+    .user-stats-chart-wrap { margin:0 0 1rem; padding:0.8rem; border:1px solid var(--t-border,#e9ecef); border-radius:10px; background:var(--t-subtle-surface,#fafbfc); overflow:hidden; }
+    .user-stats-chart-wrap.scrollable { overflow-x:auto; }
+    .user-stats-chart { display:block; width:100%; min-width:0; height:310px; }
+    .user-stats-chart-wrap.scrollable .user-stats-chart { width:auto; min-width:680px; }
+    .user-stats-chart .axis { stroke:var(--t-border,#ced4da); stroke-width:1; }
+    .user-stats-chart .grid { stroke:var(--t-border,#e9ecef); stroke-width:1; stroke-dasharray:3 3; }
+    .user-stats-chart .bar { fill:var(--admin-primary,#228be6); }
+    .user-stats-chart .bar:hover { fill:#1864ab; }
+    .user-stats-chart .label { fill:var(--admin-text-muted,var(--t-text-muted,#868e96)); font-size:11px; }
+    .user-stats-chart .value { fill:var(--admin-text,var(--t-text,#212529)); font-size:11px; font-weight:700; }
+    @media (max-width:640px) {
+      .user-stats-table th, .user-stats-table td { padding:0.6rem; }
+      .user-stats-chart-wrap { padding:0.5rem; }
+      .user-stats-chart { height:270px; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <main class="admin-container" style="max-width:1100px;">
+    <h2>👥 사용자 통계</h2>
+    <p class="user-stats-note">성공한 로그인 이력을 KST(한국 표준시) 기준으로 집계합니다. 사용자 로그인 이력과 통계는 관리자만 조회할 수 있습니다.</p>
+
+    <div id="userStatsFilters" class="filters" style="margin-top:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <label for="userStatsDateFrom" style="font-size:0.85rem;font-weight:700;">기간</label>
+      <input type="date" id="userStatsDateFrom" onchange="loadLoginStatistics()" style="padding:0.4rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      <span>~</span>
+      <input type="date" id="userStatsDateTo" onchange="loadLoginStatistics()" style="padding:0.4rem;border:1px solid var(--admin-border);border-radius:8px;" />
+      <select id="userStatsDept" onchange="loadLoginStatistics()" style="padding:0.4rem 0.7rem;border:1px solid var(--admin-border);border-radius:8px;">
+        <option value="">전체 부서</option>
+      </select>
+      <select id="userStatsUserType" onchange="loadLoginStatistics()" style="padding:0.4rem 0.7rem;border:1px solid var(--admin-border);border-radius:8px;">
+        <option value="">전체 사용자</option>
+        <option value="student">학생</option>
+        <option value="teacher">교사</option>
+      </select>
+      <span style="display:inline-flex;gap:0.3rem;flex-wrap:wrap;">
+        <button class="filter-btn" type="button" onclick="setUserStatsPeriod('today')">오늘</button>
+        <button class="filter-btn" type="button" onclick="setUserStatsPeriod('week')">1주</button>
+        <button class="filter-btn" type="button" onclick="setUserStatsPeriod('month')">1개월</button>
+        <button class="filter-btn" type="button" onclick="setUserStatsPeriod('year')">1년</button>
+      </span>
+    </div>
+
+    <section class="user-stats-summary" aria-label="로그인 요약">
+      <div class="user-stats-card"><span>로그인 횟수</span><strong id="loginTotalCount">0</strong></div>
+      <div class="user-stats-card"><span>로그인 사용자</span><strong id="loginUserCount">0</strong></div>
+      <div class="user-stats-card"><span>선택 기간</span><strong id="loginPeriodLabel" style="font-size:1rem;padding-top:0.35rem;">-</strong></div>
+    </section>
+
+    <section class="admin-card" style="padding:1rem;">
+      <div class="user-stats-tabs" id="userStatsTabs" role="tablist" aria-label="통계 구분">
+        <button type="button" class="filter-btn active" data-view="date" onclick="switchUserStatsView('date')">날짜별</button>
+        <button type="button" class="filter-btn" data-view="weekday" onclick="switchUserStatsView('weekday')">요일별</button>
+        <button type="button" class="filter-btn" data-view="hour" onclick="switchUserStatsView('hour')">시간별</button>
+        <button type="button" class="filter-btn" data-view="department" onclick="switchUserStatsView('department')">부서별</button>
+        <button type="button" class="filter-btn" data-view="user" onclick="switchUserStatsView('user')">사용자별</button>
+      </div>
+      <div id="userStatsContent"><div class="empty-state">통계를 불러오는 중입니다.</div></div>
+    </section>
+  </main>
+
+  <div class="modal-overlay hidden" id="loginStatDetailModal" role="dialog" aria-modal="true" aria-labelledby="loginStatDetailTitle">
+    <div class="modal-box" style="max-width:900px;max-height:85vh;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:1rem;margin-bottom:0.4rem;">
+        <h3 class="modal-title" id="loginStatDetailTitle" style="margin-bottom:0;">로그인 통계 상세</h3>
+        <button class="btn-cancel" type="button" onclick="closeLoginStatDetail()">닫기</button>
+      </div>
+      <p class="user-stats-note" id="loginStatDetailNote"></p>
+      <div id="loginStatDetailContent" style="margin-top:1rem;"></div>
+    </div>
+  </div>
+
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/page-size.js"></script>
+  <script>
+    initSupabase();
+
+    let session;
+    let loginStats = [];
+    let currentView = 'date';
+    const USER_STATS_VIEWS = ['date', 'weekday', 'hour', 'department', 'user'];
+    const userStatsPageSizes = {};
+    const userStatsPages = {};
+
+    const VIEW_LABELS = {
+      date: '날짜별 로그인 통계',
+      weekday: '요일별 로그인 통계',
+      hour: '시간별 로그인 통계',
+      department: '부서별 로그인 통계',
+      user: '사용자별 로그인 통계'
+    };
+
+    (async () => {
+      await navInit();
+      session = await initPage(100, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      await loadUserStatsPageSizes();
+      setUserStatsPeriod('month', false);
+      await loadDepartments();
+      await loadLoginStatistics();
+    })();
+
+    async function loadUserStatsPageSizes() {
+      for (const view of USER_STATS_VIEWS) {
+        userStatsPageSizes[view] = Number(await loadPageSize(`user_stats_${view}`, 20)) || 20;
+        userStatsPages[view] = 1;
+      }
+    }
+
+    function kstDateInput(date) {
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(date).reduce((result, part) => {
+        if (part.type !== 'literal') result[part.type] = part.value;
+        return result;
+      }, {});
+      return `${parts.year}-${parts.month}-${parts.day}`;
+    }
+
+    function setUserStatsPeriod(period, shouldLoad = true) {
+      const end = new Date();
+      const start = new Date(end);
+      if (period === 'week') start.setDate(start.getDate() - 6);
+      else if (period === 'month') start.setDate(start.getDate() - 29);
+      else if (period === 'year') start.setDate(start.getDate() - 364);
+      document.getElementById('userStatsDateFrom').value = kstDateInput(start);
+      document.getElementById('userStatsDateTo').value = kstDateInput(end);
+      if (shouldLoad) loadLoginStatistics();
+    }
+
+    async function loadDepartments() {
+      const { data, error } = await _sb.from('departments').select('id,name').order('name');
+      if (error) return;
+      document.getElementById('userStatsDept').innerHTML = '<option value="">전체 부서</option>' +
+        (data || []).map(dept => `<option value="${dept.id}">${escapeHtml(dept.name)}</option>`).join('');
+    }
+
+    async function loadLoginStatistics() {
+      const content = document.getElementById('userStatsContent');
+      const startDate = document.getElementById('userStatsDateFrom').value || null;
+      const endDate = document.getElementById('userStatsDateTo').value || null;
+      const departmentId = document.getElementById('userStatsDept').value || null;
+      const userType = document.getElementById('userStatsUserType').value || null;
+      content.innerHTML = '<div class="empty-state">통계를 불러오는 중입니다.</div>';
+
+      const { data, error } = await _sb.rpc('get_user_login_statistics', {
+        p_start_date: startDate,
+        p_end_date: endDate,
+        p_department_id: departmentId,
+        p_user_type: userType
+      });
+      if (error) {
+        content.innerHTML = `<div class="empty-state" style="color:#d63031;">조회 오류: ${escapeHtml(tErr(error.message))}</div>`;
+        return;
+      }
+      loginStats = data || [];
+      USER_STATS_VIEWS.forEach(view => { userStatsPages[view] = 1; });
+      renderLoginStats();
+    }
+
+    function switchUserStatsView(view) {
+      currentView = view;
+      document.querySelectorAll('#userStatsTabs [data-view]').forEach(button => {
+        button.classList.toggle('active', button.dataset.view === view);
+      });
+      renderLoginStats();
+    }
+
+    function onUserStatsPageSizeChange(view, value) {
+      const pageSize = Number(value) || 20;
+      userStatsPageSizes[view] = pageSize;
+      userStatsPages[view] = 1;
+      savePageSize(`user_stats_${view}`, pageSize);
+      renderLoginStats();
+    }
+
+    function goUserStatsPage(view, page) {
+      userStatsPages[view] = Math.max(1, Number(page) || 1);
+      renderLoginStats();
+    }
+
+    function renderLoginStats() {
+      const dateRows = loginStats.filter(row => row.group_type === 'date');
+      const userRows = loginStats.filter(row => row.group_type === 'user');
+      const totalLogins = dateRows.reduce((sum, row) => sum + Number(row.login_count || 0), 0);
+      const startDate = document.getElementById('userStatsDateFrom').value || '-';
+      const endDate = document.getElementById('userStatsDateTo').value || '-';
+      document.getElementById('loginTotalCount').textContent = formatNumber(totalLogins);
+      document.getElementById('loginUserCount').textContent = formatNumber(userRows.length);
+      document.getElementById('loginPeriodLabel').textContent = `${startDate} ~ ${endDate}`;
+
+      const rows = loginStats.filter(row => row.group_type === currentView).sort((a, b) => {
+        if (currentView === 'department' || currentView === 'user') {
+          return Number(b.login_count) - Number(a.login_count) || String(a.group_label).localeCompare(String(b.group_label), 'ko');
+        }
+        return Number(a.sort_order) - Number(b.sort_order);
+      });
+      const content = document.getElementById('userStatsContent');
+      if (!rows.length) {
+        content.innerHTML = `<h3 style="margin:0 0 0.8rem;">${VIEW_LABELS[currentView]}</h3><div class="empty-state">선택한 조건의 로그인 이력이 없습니다.</div>`;
+        return;
+      }
+
+      const pageSize = userStatsPageSizes[currentView] || 20;
+      const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+      const currentPage = Math.min(Math.max(1, userStatsPages[currentView] || 1), totalPages);
+      const pageRows = rows.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+      userStatsPages[currentView] = currentPage;
+      const isUserView = currentView === 'user';
+      const tableHeader = isUserView
+        ? '<tr><th>권한</th><th>기준</th><th class="num">로그인 횟수</th><th>마지막 로그인 일시</th><th>관리</th></tr>'
+        : '<tr><th>기준</th><th class="num">로그인 횟수</th><th class="num">로그인 사용자</th><th>관리</th></tr>';
+      const tableRows = pageRows.map(row => {
+        const openDetail = `openLoginStatDetail('${currentView}', '${escapeHtml(row.group_key)}')`;
+        const common = `class="user-stats-row" tabindex="0" onclick="${openDetail}" onkeydown="if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); ${openDetail}; }"`;
+        const cells = isUserView
+          ? `<td>${escapeHtml(permissionLabel(row.permission_level))}</td><td>${escapeHtml(row.group_label)}</td><td class="num">${formatNumber(row.login_count)}</td><td>${escapeHtml(formatKstDateTime(row.last_logged_in_at))}</td>`
+          : `<td>${escapeHtml(row.group_label)}</td><td class="num">${formatNumber(row.login_count)}</td><td class="num">${formatNumber(row.user_count)}</td>`;
+        return `<tr ${common}>${cells}<td><button type="button" class="filter-btn user-stats-detail-btn" onclick="event.stopPropagation(); ${openDetail}">상세</button></td></tr>`;
+      }).join('');
+
+      content.innerHTML = `<h3 style="margin:0 0 0.8rem;">${VIEW_LABELS[currentView]}</h3>
+        ${renderLoginStatsChart(rows)}
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;margin:0 0 0.6rem;">
+          <span class="user-stats-note" style="margin:0;">총 ${formatNumber(rows.length)}건</span>
+          <label class="user-stats-note" style="margin:0;display:inline-flex;align-items:center;gap:0.4rem;">표시 행 수 ${renderPageSizeSelector(`user_stats_${currentView}`, pageSize, `onUserStatsPageSizeChange('${currentView}', this.value)`)}</label>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="user-stats-table">
+            <thead>${tableHeader}</thead>
+            <tbody>${tableRows}</tbody>
+          </table>
+        </div>
+        <div style="display:flex;justify-content:center;align-items:center;gap:0.25rem;flex-wrap:wrap;margin-top:0.85rem;">${buildPagingButtons(currentPage, totalPages, `goUserStatsPage('${currentView}', __PAGE__)`)}</div>`;
+    }
+
+    function renderLoginStatsChart(rows) {
+      if (currentView === 'user') return '';
+      const values = rows.map(row => Math.max(0, Number(row.login_count || 0)));
+      const maxValue = Math.max(...values, 1);
+      const yMax = Math.max(5, Math.ceil(maxValue / 5) * 5);
+      const isScrollableHourChart = currentView === 'hour';
+      const width = isScrollableHourChart
+        ? Math.max(680, rows.length * 42 + 76)
+        : Math.max(320, Math.min(720, rows.length * 32 + 76));
+      const height = 310;
+      const left = 48;
+      const right = 18;
+      const top = 24;
+      const bottom = 88;
+      const chartHeight = height - top - bottom;
+      const chartWidth = width - left - right;
+      const slotWidth = chartWidth / rows.length;
+      const barWidth = Math.max(1, Math.min(24, slotWidth * 0.44));
+      const labelEvery = Math.max(1, Math.ceil(rows.length / (isScrollableHourChart ? 18 : 10)));
+      const ticks = Array.from({ length: 5 }, (_, index) => Math.round(yMax * index / 4));
+      const grid = ticks.map(value => {
+        const y = top + chartHeight - (value / yMax * chartHeight);
+        return `<line class="grid" x1="${left}" x2="${width - right}" y1="${y}" y2="${y}"></line><text class="label" x="${left - 7}" y="${y + 4}" text-anchor="end">${formatNumber(value)}</text>`;
+      }).join('');
+      const bars = rows.map((row, index) => {
+        const value = values[index];
+        const barHeight = value / yMax * chartHeight;
+        const x = left + index * slotWidth + (slotWidth - barWidth) / 2;
+        const y = top + chartHeight - barHeight;
+        const rawLabel = String(row.group_label || '-');
+        const label = rawLabel.length > 12 ? rawLabel.slice(0, 11) + '…' : rawLabel;
+        const labelX = left + index * slotWidth + slotWidth / 2;
+        const showLabel = index % labelEvery === 0 || index === rows.length - 1;
+        return `<g><title>${escapeHtml(rawLabel)}: ${formatNumber(value)}회</title><rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${barWidth.toFixed(1)}" height="${Math.max(barHeight, value ? 1 : 0).toFixed(1)}" rx="3"></rect><text class="value" x="${labelX.toFixed(1)}" y="${Math.max(15, y - 6).toFixed(1)}" text-anchor="middle">${formatNumber(value)}</text>${showLabel ? `<text class="label" x="${labelX.toFixed(1)}" y="${height - bottom + 17}" text-anchor="end" transform="rotate(-42 ${labelX.toFixed(1)} ${height - bottom + 17})">${escapeHtml(label)}</text>` : ''}</g>`;
+      }).join('');
+      return `<div class="user-stats-chart-wrap${isScrollableHourChart ? ' scrollable' : ''}"><svg class="user-stats-chart" viewBox="0 0 ${width} ${height}" role="img" aria-label="${escapeHtml(VIEW_LABELS[currentView])} 막대 그래프"><line class="axis" x1="${left}" x2="${left}" y1="${top}" y2="${height - bottom}"></line><line class="axis" x1="${left}" x2="${width - right}" y1="${height - bottom}" y2="${height - bottom}"></line>${grid}${bars}</svg></div>`;
+    }
+
+    async function openLoginStatDetail(groupType, groupKey) {
+      const sourceRow = loginStats.find(row => row.group_type === groupType && String(row.group_key) === String(groupKey));
+      if (!sourceRow) return;
+
+      const modal = document.getElementById('loginStatDetailModal');
+      const title = document.getElementById('loginStatDetailTitle');
+      const note = document.getElementById('loginStatDetailNote');
+      const detailContent = document.getElementById('loginStatDetailContent');
+      const isUserHistory = groupType === 'user';
+      title.textContent = isUserHistory
+        ? `${sourceRow.group_label} 로그인 이력`
+        : `${sourceRow.group_label} 사용자 목록`;
+      note.textContent = isUserHistory
+        ? '선택한 기간과 부서 필터가 적용된 로그인 이력입니다. 로그인 시점의 부서·권한 정보가 표시됩니다.'
+        : '선택한 기준에 해당하는 사용자입니다. 로그인 횟수와 가장 최근 로그인 시각을 함께 확인할 수 있습니다.';
+      detailContent.innerHTML = '<div class="empty-state">상세 정보를 불러오는 중입니다.</div>';
+      modal.classList.remove('hidden');
+
+      const { data, error } = await _sb.rpc('get_user_login_stat_detail', {
+        p_group_type: groupType,
+        p_group_key: String(groupKey),
+        p_start_date: document.getElementById('userStatsDateFrom').value || null,
+        p_end_date: document.getElementById('userStatsDateTo').value || null,
+        p_department_id: document.getElementById('userStatsDept').value || null,
+        p_user_type: document.getElementById('userStatsUserType').value || null
+      });
+      if (error) {
+        detailContent.innerHTML = `<div class="empty-state" style="color:#d63031;">상세 조회 오류: ${escapeHtml(tErr(error.message))}</div>`;
+        return;
+      }
+
+      renderLoginStatDetail(groupType, data || []);
+    }
+
+    function renderLoginStatDetail(groupType, rows) {
+      const detailContent = document.getElementById('loginStatDetailContent');
+      if (!rows.length) {
+        detailContent.innerHTML = '<div class="empty-state">선택한 조건의 로그인 이력이 없습니다.</div>';
+        return;
+      }
+
+      if (groupType === 'user') {
+        detailContent.innerHTML = `<div class="admin-table-wrap"><table class="user-stats-table">
+          <thead><tr><th>로그인 시각 (KST)</th><th>부서</th><th>권한</th></tr></thead>
+          <tbody>${rows.map(row => `<tr>
+            <td>${escapeHtml(formatKstDateTime(row.last_logged_in_at))}</td>
+            <td>${escapeHtml(row.department_name || '미배정')}</td>
+            <td>${escapeHtml(permissionLabel(row.permission_level))}</td>
+          </tr>`).join('')}</tbody>
+        </table></div>`;
+        return;
+      }
+
+      detailContent.innerHTML = `<div class="admin-table-wrap"><table class="user-stats-table">
+        <thead><tr><th>사용자</th><th>부서</th><th>권한</th><th class="num">로그인 횟수</th><th>최근 로그인 (KST)</th></tr></thead>
+        <tbody>${rows.map(row => `<tr>
+          <td>${escapeHtml(userLabel(row))}</td>
+          <td>${escapeHtml(row.department_name || '미배정')}</td>
+          <td>${escapeHtml(permissionLabel(row.permission_level))}</td>
+          <td class="num">${formatNumber(row.login_count)}</td>
+          <td>${escapeHtml(formatKstDateTime(row.last_logged_in_at))}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+    }
+
+    function closeLoginStatDetail() {
+      document.getElementById('loginStatDetailModal').classList.add('hidden');
+    }
+
+    function userLabel(row) {
+      const displayName = row.display_name || '';
+      const username = row.username || '';
+      if (displayName && username && displayName !== username) return `${displayName} (${username})`;
+      return displayName || username || '이름 없음';
+    }
+
+    function permissionLabel(value) {
+      return (typeof PERMISSION_LABELS !== 'undefined' && PERMISSION_LABELS[value]) || value || '-';
+    }
+
+    function formatKstDateTime(value) {
+      if (!value) return '-';
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hourCycle: 'h23'
+      }).formatToParts(new Date(value)).reduce((result, part) => {
+        if (part.type !== 'literal') result[part.type] = part.value;
+        return result;
+      }, {});
+      return `${parts.year}.${parts.month}.${parts.day} ${parts.hour}:${parts.minute}:${parts.second}`;
+    }
+
+    function formatNumber(value) {
+      return Number(value || 0).toLocaleString('ko-KR');
+    }
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, character => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[character]));
+    }
+
+    document.getElementById('loginStatDetailModal').addEventListener('click', event => {
+      if (event.target.classList.contains('modal-overlay')) closeLoginStatDetail();
+    });
+  </script>
+  <div id="version-container"></div>
+  <script src="../js/version.js"></script>
+</body>
+</html>

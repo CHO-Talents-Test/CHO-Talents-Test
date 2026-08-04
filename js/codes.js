@@ -79,7 +79,8 @@ const CODE_ITEMS = {
   'talent_transactions.source': [
     { key: 'admin', value: '관리자 지급', emoji: '🧑‍💻', order: 10 },
     { key: 'qr', value: 'QR 수령', emoji: '📱', order: 20 },
-    { key: 'override', value: '예외 지급', emoji: '⚠️', order: 30 }
+    { key: 'override', value: '예외 지급', emoji: '⚠️', order: 30 },
+    { key: 'product_suggestion_adoption', value: '상품 추천 채택 보상', emoji: '💡', order: 40 }
   ],
   'qna.status': [
     { key: 'pending', value: '답변 대기', emoji: '❓', order: 10 },
@@ -120,6 +121,9 @@ const CODE_ITEMS = {
     { key: 'winter', value: '겨울', order: 60 }
   ],
   'activity_logs.action': [
+    { key: 'JS_ERROR', value: 'JS 오류', category: 'SYSTEM', emoji: '⚠️', order: 10 },
+    { key: 'RESOURCE_LOAD_FAIL', value: '리소스 로드 실패', category: 'SYSTEM', emoji: '🖼️', order: 11 },
+    { key: 'PROMISE_REJECTION', value: '비동기 오류', category: 'SYSTEM', emoji: '⚠️', order: 12 },
     { key: 'USER_CREATE', value: '사용자 등록', category: 'USER', emoji: '➕', order: 1010 },
     { key: 'USER_UPDATE', value: '사용자 수정', category: 'USER', emoji: '✏️', order: 1020 },
     { key: 'USER_DELETE', value: '사용자 삭제', category: 'USER', emoji: '🗑️', order: 1030 },
@@ -162,6 +166,7 @@ const CODE_ITEMS = {
     { key: 'qr_toggle', value: 'QR 코드 토글', category: 'TALENT', emoji: '🔘', order: 4160 },
     { key: 'qr_scan', value: 'QR 달란트 수령', category: 'TALENT', emoji: '📱', order: 4170 },
     { key: 'PRODUCT_CREATE', value: '상품 등록', category: 'ORDER', emoji: '🛍️', order: 5010 },
+    { key: 'PRODUCT_BULK_CREATE', value: '상품 일괄 등록', category: 'ORDER', emoji: '📦', order: 5011 },
     { key: 'PRODUCT_CATEGORY_CREATE', value: '상품 카테고리 등록', category: 'ORDER', emoji: '🏷️', order: 5015 },
     { key: 'PRODUCT_CATEGORY_UPDATE', value: '상품 카테고리 수정', category: 'ORDER', emoji: '🏷️', order: 5016 },
     { key: 'PRODUCT_CATEGORY_DELETE', value: '상품 카테고리 삭제', category: 'ORDER', emoji: '🏷️', order: 5017 },
@@ -174,6 +179,12 @@ const CODE_ITEMS = {
     { key: 'PRODUCT_DELETE', value: '상품 삭제', category: 'ORDER', emoji: '🗑️', order: 5030 },
     { key: 'PRODUCT_DEACTIVATE', value: '상품 비활성화', category: 'ORDER', emoji: '🚫', order: 5040 },
     { key: 'PRODUCT_SOFT_DELETE', value: '상품 비활성화', category: 'ORDER', emoji: '🚫', order: 5050 },
+    { key: 'PRODUCT_SUGGESTION_CREATE', value: '상품 추천 등록', category: 'ORDER', emoji: '💡', order: 5150 },
+    { key: 'PRODUCT_SUGGESTION_CREATE_FAIL', value: '상품 추천 등록 실패', category: 'ORDER', emoji: '⚠️', order: 5151 },
+    { key: 'PRODUCT_SUGGESTION_ADOPT', value: '추천 상품 채택', category: 'ORDER', emoji: '✅', order: 5153 },
+    { key: 'PRODUCT_SUGGESTION_REJECT', value: '추천 상품 불채택', category: 'ORDER', emoji: '❌', order: 5154 },
+    { key: 'PRODUCT_SUGGESTION_CLOSE', value: '추천 상품 투표 종료', category: 'ORDER', emoji: '⏹️', order: 5155 },
+    { key: 'PRODUCT_SUGGESTION_ADOPTION_TALENT', value: '상품 추천 채택 달란트 지급', category: 'ORDER', emoji: '💰', order: 5156 },
     { key: 'ORDER_REQUEST_SUCCESS', value: '상품 구매 신청', category: 'ORDER', emoji: '🛒', order: 5060 },
     { key: 'PROXY_ORDER_SUCCESS', value: '대리 구매 신청', category: 'ORDER', emoji: '🛒', order: 5070 },
     { key: 'order_cancel', value: '주문 취소', category: 'ORDER', emoji: '❌', order: 5080 },
@@ -181,6 +192,9 @@ const CODE_ITEMS = {
     { key: 'ORDER_STATUS_CHANGE', value: '주문 상태 변경', category: 'ORDER', emoji: '🔄', order: 5090 },
     { key: 'ORDER_REVERT', value: '주문 상태 되돌리기', category: 'ORDER', emoji: '↩️', order: 5100 },
     { key: 'ORDER_PURCHASE_CONFIRM', value: '구매 확정', category: 'ORDER', emoji: '✅', order: 5110 },
+    { key: 'ORDER_PURCHASE_CANCEL', value: '구매 취소 처리', category: 'ORDER', emoji: '❌', order: 5115 },
+    { key: 'ORDER_PURCHASE_CANCEL_FAIL', value: '구매 취소 처리 실패', category: 'ORDER', emoji: '⚠️', order: 5116 },
+    { key: 'ORDER_PURCHASE_CANCEL_ERROR', value: '구매 취소 처리 오류', category: 'ORDER', emoji: '⚠️', order: 5117 },
     { key: 'ORDER_BULK_PREPARE', value: '일괄 상품 준비', category: 'ORDER', emoji: '📦', order: 5120 },
     { key: 'ORDER_BULK_PURCHASE', value: '일괄 구매 확정', category: 'ORDER', emoji: '📦', order: 5130 },
     { key: 'ORDER_BULK_DELIVER', value: '일괄 상품 지급', category: 'ORDER', emoji: '📦', order: 5140 },
@@ -289,7 +303,7 @@ function getAuditActions() {
   getCodeItems('activity_logs.action', { includeInactive: true }).forEach(item => {
     if (!item.category) return;
     result[item.key] = {
-      label: item.value || item.key,
+      label: typeof getActionLabel === 'function' ? getActionLabel(item.key) : (item.value || item.key),
       category: item.category,
       emoji: item.emoji || '📋'
     };

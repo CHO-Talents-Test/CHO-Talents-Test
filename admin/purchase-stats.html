@@ -21,6 +21,7 @@
     .stats-table tbody tr:hover { background: var(--t-hover-bg, #f8f9fa); }
     .stats-table tbody tr:nth-child(even) { background: var(--t-subtle-surface, #fafbfc); }
     .stats-table tbody tr:nth-child(even):hover { background: var(--t-hover-bg, #f1f3f5); }
+    .stats-table tbody tr.stats-detail-row { cursor: pointer; }
     .stats-table td { padding: 0.55rem 0.8rem; color: var(--t-text, #212529); }
     .stats-table td.num { text-align: right; font-weight: 600; font-variant-numeric: tabular-nums; }
     .pct-bar { background: var(--t-border, #e9ecef); border-radius: 4px; height: 20px; width: 100%; max-width: 160px; position: relative; overflow: hidden; }
@@ -133,7 +134,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -421,12 +422,12 @@
         } else {
           pager.pageRows.forEach(([name, count]) => {
             const pct = total > 0 ? ((count / total) * 100).toFixed(1) : 0;
-            tableHtml += `<tr>
+            tableHtml += `<tr class="stats-detail-row" onclick="openProductDetail(${escAttr(JSON.stringify(name))},'${typeKey}')">
               <td style="font-weight:600;">${esc(name)}</td>
               <td class="num">${fmtNum(count)}</td>
               <td class="num">${pct}%</td>
               <td>${renderPctBar(pct, info.barGrad)}</td>
-              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openProductDetail('${escAttr(name)}','${typeKey}')">상세</button></td>
+              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="event.stopPropagation();openProductDetail(${escAttr(JSON.stringify(name))},'${typeKey}')">상세</button></td>
             </tr>`;
           });
         }
@@ -467,14 +468,14 @@
           pager.pageRows.forEach(([name, v]) => {
             const pct = total > 0 ? ((v.count / total) * 100).toFixed(1) : 0;
             const avg = v.users.size > 0 ? (v.count / v.users.size).toFixed(1) : '0';
-            tableHtml += `<tr>
+            tableHtml += `<tr class="stats-detail-row" onclick="openDeptDetail(${escAttr(JSON.stringify(name))},'${typeKey}')">
               <td style="font-weight:600;">${esc(name)}</td>
               <td class="num">${fmtNum(v.count)}</td>
               <td class="num">${v.users.size}명</td>
               <td class="num hide-mobile">${avg}</td>
               <td class="num">${pct}%</td>
               <td class="hide-mobile">${renderPctBar(pct, info.barGrad)}</td>
-              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openDeptDetail('${escAttr(name)}','${typeKey}')">상세</button></td>
+              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="event.stopPropagation();openDeptDetail(${escAttr(JSON.stringify(name))},'${typeKey}')">상세</button></td>
             </tr>`;
           });
         }
@@ -521,13 +522,13 @@
         } else {
           pager.pageRows.forEach(u => {
             const pct = total > 0 ? ((u.count / total) * 100).toFixed(1) : 0;
-            tableHtml += `<tr>
+            tableHtml += `<tr class="stats-detail-row" onclick="openUserDetail('${u.id}')">
               <td>${esc(u.dept)}</td>
               <td style="font-weight:600;">${esc(u.name)}</td>
               <td class="num">${fmtNum(u.count)}</td>
               <td class="num">${pct}%</td>
               <td>${renderPctBar(pct, info.barGrad)}</td>
-              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="openUserDetail('${u.id}')">상세</button></td>
+              <td><button class="filter-btn" style="padding:0.25rem 0.5rem;font-size:0.75rem;" onclick="event.stopPropagation();openUserDetail('${u.id}')">상세</button></td>
             </tr>`;
           });
         }

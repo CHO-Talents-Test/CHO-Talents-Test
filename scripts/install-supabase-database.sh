@@ -32,7 +32,7 @@ Usage:
 Options:
   --connection-string VALUE  PostgreSQL connection string.
   --sql-path PATH            Base SQL path. Defaults to docs/INITIAL_DATABASE_SETUP.sql.
-  --app-config-env VALUE     app_config.env value. Defaults to config/public-config.js TARGET_ENV.
+  --app-config-env VALUE     Required app_config.env value: DEV or PROD.
   --supabase-url VALUE       Supabase project URL.
   --supabase-anon-key VALUE  Supabase publishable/anon key.
   --auth-email-domain VALUE  Auth email domain. Defaults to @cho-talents.app.
@@ -53,7 +53,11 @@ The script automatically appends docs/TASK-057_code_master.sql,
 docs/TASK-058_product_category_policy.sql,
 docs/TASK-068_product_category_page_and_sort_order.sql, and
 docs/TASK-069_product_detail_image.sql, and
-docs/TASK-070_service_usage_monitoring.sql when no --extra-sql-path is provided.
+docs/TASK-070_service_usage_monitoring.sql through
+docs/TASK-089_product_suggestion_slack_notifications.sql and
+docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql when no --extra-sql-path is provided.
+docs/TASK-091_user_stats_filters.sql and
+docs/TASK-098_purchase_request_cancellation.sql are applied last.
 USAGE
 }
 
@@ -234,14 +238,23 @@ load_env_file "$ENV_FILE"
 
 CONNECTION_STRING="${CONNECTION_STRING:-${SUPABASE_DB_CONNECTION_STRING:-}}"
 APP_CONFIG_ENV_VALUE="${APP_CONFIG_ENV_VALUE:-${APP_CONFIG_ENV:-}}"
-APP_CONFIG_ENV_VALUE="${APP_CONFIG_ENV_VALUE:-$(detect_public_config_env)}"
-APP_CONFIG_ENV_VALUE="${APP_CONFIG_ENV_VALUE:-PROD}"
+APP_CONFIG_ENV_VALUE="$(printf '%s' "$APP_CONFIG_ENV_VALUE" | tr '[:lower:]' '[:upper:]')"
+if [[ "$APP_CONFIG_ENV_VALUE" != "DEV" && "$APP_CONFIG_ENV_VALUE" != "PROD" ]]; then
+  fail "APP_CONFIG_ENV is required and must be DEV or PROD."
+fi
 SUPABASE_URL_VALUE="${SUPABASE_URL_VALUE:-${SUPABASE_URL:-}}"
 SUPABASE_ANON_KEY_VALUE="${SUPABASE_ANON_KEY_VALUE:-${SUPABASE_ANON_KEY:-}}"
 AUTH_EMAIL_DOMAIN_VALUE="${AUTH_EMAIL_DOMAIN_VALUE:-${SUPABASE_AUTH_EMAIL_DOMAIN:-@cho-talents.app}}"
 KAKAO_MAP_KEY_VALUE="${KAKAO_MAP_KEY_VALUE:-${KAKAO_MAP_KEY:-}}"
-GITHUB_OWNER_VALUE="${GITHUB_OWNER_VALUE:-${GITHUB_OWNER:-CHO-Talents}}"
-GITHUB_REPO_VALUE="${GITHUB_REPO_VALUE:-${GITHUB_REPO:-CHO-Talents}}"
+if [ "$APP_CONFIG_ENV_VALUE" = "DEV" ]; then
+  DEFAULT_GITHUB_OWNER="CHO-Talents-Test"
+  DEFAULT_GITHUB_REPO="CHO-Talents-Test"
+else
+  DEFAULT_GITHUB_OWNER="CHO-Talents"
+  DEFAULT_GITHUB_REPO="CHO-Talents"
+fi
+GITHUB_OWNER_VALUE="${GITHUB_OWNER_VALUE:-${GITHUB_OWNER:-$DEFAULT_GITHUB_OWNER}}"
+GITHUB_REPO_VALUE="${GITHUB_REPO_VALUE:-${GITHUB_REPO:-$DEFAULT_GITHUB_REPO}}"
 GITHUB_BRANCH_VALUE="${GITHUB_BRANCH_VALUE:-${GITHUB_BRANCH:-develop}}"
 
 [ -n "$SUPABASE_URL_VALUE" ] || fail 'Supabase URL is required. Pass --supabase-url or set SUPABASE_URL.'
@@ -267,6 +280,54 @@ if [ "${#EXTRA_SQL_PATHS[@]}" -eq 0 ]; then
   DEFAULT_SERVICE_USAGE_SQL="$ROOT_DIR/docs/TASK-070_service_usage_monitoring.sql"
   if [ -f "$DEFAULT_SERVICE_USAGE_SQL" ]; then
     EXTRA_SQL_PATHS+=("$DEFAULT_SERVICE_USAGE_SQL")
+  fi
+  DEFAULT_SERVICE_USAGE_WEBHOOK_FAILURES_SQL="$ROOT_DIR/docs/TASK-080_service_usage_source_and_webhook_failures.sql"
+  if [ -f "$DEFAULT_SERVICE_USAGE_WEBHOOK_FAILURES_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_SERVICE_USAGE_WEBHOOK_FAILURES_SQL")
+  fi
+  DEFAULT_USER_LOGIN_STATISTICS_SQL="$ROOT_DIR/docs/TASK-081_user_login_statistics.sql"
+  if [ -f "$DEFAULT_USER_LOGIN_STATISTICS_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_USER_LOGIN_STATISTICS_SQL")
+  fi
+  DEFAULT_SUPER_ADMIN_LOGIN_EXCLUSION_SQL="$ROOT_DIR/docs/TASK-082_exclude_super_admin_login_history.sql"
+  if [ -f "$DEFAULT_SUPER_ADMIN_LOGIN_EXCLUSION_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_SUPER_ADMIN_LOGIN_EXCLUSION_SQL")
+  fi
+  DEFAULT_USER_LOGIN_STATISTICS_DETAIL_SQL="$ROOT_DIR/docs/TASK-084_user_login_statistics_detail.sql"
+  if [ -f "$DEFAULT_USER_LOGIN_STATISTICS_DETAIL_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_USER_LOGIN_STATISTICS_DETAIL_SQL")
+  fi
+  DEFAULT_PRODUCT_SUGGESTIONS_SQL="$ROOT_DIR/docs/TASK-085_product_suggestions.sql"
+  if [ -f "$DEFAULT_PRODUCT_SUGGESTIONS_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_SUGGESTIONS_SQL")
+  fi
+  DEFAULT_PRODUCT_SUGGESTION_ADMIN_DECISION_SQL="$ROOT_DIR/docs/TASK-086_product_suggestion_admin_decision.sql"
+  if [ -f "$DEFAULT_PRODUCT_SUGGESTION_ADMIN_DECISION_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_SUGGESTION_ADMIN_DECISION_SQL")
+  fi
+  DEFAULT_PRODUCT_SUGGESTION_DETAIL_IMAGE_SQL="$ROOT_DIR/docs/TASK-087_product_suggestion_detail_image.sql"
+  if [ -f "$DEFAULT_PRODUCT_SUGGESTION_DETAIL_IMAGE_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_SUGGESTION_DETAIL_IMAGE_SQL")
+  fi
+  DEFAULT_PRODUCT_SUGGESTION_ADOPTION_TALENT_SQL="$ROOT_DIR/docs/TASK-088_product_suggestion_adoption_talent.sql"
+  if [ -f "$DEFAULT_PRODUCT_SUGGESTION_ADOPTION_TALENT_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_SUGGESTION_ADOPTION_TALENT_SQL")
+  fi
+  DEFAULT_PRODUCT_SUGGESTION_SLACK_NOTIFICATIONS_SQL="$ROOT_DIR/docs/TASK-089_product_suggestion_slack_notifications.sql"
+  if [ -f "$DEFAULT_PRODUCT_SUGGESTION_SLACK_NOTIFICATIONS_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_SUGGESTION_SLACK_NOTIFICATIONS_SQL")
+  fi
+  DEFAULT_PRODUCT_SUGGESTION_SUPER_ADMIN_VOTE_PRIVILEGES_SQL="$ROOT_DIR/docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql"
+  DEFAULT_USER_STATS_FILTERS_SQL="$ROOT_DIR/docs/TASK-091_user_stats_filters.sql"
+  DEFAULT_PURCHASE_REQUEST_CANCELLATION_SQL="$ROOT_DIR/docs/TASK-098_purchase_request_cancellation.sql"
+  if [ -f "$DEFAULT_PRODUCT_SUGGESTION_SUPER_ADMIN_VOTE_PRIVILEGES_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PRODUCT_SUGGESTION_SUPER_ADMIN_VOTE_PRIVILEGES_SQL")
+  fi
+  if [ -f "$DEFAULT_USER_STATS_FILTERS_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_USER_STATS_FILTERS_SQL")
+  fi
+  if [ -f "$DEFAULT_PURCHASE_REQUEST_CANCELLATION_SQL" ]; then
+    EXTRA_SQL_PATHS+=("$DEFAULT_PURCHASE_REQUEST_CANCELLATION_SQL")
   fi
 fi
 

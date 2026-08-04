@@ -190,7 +190,7 @@
     .mgmt-menu a:hover { background: var(--t-hover-bg, #f1f3f5); }
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -948,7 +948,7 @@
           return;
         }
         const { error } = await updateUser(editingId, { displayName, userType, permissionLevel: permLevel, departmentId: deptId, managedDeptId: needsManagedDept ? managedDeptId : null, classNumber });
-        if (error) { await logError('USER_UPDATE_FAIL', { userId: editingId, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
+        if (error) { errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
         const 변경Parts = [];
         if ((target.display_name || '') !== displayName) 변경Parts.push(`이름: ${target.display_name || '-'} → ${displayName}`);
         if ((target.user_type || 'student') !== userType) 변경Parts.push(`유형: ${target.user_type || 'student'} → ${userType}`);
@@ -1032,6 +1032,7 @@
     }
 
     async function approveReq(reqId, username, displayName, deptId) {
+      const reqRow = allRequests.find(r => r.id === reqId) || {};
       const userType = document.getElementById('reqType_' + reqId).value;
       const permLevel = userType === 'student' ? 'student' : (document.getElementById('reqPerm_' + reqId).value || 'teacher');
       const managedEl = document.getElementById('reqManaged_' + reqId);
@@ -1040,21 +1041,48 @@
       const permLabel = PERMISSION_LABELS[permLevel] || permLevel;
       if (!confirm(`"${username}" (${displayName})을(를) [${permLabel}] 역할로 승인하시겠습니까?`)) return;
       const { error } = await createUser({ username, password: '1234', displayName, userType, permissionLevel: permLevel, departmentId: deptId || null, managedDeptId });
-      if (error) { await logError('REGISTER_APPROVE_FAIL', { 아이디: username, 오류: error }); alert('계정 생성 실패: ' + tErr(error)); return; }
+      if (error) {
+        await logError('REGISTER_APPROVE_FAIL', {
+          requestId: reqId,
+          targetAccount: username,
+          targetName: displayName,
+          부서: getDeptName(deptId),
+          신청사유: reqRow.reason || '없음',
+          오류: error
+        });
+        alert('계정 생성 실패: ' + tErr(error)); return;
+      }
       await _sb.from('registration_requests').update({
         status: 'approved', reviewed_by: session.username, review_note: '승인됨', reviewed_at: new Date().toISOString()
       }).eq('id', reqId);
-      await logInfo('REGISTER_APPROVE', { 아이디: username, 대상: displayName, 권한: PERMISSION_LABELS[permLevel] || permLevel, 부서: getDeptName(deptId), 변경내역: `가입 승인: ${displayName} (${PERMISSION_LABELS[permLevel] || permLevel})` });
+      await logInfo('REGISTER_APPROVE', {
+        requestId: reqId,
+        targetAccount: username,
+        targetName: displayName,
+        권한: PERMISSION_LABELS[permLevel] || permLevel,
+        부서: getDeptName(deptId),
+        신청사유: reqRow.reason || '없음',
+        변경내역: `가입 승인: ${displayName} (${username}) / 권한: ${PERMISSION_LABELS[permLevel] || permLevel} / 부서: ${getDeptName(deptId)}`
+      });
       await loadData();
     }
 
     async function rejectReq(reqId, username) {
+      const reqRow = allRequests.find(r => r.id === reqId) || {};
       const note = prompt(`"${username}" 가입 거부 사유를 입력해주세요:`, '');
       if (note === null) return;
       await _sb.from('registration_requests').update({
         status: 'rejected', reviewed_by: session.username, review_note: note || '거부됨', reviewed_at: new Date().toISOString()
       }).eq('id', reqId);
-      await logInfo('REGISTER_REJECT', { 아이디: username, 사유: note || '거부됨', 변경내역: `가입 거부: ${username}` });
+      await logInfo('REGISTER_REJECT', {
+        requestId: reqId,
+        targetAccount: username,
+        targetName: reqRow.display_name || username,
+        부서: getDeptName(reqRow.department_id),
+        신청사유: reqRow.reason || '없음',
+        사유: note || '거부됨',
+        변경내역: `가입 거부: ${reqRow.display_name || username} (${username}) / 사유: ${note || '거부됨'}`
+      });
       await loadData();
     }
 

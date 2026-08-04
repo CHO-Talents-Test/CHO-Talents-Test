@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상품 일괄 등록 - CHO Talents</title>
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <style>
+    .bulk-step { margin-bottom:1.35rem; }
+    .bulk-drop-zone { border:2px dashed var(--admin-border); border-radius:12px; padding:2rem 1rem; text-align:center; cursor:pointer; background:var(--t-subtle-surface,#f8f9fa); transition:border-color .2s, background .2s; }
+    .bulk-drop-zone.dragging { border-color:var(--admin-primary); background:var(--t-primary-light,#eef); }
+    .bulk-note { font-size:.82rem; color:var(--admin-text-muted); line-height:1.55; }
+    .bulk-count { font-size:.82rem; font-weight:700; }
+    .bulk-status-success { color:#2b8a3e; font-weight:700; }
+    .bulk-status-error { color:#e03131; font-weight:700; }
+    .bulk-url { display:block; max-width:220px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.8rem; }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <main class="admin-container">
+    <h2 style="margin-bottom:1rem;">📦 상품 일괄 등록</h2>
+
+    <section class="admin-table-wrap bulk-step">
+      <div class="admin-table-header"><div class="admin-table-title">1. 양식 엑셀 다운로드</div></div>
+      <div style="padding:1rem;">
+        <p class="bulk-note" style="margin:0 0 .8rem;">양식을 내려받아 상품 정보를 입력하세요. 상품명과 대상은 필수이며, URL 항목은 입력한 경우 http 또는 https 주소여야 합니다. 일괄 등록 상품은 달란트 가격 0·기타 카테고리·비활성 상태로 생성되므로, 공개 전 <strong>상품 관리</strong>에서 가격·카테고리·활성 상태를 설정하세요.</p>
+        <button type="button" class="filter-btn" style="background:var(--admin-primary);color:#fff;" onclick="downloadTemplate()">📥 양식 다운로드 (.xlsx)</button>
+      </div>
+    </section>
+
+    <section class="admin-table-wrap bulk-step">
+      <div class="admin-table-header"><div class="admin-table-title">2. 작성한 파일 업로드</div></div>
+      <div style="padding:1rem;">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none;" />
+        <div id="dropZone" class="bulk-drop-zone" tabindex="0" role="button" aria-label="상품 일괄 등록 파일 선택">
+          <div style="font-size:2rem;margin-bottom:.45rem;">📄</div>
+          <div style="font-weight:700;">클릭하거나 파일을 끌어다 놓아 업로드</div>
+          <div class="bulk-note" style="margin-top:.3rem;">지원 형식: .xlsx, .xls, .csv</div>
+        </div>
+        <div id="fileInfo" style="display:none;margin-top:.8rem;padding:.65rem .75rem;background:var(--t-accent-surface,#f3f0ff);border-radius:8px;font-size:.85rem;">
+          <span id="fileName"></span>
+          <button type="button" onclick="clearFile()" style="float:right;background:none;border:0;cursor:pointer;color:#e03131;font-weight:700;">파일 초기화</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="admin-table-wrap bulk-step" id="previewSection" style="display:none;">
+      <div class="admin-table-header">
+        <div class="admin-table-title" id="previewTitle">3. 등록 예정 상품 미리보기</div>
+        <div style="display:flex;gap:.6rem;"><span id="validCount" class="bulk-count bulk-status-success"></span><span id="errorCount" class="bulk-count bulk-status-error"></span></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="admin-table">
+          <thead><tr><th>행</th><th>상품명</th><th>대상</th><th>썸네일 이미지 URL</th><th>상세 설명 이미지 URL</th><th>상품 설명</th><th>구매 URL</th><th>검증 결과</th></tr></thead>
+          <tbody id="previewBody"></tbody>
+        </table>
+      </div>
+      <div style="padding:1rem;text-align:center;">
+        <button type="button" class="filter-btn" id="btnRegister" style="background:#2b8a3e;color:#fff;padding:.6rem 2rem;font-size:.95rem;font-weight:700;" onclick="startRegistration()" disabled>✅ 상품 일괄 등록 시작</button>
+      </div>
+    </section>
+
+    <section class="admin-table-wrap bulk-step" id="resultSection" style="display:none;">
+      <div class="admin-table-header"><div class="admin-table-title">4. 등록 결과</div></div>
+      <div style="padding:1rem;">
+        <div id="resultSummary" style="font-size:.9rem;margin-bottom:.8rem;"></div>
+        <div style="overflow-x:auto;">
+          <table class="admin-table"><thead><tr><th>행</th><th>상품명</th><th>대상</th><th>결과</th><th>사유</th></tr></thead><tbody id="resultBody"></tbody></table>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/image-upload.js"></script>
+  <script src="../js/product.js"></script>
+  <script src="../js/version.js"></script>
+  <script>
+    initSupabase();
+    let session = null;
+    let parsedRows = [];
+
+    (async () => {
+      await navInit();
+      session = await initPage(70, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      if (typeof loadCodeItems === 'function') await loadCodeItems(['products.target_role', 'products.category']);
+      bindFileInput();
+    })();
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, char => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[char]));
+    }
+
+    function downloadTemplate() {
+      const header = [['상품명', '대상', '썸네일 이미지 URL', '상세 설명 이미지 URL', '상품 설명', '구매 URL']];
+      const sample = [[
+        '예시 상품', '학생', 'https://example.com/thumbnail.jpg', 'https://example.com/detail.jpg',
+        '상품 설명을 입력하세요.', 'https://example.com/product'
+      ]];
+      const ws = XLSX.utils.aoa_to_sheet(header.concat(sample));
+      ws['!cols'] = [{ wch:24 }, { wch:12 }, { wch:42 }, { wch:42 }, { wch:42 }, { wch:42 }];
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, '상품목록');
+      XLSX.writeFile(wb, '상품_일괄등록_양식.xlsx');
+    }
+
+    function bindFileInput() {
+      const input = document.getElementById('fileInput');
+      const zone = document.getElementById('dropZone');
+      input.addEventListener('change', () => { if (input.files && input.files[0]) processFile(input.files[0]); });
+      zone.addEventListener('click', () => input.click());
+      zone.addEventListener('keydown', event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); } });
+      ['dragenter', 'dragover'].forEach(type => zone.addEventListener(type, event => { event.preventDefault(); zone.classList.add('dragging'); }));
+      ['dragleave', 'drop'].forEach(type => zone.addEventListener(type, event => { event.preventDefault(); zone.classList.remove('dragging'); }));
+      zone.addEventListener('drop', event => { const file = event.dataTransfer.files && event.dataTransfer.files[0]; if (file) processFile(file); });
+    }
+
+    function findColumn(header, names) {
+      return header.findIndex(value => names.some(name => value === name || value.toLowerCase() === name.toLowerCase()));
+    }
+
+    function normalizeTarget(value) {
+      const text = String(value || '').trim().toLowerCase();
+      if (['학생', '학생용', 'student'].includes(text)) return 'student';
+      if (['교사', '교사용', 'teacher'].includes(text)) return 'teacher';
+      return '';
+    }
+
+    function isHttpUrl(value) {
+      if (!value) return true;
+      try { const url = new URL(value); return url.protocol === 'http:' || url.protocol === 'https:'; } catch (error) { return false; }
+    }
+
+    function processFile(file) {
+      document.getElementById('fileName').textContent = `📎 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      document.getElementById('fileInfo').style.display = '';
+      const reader = new FileReader();
+      reader.onload = event => {
+        try {
+          const wb = XLSX.read(event.target.result, { type:'array' });
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'' });
+          if (rows.length < 2) throw new Error('등록할 상품 데이터가 없습니다. 양식의 두 번째 행부터 입력해주세요.');
+          const header = rows[0].map(value => String(value || '').trim());
+          const columns = {
+            name: findColumn(header, ['상품명', 'name']),
+            target: findColumn(header, ['대상', 'target', 'target_role']),
+            imageUrl: findColumn(header, ['썸네일 이미지 URL', '이미지 URL', 'thumbnail image url', 'image_url']),
+            detailImageUrl: findColumn(header, ['상세 설명 이미지 URL', '상세 이미지 URL', 'detail image url', 'detail_image_url']),
+            description: findColumn(header, ['상품 설명', '설명', 'description']),
+            purchaseUrl: findColumn(header, ['구매 URL', '상품 URL', 'purchase url', 'purchase_url'])
+          };
+          if (columns.name < 0 || columns.target < 0) throw new Error('필수 열(상품명, 대상)을 찾을 수 없습니다. 내려받은 양식을 사용해주세요.');
+          parsedRows = rows.slice(1).map((row, index) => parseRow(row, index + 2, columns)).filter(row => row.hasValue);
+          if (!parsedRows.length) throw new Error('등록할 상품 데이터가 없습니다.');
+          renderPreview();
+        } catch (error) {
+          alert(`파일을 읽을 수 없습니다. ${error.message || error}`);
+          clearFile();
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function parseRow(row, rowNumber, columns) {
+      const get = key => columns[key] >= 0 ? String(row[columns[key]] || '').trim() : '';
+      const name = get('name');
+      const targetText = get('target');
+      const targetRole = normalizeTarget(targetText);
+      const imageUrl = get('imageUrl');
+      const detailImageUrl = get('detailImageUrl');
+      const description = get('description');
+      const purchaseUrl = get('purchaseUrl');
+      const errors = [];
+      if (!name) errors.push('상품명 누락');
+      else if (name.length > 160) errors.push('상품명은 160자 이하');
+      if (!targetRole) errors.push('대상은 학생 또는 교사만 입력');
+      if (!isHttpUrl(imageUrl)) errors.push('썸네일 이미지 URL 형식 오류');
+      if (!isHttpUrl(detailImageUrl)) errors.push('상세 설명 이미지 URL 형식 오류');
+      if (!isHttpUrl(purchaseUrl)) errors.push('구매 URL 형식 오류');
+      return { row:rowNumber, name, targetText, targetRole, imageUrl, detailImageUrl, description, purchaseUrl, error:errors.join(', '), hasValue:Boolean(name || targetText || imageUrl || detailImageUrl || description || purchaseUrl) };
+    }
+
+    function formatUrl(value) { return value ? `<span class="bulk-url" title="${escapeHtml(value)}">${escapeHtml(value)}</span>` : '-'; }
+
+    function renderPreview() {
+      const valid = parsedRows.filter(row => !row.error);
+      const invalid = parsedRows.filter(row => row.error);
+      document.getElementById('previewTitle').textContent = `3. 등록 예정 상품 미리보기 (총 ${parsedRows.length}건)`;
+      document.getElementById('validCount').textContent = `정상 ${valid.length}건`;
+      document.getElementById('errorCount').textContent = invalid.length ? `오류 ${invalid.length}건` : '';
+      document.getElementById('previewBody').innerHTML = parsedRows.map(row => `<tr style="${row.error ? 'background:var(--t-subtle-surface,#fff5f5);' : ''}">
+        <td>${row.row}</td><td><strong>${escapeHtml(row.name || '-')}</strong></td><td>${escapeHtml(row.targetText || '-')}</td>
+        <td>${formatUrl(row.imageUrl)}</td><td>${formatUrl(row.detailImageUrl)}</td><td>${escapeHtml(row.description || '-')}</td><td>${formatUrl(row.purchaseUrl)}</td>
+        <td>${row.error ? `<span class="bulk-status-error">⚠ ${escapeHtml(row.error)}</span>` : '<span class="bulk-status-success">✓ 정상</span>'}</td>
+      </tr>`).join('');
+      document.getElementById('previewSection').style.display = '';
+      document.getElementById('resultSection').style.display = 'none';
+      document.getElementById('btnRegister').disabled = valid.length === 0;
+      document.getElementById('btnRegister').textContent = '✅ 상품 일괄 등록 시작';
+    }
+
+    async function startRegistration() {
+      const validRows = parsedRows.filter(row => !row.error);
+      if (!validRows.length) return;
+      if (!confirm(`정상 상품 ${validRows.length}건을 등록합니다.\n\n계속하시겠습니까?`)) return;
+      const button = document.getElementById('btnRegister');
+      button.disabled = true;
+      button.textContent = '등록 중...';
+      const results = [];
+      for (const row of validRows) {
+        try {
+          const checkedImageUrl = await validateExternalImageUrl(row.imageUrl);
+          if (checkedImageUrl.error) {
+            results.push(Object.assign({}, row, { success:false, reason:`썸네일 ${checkedImageUrl.error}` }));
+            continue;
+          }
+          const checkedDetailImageUrl = await validateExternalImageUrl(row.detailImageUrl);
+          if (checkedDetailImageUrl.error) {
+            results.push(Object.assign({}, row, { success:false, reason:`상세 설명 ${checkedDetailImageUrl.error}` }));
+            continue;
+          }
+          const product = {
+            name: row.name,
+            target_role: row.targetRole,
+            category: 'etc',
+            price: 0,
+            sort_order: 0,
+            image_emoji: '🎁',
+            image_url: checkedImageUrl.url,
+            detail_image_url: checkedDetailImageUrl.url,
+            description: row.description || null,
+            purchase_url: row.purchaseUrl || null,
+            stock: 0,
+            is_active: false,
+            created_by: session.id
+          };
+          const result = await createProduct(product, { source:'상품 일괄 등록', rowNumber:row.row });
+          if (result.error) results.push(Object.assign({}, row, { success:false, reason:tErr(result.error) }));
+          else results.push(Object.assign({}, row, { success:true, reason:'' }));
+        } catch (error) {
+          results.push(Object.assign({}, row, { success:false, reason:tErr(error && error.message || String(error)) }));
+        }
+      }
+      const success = results.filter(row => row.success).length;
+      const failed = results.length - success;
+      await logInfo('PRODUCT_BULK_CREATE', buildChangeLogDetails({
+        targetType:'상품',
+        targetName:`상품 ${results.length}건`,
+        extra:{ 총건수:results.length, 성공건수:success, 실패건수:failed, 실패행:results.filter(row => !row.success).map(row => row.row) }
+      }));
+      renderResults(results, success, failed);
+      button.textContent = '✅ 상품 일괄 등록 완료';
+    }
+
+    function renderResults(results, success, failed) {
+      document.getElementById('resultSummary').innerHTML = `<strong>등록 완료:</strong> 총 ${results.length}건 중 <span class="bulk-status-success">성공 ${success}건</span>, <span class="bulk-status-error">실패 ${failed}건</span>`;
+      document.getElementById('resultBody').innerHTML = results.map(row => `<tr style="${row.success ? '' : 'background:var(--t-subtle-surface,#fff5f5);'}"><td>${row.row}</td><td>${escapeHtml(row.name)}</td><td>${escapeHtml(row.targetText)}</td><td class="${row.success ? 'bulk-status-success' : 'bulk-status-error'}">${row.success ? '✓ 성공' : '✕ 실패'}</td><td>${escapeHtml(row.reason || '-')}</td></tr>`).join('');
+      document.getElementById('resultSection').style.display = '';
+    }
+
+    function clearFile() {
+      document.getElementById('fileInput').value = '';
+      document.getElementById('fileInfo').style.display = 'none';
+      document.getElementById('previewSection').style.display = 'none';
+      document.getElementById('resultSection').style.display = 'none';
+      parsedRows = [];
+    }
+  </script>
+  <div id="version-container"></div>
+</body>
+</html>

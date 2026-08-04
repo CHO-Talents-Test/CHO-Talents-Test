@@ -1,6 +1,6 @@
 # CHO-Talents 프로젝트 구성도 및 프로세스 흐름도
 
-작성 기준: 2026-07-10 KST 현재 코드 기준 (v3.69.0)
+작성 기준: 2026-07-16 KST 현재 코드 기준 (v3.89.0)
 대상 배포: https://cho-talents.github.io/CHO-Talents/  
 문서 목적: 다음 검토자가 프로젝트 목적, 화면 구성, 권한 구조, 주요 데이터 흐름, 검증 지점을 빠르게 파악하도록 한다.
 
@@ -15,8 +15,10 @@ CHO-Talents는 초등부 달란트 운영을 위한 정적 웹 기반 관리 시
 | 상품 구매 시스템 | 4단계 구매 흐름(신청→준비→구매→지급)으로 상품 교환을 관리하며, 되돌리기와 구매 취소(cancelled)도 가능하다. 상품 구매 화면은 최초 로드 시 카테고리 순번으로 그룹화하고 같은 카테고리 안에서는 상품 정렬 순번을 우선한다. 구매 카드 이미지는 `products.image_url`, 상세 모달 설명 아래 이미지는 `products.detail_image_url`로 분리한다. 취소는 RPC 우선 시도 + .select() 기반 결과 검증으로 안전하게 처리된다. |
 | 승인 기반 계정 운영 | 신규 사용자는 신청 후 관리자 승인으로 계정이 생성된다. |
 | 부서 이동 관리 | 부서 변경은 요청→승인 흐름으로 처리한다 (90등급 이상은 즉시 이동). |
-| 운영 추적 | 로그인, 인증/권한 리디렉트, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
-| Slack 알림 | 부서별/유형별 채널로 구매/가입/부서이동/WARN+ 로그/Q&A 등 운영 이벤트를 Edge Function 경유 분리 전송한다. |
+| 운영 추적 | 로그인, 인증/권한 리디렉트, 오류, 관리 작업을 로그로 남기고 오류 로그를 확인 처리한다. `details`는 영어 key와 처리 상세만 저장하며, 작업명/사용자/일시/레벨/페이지는 기본 컬럼과 화면 영역에서 처리한다. 확인 완료 로그는 180일 보존 후 자동/수동 정리하고, 미확인 로그는 확인될 때까지 보존한다. (v3.40.0부터 PAGE_VIEW 비활성화) |
+| 사용자 로그인 통계 | 최고관리자를 제외한 성공 로그인 시 사용자·부서·권한 스냅샷을 별도 이력에 저장하고, 관리자(100+)가 학생/교사 필터와 KST 기준 날짜·요일·시간·부서·사용자별 집계·막대 그래프를 조회한다. 원본 로그인 이력은 직접 노출하지 않는다. |
+| Slack 알림 | 부서별/유형별 채널로 구매/가입/부서이동/WARN+ 로그/Q&A 등 운영 이벤트를 Edge Function 경유 분리 전송한다. WARN+ 로그 알림은 영어로 저장된 action/details를 한글로 치환해 운영 채널에 전송한다. 서비스 사용률 70/85/95% 알림은 운영 채널로 전송한다. |
+| 서비스 통계 | GitHub/Supabase/Kakao/Slack 무료 할당량과 프로젝트 사용량을 매시간 수집하고, 현재/남은 값과 30일 추이를 운영 화면에서 확인한다. 수집 실패는 서비스·수집 항목·실패 사유를 별도 목록으로 제공한다. 수집 스냅샷과 수집 실행 이력은 180일 보존하며 관리자 버튼으로 수동 정리할 수 있다. |
 | 공지 사항 | 일반 교사(40+) 이상이 활성 공지를 확인하고, 전도사님(90+) 이상이 공지를 등록/수정/삭제/활성화한다. 열람 현황은 공지 등록일시/등록자, 사용자 유형, 전체/확인자/미확인자 콤보박스 필터를 함께 표시한다. 활성 공지는 로그인 후 메인 화면 팝업으로 표시한다. |
 | 코드 마스터 | 권한/유형/상태/카테고리/로그 액션 같은 구분값을 `code_groups`, `code_items`, `js/codes.js`로 통합 관리한다. |
 | 에러 한글화 | 영문 DB/RPC 에러를 `tErr()` 함수로 한글 변환하여 사용자에게 표시한다. |
@@ -29,7 +31,7 @@ flowchart LR
   User["사용자 브라우저"] --> Pages["GitHub Pages 정적 화면<br/>HTML/CSS/Vanilla JS"]
 
   Pages --> AuthJS["js/auth.js<br/>로그인/세션/24h 타임아웃/권한/리디렉트 진단/tErr()/fmtNum()"]
-  Pages --> LogJS["js/activity-log.js<br/>로그/action 라벨/한글 상세/세션 캐시/인증 실패 분류/소프트 삭제"]
+  Pages --> LogJS["js/activity-log.js<br/>로그 저장/영어 details 정규화/한글 표시 변환/세션 캐시/소프트 삭제"]
   Pages --> CodesJS["js/codes.js<br/>공통 코드북/라벨/정렬/옵션"]
   Pages --> UserMgmt["js/user-mgmt.js<br/>사용자/부서 관리"]
   Pages --> TalentJS["js/talent.js<br/>달란트 조회/지급/사용/반환"]
@@ -42,7 +44,7 @@ flowchart LR
   EdgeFn --> Slack["채널별 Slack Webhook<br/>(부서/상품관리/운영/Q&A)"]
   Pages --> UsageTelemetry["공통 사용량 계측<br/>Pages/Supabase/Kakao"]
   UsageTelemetry --> UsageDB["service_usage_events / snapshots"]
-  UsageCollector["Edge Function<br/>service-usage-collect<br/>6시간 주기"] --> UsageDB
+  UsageCollector["Edge Function<br/>service-usage-collect<br/>1시간 주기"] --> UsageDB
   UsageCollector --> ExternalUsage["GitHub Billing/Actions/Traffic<br/>Supabase Management API"]
   UsageCollector --> Slack
 
@@ -68,6 +70,7 @@ flowchart LR
   DB --> Transfers["department_transfer_requests"]
   DB --> Reports["reports"]
   DB --> Logs["activity_logs"]
+  DB --> LoginHistory["user_login_history"]
   DB --> RoleAccess["role_page_access"]
   DB --> Announcements["announcements / announcement_dismissals"]
   DB --> QnA["qna"]
@@ -83,7 +86,7 @@ flowchart LR
 
 | 경로 | 역할 |
 |---|---|
-| `index.html` | 메인 진입 화면. 학생 가이드, Q&A, 상점, 로그인, 적립 안내, 내 달란트로 이동. 동적 로그인/로그아웃 버튼. 로그인 사용자는 `⭐ 즐겨찾기 설정`으로 바로가기 카드 커스터마이징 (`user_preferences` DB 저장, 비로그인은 localStorage 폴백). 모바일/PC 모두 최대 10개, 권한에 맞는 메뉴만 표시. 활성 공지는 로그인 후 팝업 표시, 계정별 다시 열지 않음 저장 |
+| `index.html` | 메인 진입 화면. 학생 가이드, Q&A, 상점, 로그인, 적립 안내, 내 달란트로 이동. 동적 로그인/로그아웃 버튼. 로그인 사용자는 `⭐ 즐겨찾기 설정`으로 바로가기 카드 커스터마이징 (`user_preferences` DB 저장, 비로그인은 localStorage 폴백). 모바일/PC 모두 최대 20개, 권한에 맞는 메뉴만 표시. 활성 공지는 로그인 후 팝업 표시, 계정별 다시 열지 않음 저장 |
 | `login.html` | 통합 로그인. 성공/실패 로그 기록. 승인 대기/거부 계정 구분 안내 |
 | `register.html` | 계정 등록 신청. 영문/숫자/`_`/`-` 아이디 중복확인 후 승인 대기 등록 |
 | `guide.html` | 학생 가이드. 사이트 이용 흐름을 카드/스텝 중심으로 안내. 소개 메뉴의 단일 `가이드` 항목은 비로그인/학생에게 이 페이지로 연결 |
@@ -92,13 +95,14 @@ flowchart LR
 | `purchase-teacher-guide.html` | 구매 담당 교사 가이드. 전체 부서 구매 주문 처리, 구매 통계, Slack 구매 알림 기준 안내 |
 | `chief-teacher-guide.html` | 부장 교사 가이드. 학생 일괄 등록, 보고서/버전, 달란트 반환, 운영 룰 문서 열람 안내 |
 | `evangelist-guide.html` | 전도사님 가이드. 달란트 항목, QR, 상품 삭제, 공지 열람 현황, Q&A 삭제, 부서 비활성화 안내 |
-| `admin-guide.html` | 관리자 가이드. 부서 담당 교사(60+) 이상만 접근 가능, 운영 권한 전체 요약 |
+| `admin-guide.html` | 관리자 가이드. 관리자(100+)와 최고관리자만 접근 가능, 운영 권한 전체 요약 |
 | `qna.html` | Q&A/FAQ. 공개 FAQ 조회, 관리자 FAQ 직접 등록, 로그인 사용자 질문/답변 등록, 60등급 이상 답변+FAQ 등록, 90등급 이상 삭제 |
-| `earn-talents.html` | 달란트 적립 방법 안내. 항목 카드 그리드(모바일 3열, PC 5열)와 `talent_items` 활성 항목 지급 수량 배지 표시. 로그인 사용자의 `user_type`에 따라 학생/교사 탭 기본 선택 |
+| `earn-talents.html` | 달란트 적립 방법 안내. 학생/교사별 활성 `talent_items`를 정렬 순서대로 카드로 생성해 이모지, 지급 규칙·설명, 지급 수량을 표시. 로그인 사용자의 `user_type`에 따라 학생/교사 탭 기본 선택 |
 | `shop.html` | 상점 조회 + 구매 신청 + 대리 구매. 비로그인은 학생용, 교사는 교사용 기본 필터. 최초 상품 목록은 카테고리 순번 그룹화 후 상품 정렬 순번 → 상품명 기준으로 표시. 상세 모달은 설명을 먼저 표시하고 `detail_image_url`이 있으면 설명 아래에 상세 이미지를 표시 |
 | `talent-receive.html` | 로그인 사용자 QR 달란트 수령. 카메라 스캔 또는 코드 입력, 대상/기간/시간/반복/위치 조건 검증, 최근 수령 내역 페이징. 카메라 스캔 결과 메시지는 카메라 영역 위에 표시하며 위치 권한 차단 시 alert와 `QR_LOCATION_PERMISSION_BLOCKED` 로그를 남김. 최근 수령 내역의 수동/관리 지급 건은 실제 지급자 이름을 표시하고 관리자 권한에서는 아이디를 함께 표시 |
 | `my-talents.html` | 로그인 사용자 본인의 사용 가능 달란트/상품 수령 예정/사용 대기/사용 완료/반환/예외/누적 적립 달란트, 달란트 내역(적립·예외·사용·반환 배지), 구매 내역. `fetchTalentSummary()`의 `returned` 필드와 `override_week_limit` 이력으로 반환/예외 요약 표시. 지급 취소 이력의 트랜잭션 ID는 숨김 |
 | `my-orders.html` | 로그인 사용자 본인의 구매 신청 내역과 4단계 상태 조회. 공통 페이징과 페이지당 항목 수 설정 |
+| `product-suggestions.html` | 로그인 사용자 상품 추천 등록. 상품명과 상품 URL 또는 이미지가 필수이며, 선택형 상세 설명 이미지(URL/파일), 설명·원화 금액·카테고리를 입력한다. 상세 모달의 구매 URL은 `상품 보기` 버튼으로 제공하며 카테고리 미선택 시 선물로 보정 |
 | `admin/index.html` | 60등급 이상 대시보드. 사용자/부서/보고서/가입대기 통계 카드. 미확인 ERROR+ 카드는 100등급 이상만 표시(클릭→로그). 최근 이슈 로그 테이블(100등급+) |
 | `admin/users.html` | 60등급 이상 사용자 관리. 상단 통계 카드(전체/관리자/부서 담당/교사/학생) 클릭 필터. 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher. 교사/학생 그룹별 분리(학생은 권한 열 제거). 교사/학생 로우 클릭 시 상세 모달 열림. 사용자 등록 모달은 아이디 중복확인 완료 후 등록 가능. 관리자 권한은 가입 신청 이름 옆에 아이디 표시. 가입 신청/부서 이동 요청/승인 처리. 공통 페이징(PC 20/모바일 10) |
 | `admin/departments.html` | 60등급 이상 부서 관리. 부서명 오름차순 정렬, 공통 페이징과 페이지당 항목 수 설정. 로우 클릭 시 소속보기 모달 열림. 관리 드롭다운(소속보기/수정/삭제). 부서별 인원(교사 전체 포함)/담당자 확인. 소속보기에서 100등급+는 마지막 로그인 일시 표시 |
@@ -108,31 +112,58 @@ flowchart LR
 | `admin/talent-stats.html` | 60등급 이상 달란트 누적적립 통계. 반환(`type='use'`, `description`이 `반환:`)된 달란트를 원 지급 건에서 차감해 실제 지급 달란트로 집계. 부서별/사용자별 로우 클릭 시 상세 모달 열림. 부서별 기본 정렬: 달란트 DESC → 인원 ASC → 항목 ASC → 부서 ASC. 사용자별 기본 정렬: 달란트 DESC → 항목 ASC → 부서 ASC → 이름 ASC. 사용자별 목록 공통 페이징과 페이지당 항목 수 설정. 라디오 필터, 부서 필터, 기간 프리셋 |
 | `admin/talent-items.html` | 60등급 이상 달란트 지급 항목 관리. 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시, 로우 클릭 시 수정 모달 열림, ⚡퀵 버튼 지정은 80등급 이상. 공통 페이징(PC 20/모바일 10) |
 | `admin/talent-qr.html` | 90등급 이상 QR 코드 생성(qrcode.js 이미지)/수정(새 코드 재생성)/비활성화. QR 항목 영역 클릭 시 수정 모달 열림. 지급 대상(학생/교사) 구분, 유효기간 라디오(지정일 날짜+시간/기간/무기한), 반복 수령(none/daily/weekday/week_weekday), 위치 제한(카카오맵 API, 반경 100m~5km, 기본 500m, Geolocation 검증). 검색/필터(대상/조건), 날짜 from-to 범위 필터(초기값 오늘, 오늘/1주/1달/1년 프리셋). 수령자 팝업은 사용자별 묶음, 사용자 유형/부서/이름·아이디 검색 필터, 선택 사용자 지급 항목 상세, 페이징+표시개수 설정(qr_list, qr_scan_list 키)+개별 스캔 단위 반환 감지 |
-| `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10). 카테고리 열 맨 왼쪽, 상품 정렬 순번 열 표시, 대상 열 삭제. 상품 등록/수정 시 구매 카드 썸네일(`image_url`)과 상세 설명 이미지(`detail_image_url`)를 분리 업로드. 로우 클릭 시 수정 창 열림. 관리 드롭다운(수정/삭제). 상품 삭제는 소프트 삭제 |
+| `admin/shop.html` | 60등급 이상 상품 관리. 교사/학생 그룹별 분리+공통 페이징(PC 20/모바일 10), 각각 전체·활성·비활성 필터 제공. 상품 등록 시 상품명·대상·카테고리·썸네일 이미지·구매 URL을 필수 검증하고, 썸네일(`image_url`)과 상세 설명 이미지(`detail_image_url`)를 분리 업로드. 로우 클릭 시 수정 창 열림. |
+| `admin/product-suggestion-votes.html` | 60등급 이상 추천 상품 비밀 투표. 일반 투표자는 종료 전 찬성/반대 집계를 볼 수 없고, 관리자(100+)만 투표자 신원 없이 진행률·찬성·반대·등록/현재 정원을 확인한다. 종료된 투표의 신규/변경 투표는 RPC에서 차단하며, 상세 모달은 `상품 보기` 버튼과 선택형 상세 설명 이미지를 제공 |
 | `admin/product-categories.html` | 70등급 이상 상품 카테고리 관리. `products.category` 코드 항목 등록·수정·삭제(비활성화), 카테고리 정렬 순번 관리. 그리드는 내부 코드 열을 숨기고 로우 클릭 시 수정 모달을 연다. 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제 불가 |
 | `admin/purchases.html` | 60등급 이상 구매 관리. 칸반보드 형태 상태별 카드(개수 실시간 표시)+일괄 처리 버튼(일괄 준비/구매 확정). 관리 드롭다운. 부서/기간 필터(기본 1주) + 기간 프리셋, 4단계 구매 흐름 + 되돌리기(↩). 공통 페이징(PC 20/모바일 10) |
-| `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
+| `admin/purchase-stats.html` | 60등급 이상 구매 통계. 전체/부서별/사용자별/유형별 4개 탭. 전체·부서별·사용자별 행 클릭 시 기존 상세 모달을 연다. 교사/학생 분리 표시. 섹션별 페이징과 페이지당 항목 수 설정. 부서별은 부서 ASC, 사용자별은 부서 ASC → 개수 DESC → 이름 ASC, 유형별은 상품 ASC → 상태 ASC. 부서 필터+유형 필터+기간 필터(기본 1주). 부서 담당 교사는 담당 부서만 조회, 부장 교사 이상 전체 조회 |
 | `admin/notices.html` | 40등급 이상 공지 사항 조회. 일반 교사는 활성 공지만 조회하고, 90등급 이상은 공지 제목/내용 등록, 기존 공지 조회/수정/삭제, 공지 컬럼 활성 토글, 공지 열람 현황 조회, 공통 페이지당 항목 수 설정을 사용. 열람 현황 모달은 등록일시/등록자, 사용자 유형 열, 전체/확인자/미확인자 콤보박스 필터를 제공한다. 활성 공지는 로그인 후 `index.html` 팝업으로 표시되고 사용자별 다시 열지 않음 상태는 `announcement_dismissals`에 저장 |
 | `admin/reports.html` | 80등급 이상 보고서 조회/등록/수정/삭제. 페이지당 항목 수 콤보는 필터 줄 아래 우측에 배치 |
-| `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`)와 상세 모달 한글 키 우선 표시. 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
-| `admin/service-stats.html` | 80등급 이상 GitHub/Supabase/Kakao/Slack 무료 할당량, 현재·남은 사용량/비율, 기간 종료 예상 사용률, 30일 추이, 수집/Slack 알림 이력 조회와 즉시 수집 |
+| `admin/logs.html` | 100등급 이상 로그 조회/확인/소프트 삭제 대기 처리. action 열 한글 라벨 표시(`getActionLabel`)와 상세 모달 한글 키 우선 표시. 미확인 ERROR+ 그리드는 행 전체 클릭으로 상세를 연다. 기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년). 공통 페이징과 페이지당 항목 수 설정. 행 개수 콤보는 삭제 대기 목록 버튼 줄 우측에 배치 |
+| `admin/service-stats.html` | 80등급 이상 GitHub/Supabase/Kakao/Slack 무료 할당량, 현재·남은 사용량/비율, 기간 종료 예상 사용률, 30일 추이, 매시간 수집/Slack 알림 이력 조회와 즉시 수집. 수집 실행의 서비스·항목·실패 사유를 최근 수집 실패 항목에서 별도 표시 |
 | `admin/versions.html` | 80등급 이상 버전 이력 확인. `js/version.js`의 v1.0.0 이후 전체 변경 이력을 표시 |
 | `admin/page-access.html` | 100등급 이상 유형/권한별 페이지 접근/요소 가시성 설정 |
 | `admin/page-features.html` | 100등급 이상 권한별 페이지 기능 설정값 관리 |
-| `admin/audit.html` | 100등급 이상 관리 작업 이력 조회 (기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년), 자동 조회, 10개 카테고리 필터, 한글 작업 유형 라벨, 한글 상세 키 우선 표시). 공통 페이징(PC 20/모바일 10) |
+| `admin/audit.html` | 100등급 이상 관리 작업 이력 조회 (기본 조회 범위 1년 + 기간 프리셋(오늘/1주/1달/1년), 자동 조회, 10개 카테고리 필터, 한글 작업 유형 라벨, 영어 저장 details의 한글 치환 표시). 행 또는 상세 버튼 클릭 시 상세 모달을 열며 공통 페이징(PC 20/모바일 10)을 사용 |
+| `admin/user-stats.html` | 100등급 이상 사용자 로그인 통계. 성공 로그인 이력만 KST 기준 날짜별·요일별·시간별·부서별·사용자별로 집계하고 기간/부서/학생·교사 필터와 조건별 2차원 막대 그래프를 제공. 관리 네비게이션의 마지막 메뉴 |
 | `admin/page-permissions.html` | 100등급 페이지 권한 매트릭스 관리 (레거시, 직접 주소 접근) |
 | `admin/change-password.html` | 로그인 사용자 비밀번호 변경 |
 | `css/` | 테마(`themes.css`), 메인(`style.css`), 공통(`common.css`), 관리자(`admin.css`) 스타일 |
 | `js/codes.js` | 권한/유형/상태/카테고리/로그 액션 공통 코드북. DB `code_items`가 있으면 활성 코드의 라벨, 정렬, 색상, 이모지, rank 메타를 우선 적용 |
 | `js/version.js` | 공통 버전 footer, v1.0.0 이후 버전 이력, 최신 `version.js` 조회, 로드된 CSS/JS 자산 `cache: reload` 재검증, 구버전 세션 재로그인 안내 |
-| `js/slack-notify.js` | Slack 알림 공통 유틸리티. `sendSlackNotify(type, data)`로 Edge Function `slack-notify` 호출. fire-and-forget, 동일 알림 5초 throttle. 부서/유형별 채널 라우팅은 Edge Function에서 수행 |
-| `js/` | 테마(`theme.js`), 네비게이션(`nav.js` - `#navHeaderActions` 내부 햄버거·테마·로그인/로그아웃, 처리 가능 건수 배지 + Q&A 미답변 배지 자동 호출 포함), 코드북(`codes.js`), 페이지 크기(`page-size.js`), Slack 알림(`slack-notify.js`), Supabase 설정, 인증/24h 세션 타임아웃/tErr, 로그, 사용자/달란트/상품/버전 모듈 |
+| `js/slack-notify.js` | Slack 알림 공통 유틸리티. `sendSlackNotify(type, data)`로 Edge Function `slack-notify` 호출. fire-and-forget, 동일 알림 5초 throttle. 상품 추천 등록/투표 종료 이벤트는 운영관리 채널로 라우팅하며, 부서/기타 유형별 채널 라우팅은 Edge Function에서 수행 |
+| `js/` | 테마(`theme.js`), 네비게이션(`nav.js` - `#navHeaderActions` 내부 햄버거·테마·로그인/로그아웃, 처리 가능 건수 배지 + Q&A 미답변 배지 자동 호출 포함), 코드북(`codes.js`), 페이지 크기(`page-size.js`), Slack 알림(`slack-notify.js`), 상품 추천 RPC(`product-suggestion.js`), Supabase 설정, 인증/24h 세션 타임아웃/tErr, 로그, 사용자/달란트/상품/버전 모듈 |
 | `supabase/functions/slack-notify/index.ts`, `supabase/functions/_shared/slack-notify.ts` | Supabase Edge Function `slack-notify` 배포 진입점/공통 구현. 부서별/유형별 Webhook Secret 선택, Block Kit, 성공·실패 계측 |
-| `supabase/functions/service-usage-collect/index.ts` | 6시간 서비스 사용량 수집, 공식 API/DB/프로젝트 계측 병합, 70/85/95% 운영 채널 알림 |
+| `supabase/functions/service-usage-collect/index.ts` | 1시간 서비스 사용량 수집, 공식 API/DB/프로젝트 계측 병합, 70/85/95% 운영 채널 알림 |
 | `admin/slack-rules.html` | 80등급 이상 Slack 알림 룰 문서. 구매/가입/부서이동/Q&A/WARN+ 로그 알림 type과 채널 라우팅 설명 |
 | `docs/SLACK_NOTIFICATION_RULES.md` | Slack 알림 type, 라우팅, Secret 기준 문서 |
 | `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 다른 Supabase 프로젝트에서 새로 시작하기 위한 설치 절차 |
 | `docs/` | 작업 기록, SQL 스키마, 구성 문서, 사용자 안내서, Edge Function 소스 |
+
+## 3-1. 상품 추천 및 비밀 투표 (v3.88.0)
+
+`product-suggestions.html`은 로그인 사용자(20+)가 상품 추천을 등록하고 자신의 처리 상태를 조회하는 화면이다. 상품명과 상품 URL 또는 이미지는 필수이며, 카테고리는 미선택 시 `gift`로 보정한다. 내 추천 목록은 채택여부, 상품명, KST 추천일, 상세만 표시하고 행 또는 상세 버튼으로 전체 입력 정보 모달을 연다. 채택 시 `_resolve_product_suggestion`이 상품을 생성하고, `product_suggestion_adoption_rewards`의 추천 ID 기본키로 중복을 막은 뒤 등록자에게 대상별 `상품 추천 채택` 달란트 항목 1을 자동 지급한다. 생성 상품은 추천 카테고리, 달란트 `0`, 순번 `999`, 대상 `student`, 비활성 상태로 저장하고 `products.created_by`와 `product_suggestions.suggested_by` 연결로 추천자 이력을 유지한다. 관리자(100+) 직접 등록도 같은 채택·보상 흐름을 사용한다.
+
+`admin/product-suggestion-votes.html`은 부서 담당 교사(60+) 이상의 `상품 추천 투표` 화면이며, 상품 메뉴에서 구매 관리 바로 아래에 배치한다. `product_suggestions`, `product_suggestion_eligible_voters`, `product_suggestion_votes` 테이블은 직접 브라우저 조회를 허용하지 않고 전용 RPC로만 사용한다. 추천 생성 시점의 60+ 계정 목록을 `eligible_voters`에 스냅샷하고, 기본 통과/불채택 기준은 이 정원의 과반이다. 이후 현재 60+를 유지하는 스냅샷 구성원만 유효 투표로 집계한다.
+
+일반 투표자와 일반 관리자(100)는 추천자·투표자 정보와 투표 종료 전 찬성/반대 집계를 보지 못한다. `profiles.is_super_admin=true`인 최고관리자만 투표자 신원 없이 전체 진행률, 찬성/반대, 등록 시점 정원, 현재 유효 정원을 확인한다. 종료 상태에서는 모든 투표 요청을 서버에서 거부해 기존 선택도 바꿀 수 없다. 모바일 그리드는 채택여부, 상품명, 찬성, 반대, 상세만 표시하고 URL은 `상품 보기` 버튼으로, 대표/상세 이미지는 상세 모달에서 제공한다. 현재 유효 정원이 등록 시점 과반보다 적어져 자동 완료가 불가능한 경우에만 최고관리자가 현재 유효 정원의 과반 결과로 `close_product_suggestion_vote` RPC를 실행할 수 있다. 별도로 최고관리자만 투표중 상세 모달에서 `admin_resolve_product_suggestion` RPC로 투표 완료 여부와 무관하게 채택 또는 불채택을 예외 결정할 수 있으며, 이 처리도 추천자·투표자·개별 찬반을 반환하거나 기록하지 않는다.
+
+추천 등록 완료 시 `product_suggestion_registered`, 투표 상태가 채택 또는 불채택으로 전환될 때 `product_suggestion_vote_completed` Slack 이벤트를 운영관리 채널로 보낸다. 등록 알림에는 상품명·등록 시각·처리 상태를, 종료 알림에는 상품명·결과·찬성·반대·총 투표 수·종료 방식을 담는다. Edge Function은 이 두 이벤트에 사용자 컨텍스트를 추가하지 않아 추천자와 개별 투표자의 식별 정보를 보존하지 않는다.
+
+채택 상품은 비활성 상태를 유지한다. `shop.html`은 권한과 관계없이 활성 상품만 표시하고, `admin/shop.html`은 활성/비활성 상품 전체를 표시해 운영자가 활성화 여부를 관리한다.
+
+`navProductSuggestionVoteBadge`는 등록 시점 투표 정원에 포함되어 아직 투표하지 않은 추천 수를 `get_unvoted_product_suggestion_count` RPC로 조회한다. `상품` 상위 메뉴 배지는 구매 관리의 `navOrderBadge`와 이 배지를 합산한다.
+
+| 구분 | 테이블/RPC | 보안 기준 |
+|---|---|---|
+| 추천 등록 | `submit_product_suggestion` | 인증 사용자만, URL 또는 이미지 검증, 관리자 즉시 채택 |
+| 내 추천 목록 | `get_my_product_suggestions` | 본인이 만든 추천만 반환 |
+| 비밀 투표 | `vote_product_suggestion` | 현재 60+이면서 등록 시점 투표 정원에 포함된 계정만 가능 |
+| 투표 목록 | `get_product_suggestion_vote_items` | 종료 전 결과/집계는 일반 투표자·일반 관리자에게 비공개, 최고관리자만 익명 집계 공개 |
+| 미투표 배지 | `get_unvoted_product_suggestion_count` | 등록 시점 투표 정원에 포함된 본인의 미투표 추천 수만 반환 |
+| 최고관리자 종료 | `close_product_suggestion_vote` | `profiles.is_super_admin=true`만, 기존 과반 불가능 + 현재 유효 정원 과반 결과가 있을 때만 가능 |
+| 최고관리자 예외 결정 | `admin_resolve_product_suggestion` | `profiles.is_super_admin=true`만, 투표중 추천을 채택/불채택으로 직접 처리. 기존 종료 조건과 별도 |
+| 추천 이미지 | `Talents_Items/product-suggestions/` | 로그인 사용자는 자기 소유 객체만 업로드/수정/삭제 |
 
 ## 4. 권한 구조
 
@@ -145,9 +176,9 @@ flowchart LR
 | 전도사님 | `evangelist` | 90 | `index.html` | 달란트 항목/QR/공지 관리, 상품 삭제, 부서 즉시 이동, 전체 구매 처리 |
 | 부장 교사 | `chief` | 80 | `index.html` | 대시보드, 부서, 관리자, 보고서, 버전, 달란트 반환 — txnId 기반 1회 제한 (사용자/관리자 관리 조회 전용) |
 | 구매 담당 교사 | `purchase_teacher` | 70 | `index.html` | 부서 담당 교사와 동일, 구매 관리에서 전체 부서 주문 처리 |
-| 부서 담당 교사 | `dept_teacher` | 60 | `index.html` | 담당 부서 사용자/달란트/상품/구매/Q&A 관리 |
+| 부서 담당 교사 | `dept_teacher` | 60 | `index.html` | 담당 부서 사용자/달란트/상품/구매/Q&A 관리와 추천 상품 비밀 투표 |
 | 일반 교사 | `teacher` | 40 | `index.html` | 담당 부서/반 학생 달란트 처리, 대리 구매, 교사용/학생용 상점 |
-| 학생 | `student` | 20 | `index.html` | 내 달란트, 내 구매 상품, Q&A 질문, 학생용 상점, 구매 신청 |
+| 학생 | `student` | 20 | `index.html` | 내 달란트, 내 구매 상품, 상품 추천, Q&A 질문, 학생용 상점, 구매 신청 |
 | 비로그인 | 없음 | 0 | 공개 페이지 | 메인, 학생 가이드, Q&A FAQ, 적립 안내, 학생용 상점, 계정 신청 |
 
 권한 제어 기준:
@@ -188,6 +219,8 @@ v3.48.0부터 햄버거 버튼(`.nav-hamburger`)은 `#navHeaderActions` **내부
 
 v3.51.0부터 소개 메뉴의 역할별 가이드 링크는 단일 `가이드` 항목으로 통합되었다. `js/nav.js`의 `_navGuideHrefForSession()`이 세션의 `permissionLevel`/`isSuperAdmin`에 따라 학생, 교사, 부서 담당, 구매 담당, 부장, 전도사님, 관리자 가이드 중 하나로 연결한다.
 
+v3.89.0부터 `applyGuideSwitcherAccess()`가 각 가이드 페이지의 전환기를 동일한 최소 등급 맵으로 제어한다. 따라서 가이드는 본인 등급 이하만 누적 표시되며 `admin-guide.html`은 관리자(100+) 이상에게만 노출·접근된다.
+
 모바일(`max-width: 768px`) CSS `order` 배치 (`css/common.css`):
 
 | order | 요소 |
@@ -207,7 +240,7 @@ flowchart TD
   Public --> PurchaseGuide["purchase-teacher-guide.html<br/>70+"]
   Public --> ChiefGuide["chief-teacher-guide.html<br/>80+"]
   Public --> EvangelistGuide["evangelist-guide.html<br/>90+"]
-  Public --> AdminGuide["admin-guide.html<br/>60+"]
+  Public --> AdminGuide["admin-guide.html<br/>100+"]
   Public --> QNA["qna.html"]
   Public --> Earn["earn-talents.html"]
   Public --> Shop["shop.html"]
@@ -218,6 +251,7 @@ flowchart TD
   Home --> QNA
   Home --> Earn
   Home --> Shop
+  Home --> ProductSuggestions["product-suggestions.html<br/>20+"]
   Home --> MyTalents["my-talents.html"]
   Home --> MyOrders["my-orders.html"]
   Login --> Password{"최초 로그인?"}
@@ -232,6 +266,7 @@ flowchart TD
   Home --> TalentAdjustments["admin/talent-adjustments.html<br/>60+"]
   Home --> TalentItems["admin/talent-items.html<br/>60+"]
   Home --> AdminShop["admin/shop.html<br/>60+"]
+  Home --> ProductSuggestionVotes["admin/product-suggestion-votes.html<br/>60+"]
   Home --> ProductCategories["admin/product-categories.html<br/>70+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
   Home --> Reports["admin/reports.html<br/>80+"]
@@ -555,10 +590,10 @@ flowchart TD
 
 | 권한 | 조회 범위 | 처리 범위 |
 |---|---|---|
-| 부서 담당 교사 | 담당 부서 신청 | 담당 부서 신청의 준비/구매 확정/지급 처리 |
-| 구매 담당 교사 | 전체 신청 | 전체 처리 가능 |
-| 부장 교사 | 전체 신청 | 담당 관리 부서 신청 처리 |
-| 전도사님 이상 | 전체 신청 | 전체 처리 가능 |
+| 부서 담당 교사 | 담당 부서 신청 | 관리 부서의 `구매 신청 → 상품 준비` 처리 |
+| 구매 담당 교사 | 전체 신청 | 전체 계정의 `상품 준비 → 상품 구매`, `상품 구매 → 상품 지급` 처리 |
+| 부장 교사 | 전체 신청 | 관리 부서의 `구매 신청 → 상품 준비` 처리 |
+| 전도사님 이상 | 전체 신청 | 전체 계정의 모든 순방향 단계 처리 및 `상품 준비 → 구매 신청` 되돌리기 |
 
 상품 정책:
 
@@ -579,10 +614,10 @@ flowchart TD
 ```mermaid
 flowchart TD
   Event["로그인/인증 리디렉트/오류/관리 작업"] --> WriteLog["writeLog() → activity_logs INSERT<br/>반환 error 감지 + 호환 재시도"]
-  WriteLog --> ActionLabel["activity_logs.action 코드 라벨<br/>details._actionLabel/_actionKo 및 한글 상세 키 저장"]
-  ActionLabel --> Logs["admin/logs.html (100등급+)"]
+  WriteLog --> NormalizeDetails["details 영어 key 정규화<br/>공통 필드/action/user/page/level/time/client 제거"]
+  NormalizeDetails --> Logs["admin/logs.html (100등급+)"]
   Logs --> Filter["레벨/기간 필터"]
-  Logs --> KoLabel["action 열 한글 라벨 표시<br/>상세 모달 한글 키 우선 표시"]
+  Logs --> KoLabel["action/details 한글 치환 표시<br/>필수 정보는 기본 영역 표시"]
   Logs --> Ack["ERROR 이상 로그 확인 처리"]
   Logs --> SoftDel["소프트 삭제 (is_deleted = true)<br/>관리자(100+)만"]
   SoftDel --> DelView["삭제 대기 목록 보기 / 복원"]
@@ -598,25 +633,27 @@ flowchart TD
 - v3.53.0부터 인증/권한 원인 분석용 action을 구분한다: `AUTH_SESSION_MISSING`, `AUTH_PROFILE_LOAD_FAIL`, `AUTH_REDIRECT`, `AUTH_PAGE_ACCESS_CHECK_FAIL`, `QR_LOCATION_PERMISSION_BLOCKED`.
 - v3.67.0부터 상품 카테고리 관리 페이지에서 새 카테고리를 추가하면 `PRODUCT_CATEGORY_CREATE`를 기록하고, 실패 시 `PRODUCT_CATEGORY_CREATE_FAIL`/`PRODUCT_CATEGORY_CREATE_ERROR`를 기록한다.
 - v3.66.0부터 상품 카테고리 수정/삭제는 `PRODUCT_CATEGORY_UPDATE`, `PRODUCT_CATEGORY_DELETE`로 기록하고, 공지 열람 현황 조회는 `ANNOUNCEMENT_READ_STATUS_VIEW`로 기록한다.
-- v3.69.0부터 상품 이미지 연결 로그(`PRODUCT_IMAGE_UPDATE`)는 `details.필드`로 `image_url`(썸네일)과 `detail_image_url`(상세 이미지)을 구분한다.
+- v3.69.0부터 상품 이미지 연결 로그(`PRODUCT_IMAGE_UPDATE`)는 `details.field`로 `image_url`(썸네일)과 `detail_image_url`(상세 이미지)을 구분한다.
+- v3.74.0부터 `writeLog()`는 details를 영어 key로 정규화하고, 작업명/사용자/일시/레벨/페이지/client처럼 기본 컬럼 또는 수집 금지 항목과 중복되는 값을 details에 저장하지 않는다.
 - `admin/log-rules.html`에는 페이지별 로그 작성 발생 조건, 로그 작성 항목, 데이터 참조 위치, Slack 알림 항목을 표로 정리한다.
 - `AUTH_REDIRECT`는 로그인 필수 페이지가 로그인 화면 또는 `index.html`로 이동한 원인을 추적하기 위한 로그이며, 세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단을 구분한다.
-- `activity-log.js`의 `getActionLabel()`은 `js/codes.js`/DB `activity_logs.action` 코드 그룹을 우선 사용하고, 기존 로그의 `details._actionLabel`을 하위호환 라벨로 함께 사용한다
-- `writeLog()`는 기록 시 action 라벨이 있으면 `details._actionLabel`/`details._actionKo`와 한글 상세 키 별칭을 자동 저장한다
+- `activity-log.js`의 `getActionLabel()`은 `js/codes.js`/DB `activity_logs.action` 코드 그룹을 우선 사용한다.
+- `writeLog()`는 신규 로그에 `_actionLabel`/`_actionKo`와 한글 상세 키 별칭을 저장하지 않는다. 기존 중복 데이터는 `docs/TASK-074_activity_logs_english_details.sql`로 정리할 수 있다.
 - `writeLog()`는 Supabase insert 결과의 `error`를 확인하고, 구버전 DB 스키마에서 `user_name`/`is_acknowledged` 컬럼 오류가 나면 해당 선택 컬럼을 제거해 재시도한다
-- `admin/logs.html`은 `getActionLabel()`로 action 열에 한글 라벨을 표시한다 (영문 키 병기)
+- `admin/logs.html`은 `getActionLabel()`과 공통 details 매핑으로 action/details를 한글로 표시하며, 영문 action key를 목록에 병기하지 않는다.
 - `ERROR`, `FATAL`, `CRITICAL`은 기본적으로 미확인 상태로 저장
 - 운영자가 확인 내용을 남기면 확인 처리
 - 로그 삭제는 소프트 삭제(`is_deleted=true`) 방식
 - 로그/작업 이력 조회 시 `is_deleted`가 `NULL`인 기존 데이터도 함께 표시하도록 하위호환 처리
-- 실제 삭제는 관리자가 SQL Editor에서 직접 실행: `DELETE FROM activity_logs WHERE is_deleted = true;`
+- 실제 삭제는 180일 보존 정책으로 확인 완료 로그만 자동 정리하며, 별도 운영 정리가 필요하면 관리자가 SQL Editor에서 직접 실행한다
+- 자동 보존 정리는 `cleanup_data_retention_180d()`, 수동 로그 정리는 `cleanup_activity_logs_retention_180d()`가 확인 완료된 180일 초과 로그만 삭제하며, 미확인 로그는 확인될 때까지 삭제하지 않는다
 - 전체 기능의 성공/실패/거부가 `logInfo`/`logWarn`/`logError`로 기록됨
 
 ## 12. 작업 이력(감사) 흐름
 
 ```mermaid
 flowchart TD
-  AdminAction["관리 작업 수행"] --> AuditLog["writeLog() → activity_logs<br/>details._actionLabel/_actionKo + 한글 상세"]
+  AdminAction["관리 작업 수행"] --> AuditLog["writeLog() → activity_logs<br/>영어 details + 공통 필드 분리"]
   AuditLog --> AuditPage["admin/audit.html (100등급+)"]
   AuditPage --> CategoryFilter["10개 카테고리 필터<br/>사용자/등록/부서/달란트/상품·주문/Q&A/인증/로그관리/권한·설정"]
   AuditPage --> KoType["작업 유형 한글 라벨 표시<br/>(AUDIT_ACTIONS + 코드북)"]
@@ -626,7 +663,27 @@ flowchart TD
 - `AUDIT_ACTIONS`는 기본 정의와 `activity_logs.action` 코드 그룹을 함께 사용해 70개 이상 관리 작업 action 키와 한글 라벨/카테고리를 표시한다
 - 작업 이력 화면은 10개 카테고리 필터(전체 + 9개 그룹)로 조회 범위를 좁힌다
 - 작업 이력은 별도 테이블이 아니라 `activity_logs`에서 `AUDIT_ACTIONS` 키에 해당하는 로그만 필터링한다
-- 상세 내역은 `writeLog()`가 저장한 `details._actionLabel`/`details._actionKo` 및 한글화된 details 키를 표시한다. `docs/TASK-067_korean_activity_logs.sql`은 기존 로그에도 같은 한글 별칭을 백필한다
+- 상세 내역은 영어 key로 저장된 `details`를 화면에서 한글로 치환해 표시한다. 기존 한글 별칭/중복 details는 `docs/TASK-074_activity_logs_english_details.sql`로 정리할 수 있다.
+
+### 사용자 로그인 이력 및 통계 (v3.81.0)
+
+```mermaid
+flowchart TD
+  Login["로그인 성공"] --> LastLogin["update_last_login RPC"]
+  Login --> Record["record_user_login RPC"]
+  Record --> History["user_login_history\n사용자·부서·권한 스냅샷"]
+  Admin["관리자 100+"] --> StatsPage["admin/user-stats.html"]
+  StatsPage --> StatsRPC["get_user_login_statistics RPC"]
+  StatsPage --> DetailRPC["get_user_login_stat_detail RPC"]
+  StatsRPC --> History
+  DetailRPC --> History
+  StatsRPC --> KST["KST 기준 날짜·요일·시간·부서·사용자 집계<br/>학생/교사 필터"]
+  DetailRPC --> Detail["통계별 사용자 목록 / 사용자별 로그인 이력"]
+```
+
+- 로그인 실패와 승인 대기/거부, `profiles.is_super_admin=true`인 최고관리자는 이 테이블에 기록하지 않는다. 기존 최고관리자 이력은 `TASK-082`에서 정리한다.
+- `user_login_history` 직접 SELECT는 RLS와 권한 회수로 막고, 관리자 통계·상세 조회 RPC만 결과를 반환한다.
+- 통계 화면은 기간·부서·학생/교사 필터를 지원하며, 날짜·요일·시간·부서·사용자 조건마다 2차원 막대 그래프를 표시한다. 날짜·요일·시간·부서별 상세는 사용자 목록과 로그인 횟수·최근 로그인 시각을, 사용자별 상세는 로그인 시점의 부서·권한 스냅샷을 함께 표시한다.
 
 ## 13. Slack 알림 흐름
 
@@ -709,11 +766,12 @@ flowchart TD
 |---|---|
 | `code_groups`, `code_items` | 권한/유형/상태/카테고리/로그 액션 등 코드 마스터. `code_items.meta`에 rank, color, emoji, category 같은 표시/검증 메타 저장 |
 | `profiles` | 사용자 유형, 권한, 부서, 반, 달란트 잔액, 사용 대기 달란트(`pending_talent`), 마지막 로그인(`last_login_at`) |
+| `user_login_history` | 최고관리자를 제외한 성공 로그인 시점의 사용자·부서·권한 스냅샷과 로그인 시각. 직접 조회를 금지하고 관리자 통계·상세 조회 RPC로만 집계 |
 | `user_preferences` | 사용자별 즐겨찾기 바로가기 설정(JSONB), 테마(`theme`), 그리드별 페이지 크기(`page_sizes` JSONB), RLS 적용 |
 | `departments` | 부서명, 설명, 반 개수, 활성 상태 |
 | `registration_requests` | 가입 신청/승인/거부 |
 | `department_transfer_requests` | 부서 이동 요청/승인/거부 |
-| `talent_items` | 달란트 지급 항목 (학생용/교사용 구분), 지급 규칙(`giving_rule`), 지급 설명(`giving_description`) |
+| `talent_items` | 달란트 지급 항목 (학생용/교사용 구분), 카드 이모지(`emoji`), 지급 규칙(`giving_rule`), 지급 설명(`giving_description`) |
 | `talent_transactions` | 달란트 적립/사용/반환 내역. `created_by`로 지급자 추적. 예외 지급은 `override_week_limit`, `override_reason`으로 표시 |
 | `talent_exception_requests` | 예외 지급 요청/승인/거부. 60등급 이상 요청, 90등급 이상 승인/거부, 승인 시 `give_talent` RPC로 실제 지급 |
 | `products` | 상점 상품. `target_role`, `category`는 코드 마스터 기준 구분값이고 `sort_order`로 카테고리 안 상품 표시 순서를 제어 |
@@ -725,7 +783,7 @@ flowchart TD
 | `talent_qr_scans` | QR 코드 스캔 이력. 반복 수령 시 오늘 기준 중복 체크 |
 | `announcements` | 공지 제목/내용, 활성 여부, 작성자/수정자와 시각. 활성 공지는 로그인 사용자 조회 가능, 관리 작업은 90등급 이상 |
 | `announcement_dismissals` | 사용자별 공지 다시 열지 않음 상태. `(announcement_id, user_id)` 기본키로 중복 저장 방지. 90등급 이상 공지 열람 현황 조회에서 확인/미확인 판정과 전체/확인자/미확인자 콤보박스 필터에 사용 |
-| `activity_logs` | 활동/오류 로그. `is_deleted`/`deleted_at` 소프트 삭제, `user_name` 기록, `action` 코드 라벨과 `details._actionLabel`/`details._actionKo`, 한글 상세 키 별칭 저장. 작업 이력도 이 테이블을 필터링해 표시 |
+| `activity_logs` | 활동/오류 로그. `is_deleted`/`deleted_at` 소프트 삭제, `username`/`user_name` 작업자 기록, `action` 코드와 영어 key 기반 `details` 저장. 화면/Slack에서는 코드북과 공통 매핑으로 한글 치환 표시. 작업 이력도 이 테이블을 필터링해 표시. 확인 완료 로그는 180일 보존, 미확인 로그는 확인 전까지 보존 |
 | `role_page_access` | 권한 등급별 페이지 접근/요소 가시성 설정 |
 | `role_page_features` | 권한 등급별 페이지 기능 설정값 |
 | `page_permissions` | 페이지 권한 설정 (레거시) |
@@ -771,6 +829,8 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 |---|---|
 | `get_my_profile` | 로그인 사용자 프로필/권한 조회 |
 | `update_last_login` | 로그인 성공 시 `profiles.last_login_at` 갱신 |
+| `record_user_login` | 성공 로그인 시 로그인 이력 스냅샷 기록 |
+| `get_user_login_statistics` | 관리자(100+)의 KST 기준 날짜/요일/시간/부서/사용자별 성공 로그인 집계 |
 | `check_username_available` | 가입 신청 아이디 중복확인 |
 | `check_registration_status` | 미승인/거부 계정 로그인 안내 조회 |
 | `admin_list_users` | 사용자 목록 조회 |
@@ -785,6 +845,7 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 | `confirm_product_purchase` | 상품 구매 확정 (실제 달란트 차감) |
 | `cancel_product_order` | 구매 신청 상태 주문 취소와 사용 대기 달란트 복원 |
 | `scan_qr_talent` | QR 수령 처리, 스캔 기록, `talent_transactions.source='qr'` 기록 |
+| `_grant_product_suggestion_adoption_talent` | 채택 추천의 등록자에게 `상품 추천 채택` 1달란트를 건별 자동 지급하고 보상 원장·작업 이력을 기록 |
 | `submit_anonymous_question` | 비로그인 Q&A 질문 등록 |
 | `admin_soft_delete_qna` | 전도사님 이상 Q&A 소프트 삭제 |
 | `get_public_app_config` | 공개 런타임 설정 조회 |
@@ -810,7 +871,7 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 17. 부서 이동이 수정 모달이 아닌 부서 이동 버튼으로만 되는지 확인한다.
 18. 60등급 이상이 `admin/users.html`, `admin/shop.html`, `admin/purchases.html`을 사용할 수 있고, 70등급 이상만 `admin/product-categories.html`에 접근 가능한지 확인한다.
 19. 60등급 이상이 대시보드를, 80등급 이상이 관리자, 보고서, 버전 화면을 사용할 수 있는지 확인한다.
-20. 100등급 이상만 `admin/page-access.html`, `admin/page-features.html`, `admin/audit.html`, `admin/logs.html`에 접근 가능하고, 부장 교사(80+) 이상은 `admin/service-stats.html`에 접근 가능한지 확인한다.
+20. 100등급 이상만 `admin/page-access.html`, `admin/page-features.html`, `admin/audit.html`, `admin/logs.html`, `admin/user-stats.html`에 접근 가능하고, 부장 교사(80+) 이상은 `admin/service-stats.html`에 접근 가능한지 확인한다.
 21. 80등급 이상이 `docs/page-permission-rules.html`, `admin/log-rules.html`, `admin/slack-rules.html`, `admin/audit-rules.html`에 접근 가능한지 확인한다.
 22. 소개 메뉴에 `가이드` 항목 하나만 표시되고, 비로그인은 학생 가이드, 로그인 사용자는 권한별 가이드(교사/부서 담당/구매 담당/부장/전도사님/관리자)로 연결되는지 확인한다.
 23. `qna.html`에서 공개 FAQ, 로그인 질문 등록, 60등급 이상 댓글(답변)/FAQ 등록/직접 FAQ 추가, 90등급 이상 삭제가 동작하는지 확인한다.
@@ -829,7 +890,7 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 | 2 | `docs/PROJECT_ARCHITECTURE_FLOW.md` | 상세 구성도와 프로세스 흐름 |
 | 3 | `js/codes.js` | 권한/유형/상태/카테고리/로그 액션 코드북, DB `code_items` 로드, 라벨/정렬/옵션 공통 함수 |
 | 4 | `js/auth.js` | 권한 등급, 리디렉트, Supabase 세션, 24h 유휴 타임아웃(`startSessionTimer`), tErr() 에러 번역 |
-| 5 | `js/activity-log.js` | 로그 기록, action 한글 라벨, writeLog() 자동 라벨, WARN+ Slack 알림 연동, Q&A 미답변 배지, 세션 캐시, 소프트 삭제 |
+| 5 | `js/activity-log.js` | 로그 기록, details 영어 key 정규화/중복 제거, action/details 한글 표시 변환, WARN+ Slack 알림 연동, Q&A 미답변 배지, 세션 캐시, 소프트 삭제 |
 | 5a | `js/slack-notify.js` | Slack 알림 공통 유틸리티, Edge Function slack-notify 호출, 채널 라우팅은 Edge Function 측 |
 | 5b | `docs/edge-function-slack-notify.ts` | Edge Function 배포 소스, 부서별/유형별 Webhook Secret 동적 선택, Slack Block Kit 포맷 |
 | 5c | `docs/SLACK_NOTIFICATION_RULES.md`, `admin/slack-rules.html` | Slack 알림 type과 채널 라우팅 운영 문서 |
@@ -855,8 +916,23 @@ ID가 없는 상태에서 이미지 업로드 함수를 호출하면 파일명�
 | 25 | `docs/TASK-067_korean_activity_logs.sql` | v3.66.0: 기존 활동 로그 상세 한글 별칭 백필 및 실제 발생 액션 라벨 |
 | 26 | `docs/TASK-068_product_category_page_and_sort_order.sql` | v3.67.0: 상품 정렬 순번 컬럼/인덱스와 상품 카테고리 관리 70+ 정책 |
 | 27 | `docs/TASK-069_product_detail_image.sql` | v3.69.0: `products.detail_image_url` 상세 설명 이미지 컬럼 추가 |
-| 28 | `docs/TASK-070_service_usage_monitoring.sql`, `docs/TASK-070_service_usage_cron.sql` | v3.70.0: 외부 서비스 사용량/한도/알림 스키마와 6시간 예약 수집 |
-| 29 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 28 | `docs/TASK-070_service_usage_monitoring.sql`, `docs/TASK-070_service_usage_cron.sql` | v3.70.0~v3.71.0: 외부 서비스 사용량/한도/알림 스키마와 1시간 예약 수집 |
+| 29 | `docs/TASK-072_data_retention_180d.sql` | v3.72.0: 서비스 통계 스냅샷/수집 이력과 확인 완료 활동 로그 180일 보존 정책 |
+| 30 | `docs/TASK-073_manual_retention_cleanup.sql` | v3.73.0: 서비스 통계/활동 로그 180일 초과 수동 삭제 RPC와 액션 코드 |
+| 31 | `docs/TASK-074_plan.md`, `docs/TASK-074_test_scenario.md`, `docs/TASK-074_test_result.md`, `docs/TASK-074_change_report.md` | v3.74.0: 활동 로그 영어 저장/한글 표시 분리 작업 계획, 검증, 변경 보고 |
+| 32 | `docs/TASK-074_activity_logs_english_details.sql` | v3.74.0: 기존 활동 로그 details의 중복 한글 별칭/client 항목을 영어 key 중심으로 정리 |
+| 33 | `docs/TASK-081_user_login_statistics.sql` | v3.79.0: 성공 로그인 이력 테이블, RLS, 기록/통계 RPC |
+| 34 | `docs/TASK-082_exclude_super_admin_login_history.sql` | v3.79.1: 최고관리자 로그인 이력 정리 및 기록·통계 제외 |
+| 35 | `docs/TASK-083_talent_item_emoji.sql` | v3.80.0: 달란트 항목 카드 이모지 컬럼과 기존 항목 기본 이모지 보정 |
+| 36 | `docs/TASK-084_user_login_statistics_detail.sql` | v3.81.0: 통계별 사용자 목록 및 사용자별 로그인 이력 조회 RPC |
+| 37 | `docs/TASK-085_product_suggestions.sql` | v3.82.2: 상품 추천, 등록 시점 투표 정원, 비밀 투표, 관리자 현재 유효 정원 종료, 미투표 배지와 타입 호환 RPC/RLS/Storage 정책 |
+| 38 | `docs/INITIAL_DATABASE_SETUP.sql`, `docs/SUPABASE_NEW_PROJECT_SETUP.md` | 새 Supabase 프로젝트 초기 설치 통합 SQL과 실행 절차 |
+| 39 | `docs/TASK-086_product_suggestion_admin_decision.sql` | v3.84.0: 관리자(100+) 상품 추천 예외 결정 RPC |
+| 40 | `docs/TASK-087_product_suggestion_detail_image.sql` | v3.85.0: 추천 상세 이미지, 종료 전 득표 비공개, 종료 투표 잠금 |
+| 41 | `docs/TASK-088_product_suggestion_adoption_talent.sql` | v3.86.0: 채택 추천 등록자 1달란트 자동 지급, 중복 방지 보상 원장, 채택 상품 순번 999 |
+| 42 | `docs/TASK-089_product_suggestion_slack_notifications.sql` | v3.87.0: 상품 추천 Slack 종료 알림에 필요한 관리자 직접 결정 익명 득표 반환 |
+| 43 | `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql` | v3.88.0: 최고관리자만 진행 중 집계·직접 결정·현재 유효 정원 종료를 수행하도록 보강 |
+| 44 | `docs/TASK-091_user_stats_filters.sql` | v3.89.0: 사용자 통계의 학생/교사 필터를 집계·상세 RPC에 동일하게 적용 |
 
 ## 19. 개발 주의사항
 

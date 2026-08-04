@@ -15,7 +15,20 @@
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 
-async function recordSlackUsage(metricKey: "notifications_sent" | "webhook_failures", type: string, status?: number) {
+// The exact same source runs in DEV and PROD. Slack remains fail-closed: each
+// project must explicitly opt in through its own Edge Function environment.
+const SLACK_ENABLED = (Deno.env.get("SLACK_ENABLED") || "false").trim().toLowerCase() === "true";
+
+type SlackUsageContext = {
+  reason?: "http_error" | "network_error" | "missing_webhook_config";
+};
+
+async function recordSlackUsage(
+  metricKey: "notifications_sent" | "webhook_failures",
+  type: string,
+  status?: number,
+  context: SlackUsageContext = {},
+) {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
   const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
   if (!supabaseUrl || !serviceRoleKey) return;
@@ -34,7 +47,7 @@ async function recordSlackUsage(metricKey: "notifications_sent" | "webhook_failu
         metric_key: metricKey,
         quantity: 1,
         source: "edge-function",
-        metadata: { type, status: status || null },
+        metadata: { type, status: status || null, ...context },
       }),
     });
   } catch (error) {
@@ -59,6 +72,12 @@ const STATUS_LABELS: Record<string, string> = {
   cancelled: "❌ 구매 취소",
 };
 
+const PRODUCT_SUGGESTION_RESULT_LABELS: Record<string, string> = {
+  adopted: "채택",
+  rejected: "불채택",
+  voting: "투표중",
+};
+
 const LOG_LEVEL_EMOJI: Record<string, string> = {
   WARN: "⚠️",
   ERROR: "🔴",
@@ -66,11 +85,143 @@ const LOG_LEVEL_EMOJI: Record<string, string> = {
   CRITICAL: "🚨",
 };
 
+const LOG_ACTION_LABELS: Record<string, string> = {
+  AUTH_SESSION_MISSING: "인증 세션 없음",
+  AUTH_REDIRECT: "인증/권한 리디렉트",
+  AUTH_PROFILE_LOAD_FAIL: "인증 프로필 조회 실패",
+  LOGIN_FAIL: "로그인 실패",
+  LOGIN_PENDING_APPROVAL: "가입 승인 대기",
+  APP_VERSION_STALE_SESSION: "구버전 세션 감지",
+  TALENT_GIVE_ITEM_FAIL: "달란트 항목 지급 실패",
+  TALENT_GIVE_ITEM_DENIED: "달란트 항목 지급 거부",
+  TALENT_EXCEPTION_REQUEST_FAIL: "예외 지급 요청 실패",
+  ORDER_CANCEL_REFUND_FAIL: "주문 취소 환불 실패",
+  JS_ERROR: "JS 오류",
+  RESOURCE_LOAD_FAIL: "리소스 로드 실패",
+  SLACK_NOTIFY_FAIL: "Slack 알림 전송 실패",
+  MY_TALENT_PENDING_QUERY: "대기 달란트 조회 오류",
+};
+
+const LOG_VALUE_LABELS: Record<string, string> = {
+  "Supabase auth session missing": "Supabase 인증 세션 없음",
+  "Invalid login credentials": "로그인 정보가 일치하지 않습니다",
+  "TypeError: Load failed": "로드 실패",
+  "Load failed": "로드 실패",
+  "TypeError: Failed to fetch": "네트워크 요청에 실패했습니다",
+  "Failed to fetch": "네트워크 요청에 실패했습니다",
+  "Failed to send a request to the Edge Function": "Edge Function 요청 전송 실패",
+  "Edge Function returned a non-2xx status code": "Edge Function이 오류 상태를 반환했습니다",
+  profiles: "사용자 프로필",
+  registration_requests: "가입 신청",
+  talent_transactions: "달란트 거래",
+  product_orders: "상품 주문",
+  activity_logs: "작업 로그",
+  purchase_new: "새 구매 신청",
+  "Script error.": "스크립트 오류",
+  "User denied Geolocation": "사용자가 위치 권한을 거부했습니다",
+  "Profile RPC returned no profile": "프로필 RPC 결과 없음",
+  "Cannot coerce the result to a single JSON object": "단일 결과로 변환할 수 없습니다",
+  "permission denied for table profiles": "profiles 테이블 권한이 없습니다",
+  Unauthorized: "권한이 없습니다",
+  last_activity: "마지막 활동 기준",
+  idle_timer: "유휴 타이머 기준",
+  visibilitychange: "탭 재활성화 기준",
+  weekly_duplicate: "주간 중복 지급",
+  duplicate_pending: "이미 대기 중인 요청",
+  cached_session: "캐시 세션으로 복구",
+  profiles_fallback: "프로필 직접 조회로 복구",
+  cancel_aborted_before_partial_update: "부분 취소 방지를 위해 중단",
+  teacher: "교사",
+  student: "학생",
+  admin: "관리자",
+  evangelist: "전도사님",
+  chief: "부장 교사",
+  purchase_teacher: "구매 담당 교사",
+  dept_teacher: "부서 담당 교사",
+  requested: "요청됨",
+  preparing: "준비 중",
+  purchased: "구매 완료",
+  delivered: "지급 완료",
+  cancelled: "취소됨",
+  false: "아니오",
+  true: "예",
+};
+
 interface SlackBlock {
   type: string;
   text?: { type: string; text: string; emoji?: boolean };
   elements?: Array<{ type: string; text: string }>;
   fields?: Array<{ type: string; text: string }>;
+}
+
+function stringValue(value: unknown): string {
+  if (value === null || value === undefined) return "";
+  if (typeof value === "string") return value.trim();
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
+  return "";
+}
+
+function getObjectValue(source: unknown, keys: string[]): string {
+  if (!source || typeof source !== "object") return "";
+  const obj = source as Record<string, unknown>;
+  for (const key of keys) {
+    const value = stringValue(obj[key]);
+    if (value) return value;
+  }
+  return "";
+}
+
+function translateLogText(value: unknown): string {
+  const raw = stringValue(value);
+  if (!raw) return "";
+  if (LOG_VALUE_LABELS[raw]) return LOG_VALUE_LABELS[raw];
+  const weekly = raw.match(/^Already given this item this week:\s*(.+)$/i);
+  if (weekly) return `이번 주에 이미 지급된 항목입니다: ${weekly[1]}`;
+  const permission = raw.match(/^permission denied for table ([\w.]+)$/i);
+  if (permission) return `${permission[1]} 테이블 권한이 없습니다`;
+  return LOG_ACTION_LABELS[raw] || raw;
+}
+
+function localizeLogDetailValue(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(localizeLogDetailValue);
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    Object.entries(value as Record<string, unknown>).forEach(([key, item]) => {
+      out[key] = localizeLogDetailValue(item);
+    });
+    return out;
+  }
+  if (typeof value === "boolean") return value ? "예" : "아니오";
+  if (typeof value === "string" || typeof value === "number") return translateLogText(value);
+  return value;
+}
+
+function formatLogDetailValue(value: unknown): string {
+  const localized = localizeLogDetailValue(value);
+  if (localized && typeof localized === "object") return JSON.stringify(localized);
+  return stringValue(localized);
+}
+
+function resolveNotificationUser(data: Record<string, unknown>): { account: string; name: string } {
+  const details = data["상세"];
+  const account = getObjectValue(data, ["사용자계정", "사용자 계정", "계정", "아이디", "logUserAccount", "actorAccount"])
+    || getObjectValue(details, ["사용자 계정", "작업자 아이디", "아이디", "logUserAccount", "actorAccount"]);
+  const name = getObjectValue(data, ["사용자이름", "사용자 이름", "표시이름", "표시 이름", "이름", "신청자", "등록자", "처리자", "logUserName", "actorName"])
+    || getObjectValue(details, ["사용자 이름", "작업자", "이름", "표시 이름", "logUserName", "actorName"]);
+
+  return {
+    account: account || "계정 없음",
+    name: name || "이름 없음",
+  };
+}
+
+function addUserContext(payload: { text: string; blocks: SlackBlock[] }, data: Record<string, unknown>) {
+  const user = resolveNotificationUser(data);
+  payload.blocks.push({
+    type: "context",
+    elements: [{ type: "mrkdwn", text: `👤 사용자 계정: ${user.account} / 표시이름: ${user.name}` }],
+  });
+  return payload;
 }
 
 function resolveWebhookUrl(type: string, data: Record<string, unknown>): string | null {
@@ -94,6 +245,11 @@ function resolveWebhookUrl(type: string, data: Record<string, unknown>): string 
       return Deno.env.get("SLACK_WEBHOOK_PRODUCT_MANAGEMENT") || null;
     }
     case "log_alert": {
+      return Deno.env.get("SLACK_WEBHOOK_OPERATIONS") || null;
+    }
+    case "product_suggestion_registered":
+    case "product_suggestion_vote_completed":
+    case "slack_test": {
       return Deno.env.get("SLACK_WEBHOOK_OPERATIONS") || null;
     }
     case "qna_new": {
@@ -208,17 +364,17 @@ function formatMessage(type: string, data: Record<string, unknown>): { text: str
     case "log_alert": {
       const level = (data["레벨"] as string) || "WARN";
       const emoji = LOG_LEVEL_EMOJI[level] || "⚠️";
-      const action = data["액션"] as string || "";
+      const action = translateLogText(data["액션"] || data["actionLabel"] || data["action"] || "");
       const details = data["상세"] || {};
       let detailStr = "";
       if (typeof details === "object" && details !== null) {
         const d = details as Record<string, unknown>;
         const filtered = Object.entries(d)
-          .filter(([k]) => !k.startsWith("_"))
+          .filter(([k]) => !k.startsWith("_") && !["client", "클라이언트", "logLevel", "logPage", "loggedAt", "actionCode", "actionLabel", "actorAccount", "actorName"].includes(k))
           .slice(0, 5);
-        detailStr = filtered.map(([k, v]) => `${k}: ${v}`).join("\n");
+        detailStr = filtered.map(([k, v]) => `${k}: ${formatLogDetailValue(v)}`).join("\n");
       } else {
-        detailStr = String(details);
+        detailStr = formatLogDetailValue(details);
       }
       if (detailStr.length > 300) detailStr = detailStr.substring(0, 300) + "...";
 
@@ -239,6 +395,74 @@ function formatMessage(type: string, data: Record<string, unknown>): { text: str
             type: "section" as const,
             text: { type: "mrkdwn" as const, text: `*상세:*\n\`\`\`${detailStr}\`\`\`` },
           }] : []),
+          { type: "context", elements: [{ type: "mrkdwn", text: `📅 ${now}` }] },
+        ],
+      };
+    }
+
+    case "product_suggestion_registered": {
+      const registeredAt = data["등록완료시각"]
+        ? new Date(String(data["등록완료시각"])).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+        : now;
+      const status = String(data["처리상태"] || "투표중");
+      const fallback = `💡 상품 추천 등록: ${data["상품명"] || "-"}`;
+      return {
+        text: fallback,
+        blocks: [
+          { type: "header", text: { type: "plain_text", text: "💡 상품 추천 등록 완료", emoji: true } },
+          {
+            type: "section",
+            fields: [
+              { type: "mrkdwn", text: `*상품명:*\n${data["상품명"] || "-"}` },
+              { type: "mrkdwn", text: `*등록 완료 시각:*\n${registeredAt}` },
+              { type: "mrkdwn", text: `*처리 상태:*\n${status}` },
+            ],
+          },
+          { type: "context", elements: [{ type: "mrkdwn", text: "🔒 추천자 정보는 비밀 투표 정책에 따라 포함하지 않습니다." }] },
+        ],
+      };
+    }
+
+    case "product_suggestion_vote_completed": {
+      const resultCode = String(data["결과"] || "");
+      const result = PRODUCT_SUGGESTION_RESULT_LABELS[resultCode] || resultCode || "-";
+      const completedAt = data["완료시각"]
+        ? new Date(String(data["완료시각"])).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })
+        : now;
+      const approve = Number(data["찬성"] || 0).toLocaleString();
+      const reject = Number(data["반대"] || 0).toLocaleString();
+      const voteCount = Number(data["투표수"] || 0).toLocaleString();
+      const fallback = `🗳️ 상품 추천 투표 완료: ${data["상품명"] || "-"} (${result}, 찬성 ${approve}표 / 반대 ${reject}표)`;
+      return {
+        text: fallback,
+        blocks: [
+          { type: "header", text: { type: "plain_text", text: "🗳️ 상품 추천 투표 완료", emoji: true } },
+          {
+            type: "section",
+            fields: [
+              { type: "mrkdwn", text: `*상품명:*\n${data["상품명"] || "-"}` },
+              { type: "mrkdwn", text: `*투표 결과:*\n${result}` },
+              { type: "mrkdwn", text: `*찬성:*\n${approve}표` },
+              { type: "mrkdwn", text: `*반대:*\n${reject}표` },
+              { type: "mrkdwn", text: `*총 투표:*\n${voteCount}표` },
+              { type: "mrkdwn", text: `*종료 방식:*\n${data["종료방식"] || "-"}` },
+            ],
+          },
+          { type: "context", elements: [{ type: "mrkdwn", text: `📅 투표 완료 시각: ${completedAt}` }] },
+          { type: "context", elements: [{ type: "mrkdwn", text: "🔒 추천자와 개별 투표자 정보는 포함하지 않습니다." }] },
+        ],
+      };
+    }
+
+    case "slack_test": {
+      return {
+        text: "✅ Slack 연결 테스트",
+        blocks: [
+          { type: "header", text: { type: "plain_text", text: "✅ Slack 연결 테스트", emoji: true } },
+          {
+            type: "section",
+            text: { type: "mrkdwn", text: "운영관리 Slack 알림 경로가 정상적으로 연결되었습니다." },
+          },
           { type: "context", elements: [{ type: "mrkdwn", text: `📅 ${now}` }] },
         ],
       };
@@ -295,6 +519,15 @@ Deno.serve(async (req) => {
     });
   }
 
+  if (!SLACK_ENABLED) {
+    return new Response(JSON.stringify({ success: true, skipped: true, reason: "Slack notifications are disabled" }), {
+      headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
+    });
+  }
+
+  let notificationType = "unknown";
+  let webhookRequestStarted = false;
+
   try {
     const { type, data } = await req.json();
     if (!type) {
@@ -303,16 +536,22 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
+    notificationType = String(type);
 
     const webhookUrl = resolveWebhookUrl(type, data || {});
     if (!webhookUrl) {
-      return new Response(JSON.stringify({ error: "No webhook configured for this notification type/department", type, data }), {
-        status: 200,
+      await recordSlackUsage("webhook_failures", notificationType, undefined, { reason: "missing_webhook_config" });
+      return new Response(JSON.stringify({ error: "No webhook configured for this notification type/department", type }), {
+        status: 503,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
     const payload = formatMessage(type, data || {});
+    if (type !== "product_suggestion_registered" && type !== "product_suggestion_vote_completed" && type !== "slack_test") {
+      addUserContext(payload, data || {});
+    }
+    webhookRequestStarted = true;
 
     const slackRes = await fetch(webhookUrl, {
       method: "POST",
@@ -323,19 +562,22 @@ Deno.serve(async (req) => {
     if (!slackRes.ok) {
       const errText = await slackRes.text();
       console.error("[slack-notify] Slack API error:", slackRes.status, errText);
-      await recordSlackUsage("webhook_failures", type, slackRes.status);
+      await recordSlackUsage("webhook_failures", notificationType, slackRes.status, { reason: "http_error" });
       return new Response(JSON.stringify({ error: "Slack API error", status: slackRes.status }), {
         status: 502,
         headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
       });
     }
 
-    await recordSlackUsage("notifications_sent", type, slackRes.status);
+    await recordSlackUsage("notifications_sent", notificationType, slackRes.status);
     return new Response(JSON.stringify({ success: true }), {
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },
     });
   } catch (err) {
     console.error("[slack-notify] Error:", err);
+    if (webhookRequestStarted) {
+      await recordSlackUsage("webhook_failures", notificationType, undefined, { reason: "network_error" });
+    }
     return new Response(JSON.stringify({ error: String(err) }), {
       status: 500,
       headers: { "Content-Type": "application/json", "Access-Control-Allow-Origin": "*" },

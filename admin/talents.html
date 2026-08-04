@@ -141,7 +141,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -286,6 +286,28 @@
     function getDeptName(id) {
       const d = allDepts.find(d => d.id === id);
       return d ? d.name : '-';
+    }
+
+    function getTalentTargetLogContext(userId, fallbackName) {
+      const user = talentUserList.find(u => u.id === userId) || {};
+      const targetName = fallbackName || user.display_name || user.username || '';
+      return {
+        targetUserId: userId,
+        targetAccount: user.username || null,
+        targetName,
+        부서: getDeptName(user.department_id),
+        userType: user.user_type || currentTab,
+        ...(user.class_number != null ? { 반: user.class_number } : {})
+      };
+    }
+
+    function getTalentItemLogContext(itemId, fallbackName, fallbackAmount) {
+      const item = talentItems.find(i => i.id === itemId) || {};
+      return {
+        talentItemId: itemId,
+        itemName: fallbackName || item.name || '',
+        금액: fallbackAmount != null ? fallbackAmount : item.talent_amount
+      };
     }
 
     function populateDeptFilter() {
@@ -491,7 +513,10 @@
         const m = r.description.match(/반환:\s*\[([^\]]+)\]/);
         if (m) { cancelledById.add(m[1]); }
         else {
-          const k = r.user_id + '|' + r.amount + '|' + r.description.replace('반환: ','').replace('반환:','');
+          const legacyDescription = r.description
+            .replace(/^반환:\s*/, '')
+            .replace(/^\[\]\s*/, '');
+          const k = r.user_id + '|' + r.amount + '|' + legacyDescription;
           legacyRetCount[k] = (legacyRetCount[k] || 0) + 1;
         }
       });
@@ -513,15 +538,24 @@
       if (_attendanceGivenThisWeek.has(userId)) { alert('이번 주에 이미 출석 달란트가 지급되었습니다.'); return; }
       _attendBusy = true;
       try {
-        const result = await giveTalentByItem(userId, attendItem.id, session.id);
+        const targetLogContext = getTalentTargetLogContext(userId, userName);
+        const result = await giveTalentByItem(userId, attendItem.id, session.id, {
+          itemName: attendItem.name,
+          targetAccount: targetLogContext.targetAccount,
+          targetName: targetLogContext.targetName
+        });
         if (result && result.success === false) {
           alert(tErr(result.error || '출석 지급 실패'));
           return;
         }
         _attendanceGivenThisWeek.add(userId);
-        _attendanceTxnMap[userId] = { id: result?.id || '', amount: result?.amount || attendItem.talent_amount, description: result?.description || attendItem.name };
+        _attendanceTxnMap[userId] = { id: result?.txn_id || result?.id || '', amount: result?.amount || attendItem.talent_amount, description: result?.description || attendItem.name };
         renderTalentTable();
-        await logInfo('ATTENDANCE_GIVE', { targetUser: userId, 대상: userName, 금액: attendItem.talent_amount });
+        await logInfo('ATTENDANCE_GIVE', {
+          ...targetLogContext,
+          ...getTalentItemLogContext(attendItem.id, attendItem.name, attendItem.talent_amount),
+          변경내역: `출석 달란트 지급: ${userName} / 항목: ${attendItem.name} / 금액: ${fmtNum(attendItem.talent_amount)} 달란트`
+        });
         await loadUsers();
       } finally { _attendBusy = false; }
     }
@@ -542,7 +576,13 @@
         _attendanceGivenThisWeek.delete(userId);
         delete _attendanceTxnMap[userId];
         renderTalentTable();
-        await logInfo('ATTENDANCE_CANCEL', { targetUser: userId, 대상: userName, 금액: txn.amount, txnId: txn.id });
+        await logInfo('ATTENDANCE_CANCEL', {
+          ...getTalentTargetLogContext(userId, userName),
+          itemName: txn.description || '출석',
+          금액: txn.amount,
+          txnId: txn.id,
+          변경내역: `출석 달란트 취소: ${userName} / 항목: ${txn.description || '출석'} / 금액: ${fmtNum(txn.amount)} 달란트`
+        });
         await loadUsers();
       } catch (e) {
         alert('취소 오류: ' + (e.message || e));
@@ -550,6 +590,7 @@
     }
 
     async function openDetailModal(userId, name) {
+      if (typeof closeOpenActionMenus === 'function') closeOpenActionMenus();
       document.getElementById('detailTitle').textContent = `${name} - 달란트 상세`;
       document.getElementById('detailModal').classList.remove('hidden');
       const summary = await fetchTalentSummary(userId);
@@ -704,6 +745,7 @@
     }
 
     async function openTalentModal(userId, name, balance) {
+      if (typeof closeOpenActionMenus === 'function') closeOpenActionMenus();
       talentUserId = userId;
       const targetUser = talentUserList.find(u => u.id === userId) || {};
       talentUserName = name || targetUser.display_name || targetUser.username || '';
@@ -733,6 +775,8 @@
 
     let _weeklyGivenMap = {};
     let _weeklyGivenRecordsMap = {};
+    let _giveItemsBusy = false;
+    let _manualTalentBusy = false;
 
     async function renderTalentItemButtons() {
       const items = talentItems.filter(i => i.target_type === currentTab && i.is_active);
@@ -777,7 +821,10 @@
         const m = r.description.match(/\uBC18\uD658:\s*\[([^\]]+)\]/);
         if (m) { cancelledById.add(m[1]); }
         else {
-          const k = r.amount + '|' + r.description.replace('\uBC18\uD658: ', '').replace('\uBC18\uD658:', '');
+          const legacyDescription = r.description
+            .replace(/^\uBC18\uD658:\s*/, '')
+            .replace(/^\[\]\s*/, '');
+          const k = r.amount + '|' + legacyDescription;
           legacyRetCount[k] = (legacyRetCount[k] || 0) + 1;
         }
       });
@@ -843,7 +890,12 @@
           alert('취소 실패: ' + tErr(result.error));
           return;
         }
-        await logInfo('TALENT_ITEM_CANCEL', { userId: talentUserId, itemId, 항목명: itemName, 금액: txn.amount, txnId: txn.id });
+        await logInfo('TALENT_ITEM_CANCEL', {
+          ...getTalentTargetLogContext(talentUserId, talentUserName),
+          ...getTalentItemLogContext(itemId, itemName, txn.amount),
+          txnId: txn.id,
+          변경내역: `달란트 항목 취소: ${talentUserName} / 항목: ${itemName} / 금액: ${fmtNum(txn.amount)} 달란트`
+        });
         records.pop();
         if (records.length === 0) {
           delete _weeklyGivenRecordsMap[itemId];
@@ -872,7 +924,16 @@
         .eq('talent_item_id', itemId)
         .limit(1);
       if (existingError) return { error: existingError.message };
-      if (existing && existing.length > 0) return { error: `"${itemName}" 예외 지급 요청이 이미 대기 중입니다.` };
+      if (existing && existing.length > 0) {
+        await logInfo('TALENT_EXCEPTION_REQUEST_FAIL', {
+          ...getTalentTargetLogContext(talentUserId, talentUserName),
+          ...getTalentItemLogContext(itemId, itemName, amount),
+          사유: reason,
+          오류: `"${itemName}" 예외 지급 요청이 이미 대기 중입니다.`,
+          처리: 'duplicate_pending'
+        });
+        return { error: `"${itemName}" 예외 지급 요청이 이미 대기 중입니다.`, handled: true, logged: true };
+      }
 
       return await createTalentExceptionRequest({
         user_id: talentUserId,
@@ -889,8 +950,18 @@
     }
 
     function updateConfirmBtn() {
-      const chks = document.querySelectorAll('.talent-item-chk:not(:disabled):checked');
       const btn = document.getElementById('btnConfirmGive');
+      if (!btn) return;
+      if (_giveItemsBusy) {
+        btn.style.display = 'block';
+        btn.disabled = true;
+        btn.textContent = '처리 중...';
+        document.querySelectorAll('.talent-item-chk').forEach(chk => { chk.disabled = true; });
+        return;
+      }
+      document.querySelectorAll('.talent-item-chk').forEach(chk => { chk.disabled = false; });
+      const chks = document.querySelectorAll('.talent-item-chk:not(:disabled):checked');
+      btn.disabled = false;
       const overrideEnabled = isOverrideWeekLimitEnabled();
       const selectedOverride = [...chks].some(chk => chk.dataset.overridden === 'true');
       btn.style.display = chks.length > 0 ? 'block' : 'none';
@@ -902,6 +973,7 @@
     }
 
     async function confirmGiveItems() {
+      if (_giveItemsBusy) return;
       const chks = [...document.querySelectorAll('.talent-item-chk:not(:disabled):checked')];
       if (chks.length === 0) return;
       const overrideEnabled = isOverrideWeekLimitEnabled();
@@ -914,6 +986,13 @@
         return;
       }
       const names = chks.map(c => c.dataset.name).join(', ');
+      const targetLogContext = getTalentTargetLogContext(talentUserId, talentUserName);
+      const selectedItems = chks.map(chk => ({
+        itemId: chk.value,
+        itemName: chk.dataset.name || '',
+        amount: Number(chk.dataset.amount || 0),
+        exception: overrideEnabled && !!_weeklyGivenMap[chk.value]
+      }));
       const exceptionMessage = selectedOverride
         ? (canApproveOverrideTalent()
           ? '\n이번 주 제한 예외가 적용됩니다.'
@@ -925,76 +1004,115 @@
       let lastBalance = 0;
       let requestCount = 0;
       let giveCount = 0;
-      for (const chk of chks) {
-        const shouldOverride = overrideEnabled && !!_weeklyGivenMap[chk.value];
-        if (_weeklyGivenMap[chk.value] && !shouldOverride) continue;
-        try {
-          if (shouldOverride && !canApproveOverrideTalent()) {
-            const requestResult = await submitTalentExceptionRequest(chk, overrideReason);
-            if (requestResult.error) {
-              errEl.textContent = requestResult.error;
+      _giveItemsBusy = true;
+      updateConfirmBtn();
+      try {
+        for (const chk of chks) {
+          let shouldOverride = overrideEnabled && !!_weeklyGivenMap[chk.value];
+          if (_weeklyGivenMap[chk.value] && !shouldOverride) continue;
+          try {
+            if (shouldOverride && !canApproveOverrideTalent()) {
+              const requestResult = await submitTalentExceptionRequest(chk, overrideReason);
+              if (requestResult.error) {
+                errEl.textContent = requestResult.error;
+                errEl.classList.add('show');
+                if (!requestResult.logged) {
+                  const logFn = requestResult.handled ? logInfo : logError;
+                  await logFn('TALENT_EXCEPTION_REQUEST_FAIL', {
+                    ...targetLogContext,
+                    ...getTalentItemLogContext(chk.value, chk.dataset.name, Number(chk.dataset.amount || 0)),
+                    사유: overrideReason,
+                    오류: requestResult.error
+                  });
+                }
+                break;
+              }
+              requestCount += 1;
+              continue;
+            }
+            const result = await giveTalentByItem(talentUserId, chk.value, session.id, {
+              overrideWeekLimit: shouldOverride,
+              overrideReason: shouldOverride ? overrideReason : null,
+              itemName: chk.dataset.name,
+              targetAccount: targetLogContext.targetAccount,
+              targetName: targetLogContext.targetName,
+            });
+            if (result && result.success === false) {
+              errEl.textContent = `"${chk.dataset.name}" 처리 중단: ${tErr(result.error)}`;
               errEl.classList.add('show');
-              await logError('TALENT_EXCEPTION_REQUEST_FAIL', { userId: talentUserId, itemId: chk.value, 오류: requestResult.error });
               break;
             }
-            requestCount += 1;
-            continue;
+            const record = {
+              id: result?.txn_id || result?.id || '',
+              amount: result?.amount || Number(chk.dataset.amount),
+              description: result?.description || chk.dataset.name,
+              source: shouldOverride ? 'override' : 'admin',
+              override_week_limit: shouldOverride,
+            };
+            if (!_weeklyGivenRecordsMap[chk.value]) _weeklyGivenRecordsMap[chk.value] = [];
+            _weeklyGivenRecordsMap[chk.value].push(record);
+            _weeklyGivenMap[chk.value] = record;
+            lastBalance = result?.balance;
+            giveCount += 1;
+          } catch (err) {
+            await logError('TALENT_GIVE_ITEM_ERROR', {
+              ...targetLogContext,
+              ...getTalentItemLogContext(chk.value, chk.dataset.name, Number(chk.dataset.amount || 0)),
+              사유: shouldOverride ? overrideReason : null,
+              오류: String(err)
+            });
+            errEl.textContent = `오류 발생: ${tErr(err.message)}`; errEl.classList.add('show'); break;
           }
-          const result = await giveTalentByItem(talentUserId, chk.value, session.id, {
-            overrideWeekLimit: shouldOverride,
-            overrideReason: shouldOverride ? overrideReason : null,
-          });
-          if (result.success === false) {
-            await logError('TALENT_GIVE_ITEM_FAIL', { userId: talentUserId, itemId: chk.value, 항목명: chk.dataset.name, 오류: result.error });
-            errEl.textContent = `"${chk.dataset.name}" 지급 실패: ${tErr(result.error)}`;
-            errEl.classList.add('show');
-            break;
-          }
-          const record = {
-            id: result?.txn_id || result?.id || '',
-            amount: result?.amount || Number(chk.dataset.amount),
-            description: result?.description || chk.dataset.name,
-            source: shouldOverride ? 'override' : 'admin',
-            override_week_limit: shouldOverride,
-          };
-          if (!_weeklyGivenRecordsMap[chk.value]) _weeklyGivenRecordsMap[chk.value] = [];
-          _weeklyGivenRecordsMap[chk.value].push(record);
-          _weeklyGivenMap[chk.value] = record;
-          lastBalance = result.balance;
-          giveCount += 1;
-        } catch (err) {
-          await logError('TALENT_GIVE_ITEM_ERROR', { userId: talentUserId, itemId: chk.value, 오류: String(err) });
-          errEl.textContent = `오류 발생: ${tErr(err.message)}`; errEl.classList.add('show'); break;
         }
+        if (giveCount > 0 || requestCount > 0) {
+          await logInfo('TALENT_GIVE_ITEMS', {
+            ...targetLogContext,
+            items: selectedItems,
+            itemName: names,
+            지급건수: giveCount,
+            요청건수: requestCount,
+            사유: selectedOverride ? overrideReason : null,
+            변경내역: `${targetLogContext.targetName || talentUserName}에게 달란트 항목 지급: ${names} / 즉시 지급 ${giveCount}건 / 예외 요청 ${requestCount}건`
+          });
+        }
+        if (giveCount > 0 && lastBalance != null) {
+          document.getElementById('talentBalance').textContent = fmtNum(lastBalance);
+        } else {
+          document.getElementById('talentBalance').textContent = fmtNum(await fetchTalentBalance(talentUserId));
+        }
+        if (requestCount > 0 && !errEl.classList.contains('show')) {
+          alert(`예외 지급 요청 ${requestCount}건이 등록되었습니다.\n전도사님 이상 승인 후 지급됩니다.`);
+        }
+        await renderTalentItemButtons();
+        await loadTalentHistory(talentUserId);
+        await loadUsers();
+      } finally {
+        _giveItemsBusy = false;
+        updateConfirmBtn();
       }
-      await logInfo('TALENT_GIVE_ITEMS', { userId: talentUserId, items: names, 지급건수: giveCount, 요청건수: requestCount });
-      if (giveCount > 0 && lastBalance != null) {
-        document.getElementById('talentBalance').textContent = fmtNum(lastBalance);
-      } else {
-        document.getElementById('talentBalance').textContent = fmtNum(await fetchTalentBalance(talentUserId));
-      }
-      if (requestCount > 0 && !errEl.classList.contains('show')) {
-        alert(`예외 지급 요청 ${requestCount}건이 등록되었습니다.\n전도사님 이상 승인 후 지급됩니다.`);
-      }
-      await renderTalentItemButtons();
-      await loadTalentHistory(talentUserId);
-      await loadUsers();
     }
 
     async function submitManualTalent() {
+      if (_manualTalentBusy) return;
       const errEl = document.getElementById('talentError');
       const amount = parseInt(document.getElementById('talentAmount').value);
       const desc = document.getElementById('talentDesc').value.trim();
       if (!amount || amount <= 0) { errEl.textContent = '유효한 금액을 입력해주세요.'; errEl.classList.add('show'); return; }
       if (amount > 100) { errEl.textContent = '달란트는 최대 100까지만 지급할 수 있습니다.'; errEl.classList.add('show'); return; }
       if (!desc) { errEl.textContent = '사유를 입력해주세요.'; errEl.classList.add('show'); return; }
+      _manualTalentBusy = true;
       try {
         const result = await giveTalent(talentUserId, amount, desc, session.id);
         if (result.success === false) {
-          await logError('TALENT_MANUAL_GIVE_FAIL', { userId: talentUserId, 금액: amount, 설명: desc, 오류: result.error });
           errEl.textContent = tErr(result.error) || '처리 실패'; errEl.classList.add('show'); return;
         }
-        await logInfo('TALENT_MANUAL_GIVE', { userId: talentUserId, 금액: amount, 설명: desc });
+        const targetLogContext = getTalentTargetLogContext(talentUserId, talentUserName);
+        await logInfo('TALENT_MANUAL_GIVE', {
+          ...targetLogContext,
+          금액: amount,
+          설명: desc,
+          변경내역: `달란트 수동 지급: ${targetLogContext.targetName || talentUserName} / 금액: ${fmtNum(amount)} 달란트 / 사유: ${desc}`
+        });
         document.getElementById('talentBalance').textContent = fmtNum(result.balance);
         document.getElementById('talentAmount').value = '';
         document.getElementById('talentDesc').value = '';
@@ -1002,8 +1120,15 @@
         await loadTalentHistory(talentUserId);
         await loadUsers();
       } catch (err) {
-        await logError('TALENT_MANUAL_GIVE_ERROR', { userId: talentUserId, 금액: amount, 오류: String(err) });
+        await logError('TALENT_MANUAL_GIVE_ERROR', {
+          ...getTalentTargetLogContext(talentUserId, talentUserName),
+          금액: amount,
+          설명: desc,
+          오류: String(err)
+        });
         errEl.textContent = '오류: ' + tErr(err.message); errEl.classList.add('show');
+      } finally {
+        _manualTalentBusy = false;
       }
     }
 
@@ -1025,7 +1150,8 @@
 
     let returnCtx = {};
     function openReturnModal(userId, txnId, amount, desc) {
-      returnCtx = { userId, txnId, amount: parseInt(amount) };
+      if (typeof closeOpenActionMenus === 'function') closeOpenActionMenus();
+      returnCtx = { userId, txnId, amount: parseInt(amount), originalDescription: desc || '' };
       document.getElementById('returnInfo').textContent = `항목: ${desc} / 금액: ${amount} 달란트`;
       document.getElementById('returnReason').value = '';
       document.getElementById('returnError').classList.remove('show');
@@ -1040,15 +1166,35 @@
         const desc = returnCtx.txnId ? `[${returnCtx.txnId}] 반환: ${reason}` : `반환: ${reason}`;
         const result = await returnTalent(returnCtx.userId, returnCtx.amount, desc, session.id);
         if (result.success === false) {
-          await logError('TALENT_RETURN_FAIL', { userId: returnCtx.userId, 금액: returnCtx.amount, 사유: reason, 오류: result.error });
+          await logError('TALENT_RETURN_FAIL', {
+            ...getTalentTargetLogContext(returnCtx.userId, document.getElementById('detailTitle').textContent.replace(' - 달란트 상세','')),
+            금액: returnCtx.amount,
+            사유: reason,
+            원본지급: returnCtx.originalDescription || '-',
+            오류: result.error
+          });
           errEl.textContent = tErr(result.error); errEl.classList.add('show'); return;
         }
-        await logInfo('TALENT_RETURN', { userId: returnCtx.userId, 금액: returnCtx.amount, 사유: reason, txnId: returnCtx.txnId });
+        const targetLogContext = getTalentTargetLogContext(returnCtx.userId, document.getElementById('detailTitle').textContent.replace(' - 달란트 상세',''));
+        await logInfo('TALENT_RETURN', {
+          ...targetLogContext,
+          금액: returnCtx.amount,
+          사유: reason,
+          txnId: returnCtx.txnId,
+          원본지급: returnCtx.originalDescription || '-',
+          변경내역: `달란트 반환: ${targetLogContext.targetName} / 금액: ${fmtNum(returnCtx.amount)} 달란트 / 사유: ${reason}`
+        });
         closeReturnModal();
         await openDetailModal(returnCtx.userId, document.getElementById('detailTitle').textContent.replace(' - 달란트 상세',''));
         await loadUsers();
       } catch (err) {
-        await logError('TALENT_RETURN_ERROR', { userId: returnCtx.userId, 금액: returnCtx.amount, 오류: String(err) });
+        await logError('TALENT_RETURN_ERROR', {
+          ...getTalentTargetLogContext(returnCtx.userId, document.getElementById('detailTitle').textContent.replace(' - 달란트 상세','')),
+          금액: returnCtx.amount,
+          사유: reason,
+          원본지급: returnCtx.originalDescription || '-',
+          오류: String(err)
+        });
         errEl.textContent = '오류: ' + tErr(err.message); errEl.classList.add('show');
       }
     }

@@ -81,7 +81,7 @@
         <table class="guide-table">
           <thead><tr><th>메뉴</th><th>설명</th></tr></thead>
           <tbody>
-            <tr><td>달란트 적립</td><td>달란트를 받을 수 있는 활동과 각 활동의 현재 지급 수량, 지급 규칙, 설명을 확인합니다.</td></tr>
+            <tr><td>달란트 적립</td><td>운영자가 등록한 활성 달란트 항목을 학생/교사별 카드로 확인합니다. 각 카드에는 이모지, 현재 지급 수량, 지급 규칙, 설명이 표시됩니다.</td></tr>
             <tr><td>상품 구매</td><td>달란트로 살 수 있는 상품을 보고 구매를 신청합니다. 상품 상세 모달은 설명과 상세 이미지를 함께 보여줍니다.</td></tr>
             <tr><td>달란트 수령</td><td>QR 코드를 스캔하거나 코드를 입력해 달란트를 받습니다. 위치 제한 QR에서 기기/브라우저 위치 권한이 막혀 있으면 알림창이 표시됩니다. 최근 수령 내역은 페이지 이동과 페이지당 항목 수 선택을 지원하며, QR이 아닌 지급 건은 실제 지급자 이름을 표시합니다.</td></tr>
             <tr><td>내 달란트</td><td>요약 박스(사용 가능·수령 대기·사용 대기·사용 완료·반환·예외·누적 적립)와 적립/예외/사용/반환 내역, 구매 진행 상태를 확인합니다.</td></tr>
@@ -99,7 +99,7 @@
         <p>메인 페이지의 바로가기 카드를 내가 원하는 메뉴로 설정할 수 있습니다.</p>
         <div class="guide-steps">
           <div class="step"><span class="step-num">1</span> 메인 페이지에서 <strong>⭐ 즐겨찾기 설정</strong> 버튼을 누릅니다.</div>
-          <div class="step"><span class="step-num">2</span> 내가 볼 수 있는 메뉴 중에서 1개 이상, 최대 10개까지 선택하고 <strong>저장</strong>을 누릅니다.</div>
+          <div class="step"><span class="step-num">2</span> 내가 볼 수 있는 메뉴 중에서 1개 이상, 최대 20개까지 선택하고 <strong>저장</strong>을 누릅니다.</div>
           <div class="step"><span class="step-num">3</span> 설정은 계정에 저장되어 다른 기기에서도 동일하게 표시됩니다.</div>
         </div>
       </div>
@@ -140,7 +140,7 @@
       </div>
       <div class="guide-card">
         <h3>새 버전 배포 시</h3>
-        <p>사이트가 새 버전으로 배포되면 화면이 한 번 새로고침되거나 다시 로그인하라는 안내가 표시될 수 있습니다. 이 경우 안내에 따라 다시 로그인하면 최신 화면을 사용할 수 있습니다.</p>
+        <p>사이트가 새 버전으로 배포되면 화면이 한 번 새로고침되거나 다시 로그인하라는 안내가 표시될 수 있습니다. 이 경우 안내에 따라 다시 로그인하면 최신 화면을 사용할 수 있습니다. 현재 안내 기준은 v3.79.0이며, 실제 버전은 화면 하단의 버전 표시에서 확인합니다.</p>
       </div>
     </section>
 
@@ -232,13 +232,24 @@
         </div>
       </div>
     </section>
+    <section class="guide-section">
+      <h2>🆕 v3.79.0 업데이트</h2>
+      <p>메인 화면의 <strong>⭐ 즐겨찾기 설정</strong>에서는 내 권한으로 보이는 메뉴를 최소 1개부터 최대 <strong>20개</strong>까지 선택할 수 있습니다.</p>
+    </section>
+    <section class="guide-section">
+      <h2>💡 상품 추천</h2>
+      <div class="guide-card">
+        <p>로그인 후 <strong>상품 &gt; 상품 추천</strong>에서 원하는 상품을 추천할 수 있습니다. 상품명과 상품 URL 또는 이미지 중 하나는 꼭 입력하고, 상세 설명 이미지는 URL 또는 파일로 선택해 추가할 수 있습니다. 상세 창의 구매 URL은 <strong>상품 보기</strong> 버튼으로 열립니다.</p>
+        <p style="margin-top:0.65rem;">카테고리를 선택하지 않으면 채택 시 선물로 등록됩니다. 채택될 때마다 추천 등록자에게 <strong>상품 추천 채택</strong> 항목으로 1달란트가 자동 지급됩니다. 추천 등록 완료와 투표 결과는 운영관리 선생님들께 익명으로 안내됩니다. 투표 중 득표 수와 특별한 종료·결정은 최고관리자만 확인하거나 처리합니다. 내 추천 목록에서는 <strong>투표중</strong>, <strong>채택</strong>, <strong>불채택</strong> 상태를 확인할 수 있습니다.</p>
+      </div>
+    </section>
   </main>
 
   <footer class="page-footer">
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -254,15 +265,7 @@
       if (session) navUpdateAuth(session);
       await initTheme();
       const rank = session ? (session.permissionRank || 0) : 0;
-      const tabs = document.querySelectorAll('.guide-switcher a');
-      tabs.forEach(a => {
-        if (a.href.includes('teacher-guide') && rank < 40) a.style.display = 'none';
-        if (a.href.includes('dept-teacher-guide') && rank < 60) a.style.display = 'none';
-        if (a.href.includes('purchase-teacher-guide') && rank < 70) a.style.display = 'none';
-        if (a.href.includes('chief-teacher-guide') && rank < 80) a.style.display = 'none';
-        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
-        if (a.href.includes('admin-guide') && rank < 60) a.style.display = 'none';
-      });
+      applyGuideSwitcherAccess(rank);
       autoLogPageView();
     })();
   </script>

@@ -3,14 +3,20 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL") || "";
 const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+const APP_ENV = (Deno.env.get("APP_ENV") || "DEV").trim().toUpperCase();
+const IS_PROD = APP_ENV === "PROD";
 const GITHUB_TOKEN = Deno.env.get("GITHUB_TOKEN") || Deno.env.get("GITHUB_PAT") || "";
-const GITHUB_OWNER = Deno.env.get("GITHUB_OWNER") || "CHO-Talents";
-const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || "CHO-Talents";
-const SB_MANAGEMENT_ACCESS_TOKEN = Deno.env.get("SB_MANAGEMENT_ACCESS_TOKEN") || "";
-const SB_PROJECT_REF = Deno.env.get("SB_PROJECT_REF") || "";
+const GITHUB_OWNER = Deno.env.get("GITHUB_OWNER") || (IS_PROD ? "CHO-Talents" : "CHO-Talents-Test");
+const GITHUB_REPO = Deno.env.get("GITHUB_REPO") || (IS_PROD ? "CHO-Talents" : "CHO-Talents-Test");
+const GITHUB_ACCOUNT_TYPE = (Deno.env.get("GITHUB_ACCOUNT_TYPE") || "user").trim().toLowerCase();
+const SB_MANAGEMENT_ACCESS_TOKEN = (Deno.env.get("SB_MANAGEMENT_ACCESS_TOKEN") || "").trim();
+const SB_PROJECT_REF = (Deno.env.get("SB_PROJECT_REF") || "").trim();
 const SLACK_WEBHOOK_OPERATIONS = Deno.env.get("SLACK_WEBHOOK_OPERATIONS") || "";
+const SLACK_ENABLED = (Deno.env.get("SLACK_ENABLED") || "false").trim().toLowerCase() === "true";
 const SERVICE_STATS_URL = Deno.env.get("SERVICE_STATS_URL") ||
-  "https://cho-talents.github.io/CHO-Talents/admin/service-stats.html";
+  (IS_PROD
+    ? "https://cho-talents.github.io/CHO-Talents/admin/service-stats.html"
+    : "https://cho-talents-test.github.io/CHO-Talents-Test/admin/service-stats.html");
 
 const GITHUB_API_VERSION = "2026-03-10";
 const GB = 1024 ** 3;
@@ -45,11 +51,30 @@ function permissionRank(level: string | null, superAdmin: boolean): number {
   return ({ admin: 100, evangelist: 90, chief: 80 } as Record<string, number>)[level || ""] || 0;
 }
 
+function decodeJwtPayload(token: string): Json | null {
+  const payload = token.split(".")[1];
+  if (!payload) return null;
+  const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  try {
+    return JSON.parse(atob(padded)) as Json;
+  } catch {
+    return null;
+  }
+}
+
+function isServiceRoleJwt(token: string): boolean {
+  const payload = decodeJwtPayload(token);
+  return payload?.role === "service_role";
+}
+
 async function authorize(req: Request): Promise<{ ok: boolean; userId: string | null; trigger: "schedule" | "manual"; error?: string }> {
   const auth = req.headers.get("Authorization") || "";
   const token = auth.replace(/^Bearer\s+/i, "");
   if (!token) return { ok: false, userId: null, trigger: "manual", error: "authorization required" };
-  if (token === SERVICE_ROLE_KEY) return { ok: true, userId: null, trigger: "schedule" };
+  if (token === SERVICE_ROLE_KEY || isServiceRoleJwt(token)) {
+    return { ok: true, userId: null, trigger: "schedule" };
+  }
 
   const { data: userData, error: userError } = await service.auth.getUser(token);
   if (userError || !userData.user) {
@@ -61,8 +86,8 @@ async function authorize(req: Request): Promise<{ ok: boolean; userId: string | 
     .select("permission_level,is_super_admin")
     .eq("id", userData.user.id)
     .single();
-  if (profileError || permissionRank(profile?.permission_level, !!profile?.is_super_admin) < 80) {
-    return { ok: false, userId: userData.user.id, trigger: "manual", error: "chief permission required" };
+  if (profileError || permissionRank(profile?.permission_level, !!profile?.is_super_admin) < 100) {
+    return { ok: false, userId: userData.user.id, trigger: "manual", error: "admin permission required" };
   }
   return { ok: true, userId: userData.user.id, trigger: "manual" };
 }
@@ -154,7 +179,10 @@ async function collectGitHub(errors: ErrorItem[]): Promise<Json> {
   let items: Json[] = [];
 
   try {
-    summary = await githubFetch(`/organizations/${encodeURIComponent(GITHUB_OWNER)}/settings/billing/usage/summary?${query}`);
+    const billingSummaryPath = GITHUB_ACCOUNT_TYPE === "organization"
+      ? `/organizations/${encodeURIComponent(GITHUB_OWNER)}/settings/billing/usage/summary?${query}`
+      : `/users/${encodeURIComponent(GITHUB_OWNER)}/settings/billing/usage/summary?${query}`;
+    summary = await githubFetch(billingSummaryPath);
     items = Array.isArray(summary.usageItems) ? summary.usageItems as Json[] : [];
   } catch (error) {
     errors.push({ service: "github", endpoint: "billing/usage/summary", message: String(error) });
@@ -192,10 +220,16 @@ async function collectGitHub(errors: ErrorItem[]): Promise<Json> {
       githubFetch(`/repos/${encodeURIComponent(GITHUB_OWNER)}/${encodeURIComponent(GITHUB_REPO)}/actions/cache/usage`),
     ]);
     const artifactRows = Array.isArray(artifacts.artifacts) ? artifacts.artifacts as Json[] : [];
-    const artifactBytes = artifactRows.reduce((sum, row) => sum + numberValue(row.size_in_bytes), 0);
+    const activeArtifactRows = artifactRows.filter((row) => row.expired === false);
+    const expiredArtifactRows = artifactRows.filter((row) => row.expired === true);
+    const artifactBytes = activeArtifactRows.reduce((sum, row) => sum + numberValue(row.size_in_bytes), 0);
+    const expiredArtifactBytes = expiredArtifactRows.reduce((sum, row) => sum + numberValue(row.size_in_bytes), 0);
     const cacheBytes = numberValue(cacheUsage.active_caches_size_in_bytes);
     await writeSnapshot("github", "actions_storage_bytes", artifactBytes + cacheBytes, "GitHub Actions API", true, {
       artifacts_bytes: artifactBytes,
+      active_artifact_count: activeArtifactRows.length,
+      expired_artifacts_bytes: expiredArtifactBytes,
+      expired_artifact_count: expiredArtifactRows.length,
       cache_bytes: cacheBytes,
       artifact_count: artifactRows.length,
     });
@@ -229,6 +263,7 @@ async function collectGitHub(errors: ErrorItem[]): Promise<Json> {
     status: errors.some((item) => item.service === "github") ? "partial" : "connected",
     owner: GITHUB_OWNER,
     repository: GITHUB_REPO,
+    account_type: GITHUB_ACCOUNT_TYPE === "organization" ? "organization" : "user",
     billing_items: items.length,
   };
 }
@@ -240,8 +275,13 @@ async function collectSupabaseManagement(errors: ErrorItem[]): Promise<Json> {
 
   try {
     const response = await fetch(
-      `https://api.supabase.com/v1/projects/${encodeURIComponent(SB_PROJECT_REF)}/analytics/endpoints/usage.api-counts?interval=1d`,
-      { headers: { Authorization: `Bearer ${SB_MANAGEMENT_ACCESS_TOKEN}` } },
+      `https://api.supabase.com/v1/projects/${encodeURIComponent(SB_PROJECT_REF)}/analytics/endpoints/usage.api-counts?interval=1day`,
+      {
+        headers: {
+          Authorization: `Bearer ${SB_MANAGEMENT_ACCESS_TOKEN}`,
+          Accept: "application/json",
+        },
+      },
     );
     if (!response.ok) throw new Error(`Supabase ${response.status}: ${(await response.text()).slice(0, 300)}`);
     const payload = await response.json() as Json;
@@ -251,13 +291,23 @@ async function collectSupabaseManagement(errors: ErrorItem[]): Promise<Json> {
       numberValue(row.total_rest_requests) + numberValue(row.total_storage_requests), 0);
     await writeSnapshot("supabase", "official_api_requests_24h", total, "Supabase Management API", false, {
       points: rows.length,
-      interval: "1d",
+      interval: "1day",
     });
     return { status: "connected", analytics_points: rows.length };
   } catch (error) {
     errors.push({ service: "supabase", endpoint: "usage.api-counts", message: String(error) });
     return { status: "partial", message: String(error) };
   }
+}
+
+async function collectLocalSnapshots(errors: ErrorItem[]): Promise<Json> {
+  const { data, error } = await service.rpc("refresh_local_service_usage_snapshots");
+  if (error) {
+    errors.push({ service: "project", endpoint: "local snapshots", message: error.message });
+    return { status: "partial", source: "project telemetry", message: error.message, snapshots: 0 };
+  }
+
+  return { status: "tracking", source: "project telemetry", snapshots: numberValue(data) };
 }
 
 function formatMetricValue(value: number, unit: string): string {
@@ -272,6 +322,7 @@ function formatMetricValue(value: number, unit: string): string {
 }
 
 async function sendQuotaAlerts(errors: ErrorItem[]): Promise<number> {
+  if (!SLACK_ENABLED) return 0;
   const { data: rows, error } = await service.rpc("get_service_usage_dashboard");
   if (error) throw new Error(`dashboard for alerts: ${error.message}`);
   const metrics = (rows || []) as Json[];
@@ -314,6 +365,11 @@ async function sendQuotaAlerts(errors: ErrorItem[]): Promise<number> {
 
       if (!SLACK_WEBHOOK_OPERATIONS) {
         await service.from("service_usage_alerts").update({ status: "failed", slack_response: "SLACK_WEBHOOK_OPERATIONS 미설정" }).eq("id", alertId);
+        await recordEvent("webhook_failures", 1, {
+          type: "service_quota_alert",
+          threshold,
+          reason: "missing_webhook_config",
+        });
         continue;
       }
 
@@ -333,15 +389,18 @@ async function sendQuotaAlerts(errors: ErrorItem[]): Promise<number> {
             { type: "mrkdwn", text: `*남은 사용량*\n${formatMetricValue(remaining, String(metric.unit))} (${Math.max(100 - percent, 0).toFixed(1)}%)` },
           ] },
           { type: "section", text: { type: "mrkdwn", text: `<${SERVICE_STATS_URL}|서비스 통계에서 상세 확인>` } },
+          { type: "context", elements: [{ type: "mrkdwn", text: "👤 사용자 계정: 계정 없음 / 표시이름: 시스템 자동 수집" }] },
         ],
       };
 
+      let slackStatus: number | null = null;
       try {
         const response = await fetch(SLACK_WEBHOOK_OPERATIONS, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(payload),
         });
+        slackStatus = response.status;
         const responseText = (await response.text()).slice(0, 300);
         if (!response.ok) throw new Error(`Slack ${response.status}: ${responseText}`);
         await service.from("service_usage_alerts").update({
@@ -353,7 +412,12 @@ async function sendQuotaAlerts(errors: ErrorItem[]): Promise<number> {
         const message = String(sendError);
         errors.push({ service: "slack", endpoint: "quota alert", message });
         await service.from("service_usage_alerts").update({ status: "failed", slack_response: message.slice(0, 500) }).eq("id", alertId);
-        await recordEvent("webhook_failures", 1, { type: "service_quota_alert", threshold });
+        await recordEvent("webhook_failures", 1, {
+          type: "service_quota_alert",
+          threshold,
+          status: slackStatus,
+          reason: slackStatus ? "http_error" : "network_error",
+        });
       }
     }
   }
@@ -378,18 +442,42 @@ Deno.serve(async (req) => {
   try {
     await recordEvent("edge_function_invocations", 1, { function: "service-usage-collect", trigger: auth.trigger });
 
-    const { data: localCount, error: localError } = await service.rpc("refresh_local_service_usage_snapshots");
-    if (localError) errors.push({ service: "supabase", endpoint: "local snapshots", message: localError.message });
+    const localErrors: ErrorItem[] = [];
+    const githubErrors: ErrorItem[] = [];
+    const supabaseErrors: ErrorItem[] = [];
 
-    const githubStatus = await collectGitHub(errors);
-    const supabaseStatus = await collectSupabaseManagement(errors);
+    const [localStatus, githubStatus, supabaseStatus] = await Promise.all([
+      collectLocalSnapshots(localErrors),
+      collectGitHub(githubErrors),
+      collectSupabaseManagement(supabaseErrors),
+    ]);
+    errors.push(...localErrors, ...githubErrors, ...supabaseErrors);
+
     const alertCount = await sendQuotaAlerts(errors);
+    const slackStatus = !SLACK_ENABLED
+      ? { status: "disabled", source: "environment configuration", message: "Slack notifications are disabled for this environment" }
+      : SLACK_WEBHOOK_OPERATIONS
+      ? { status: "connected", source: "project webhook events" }
+      : { status: "needs_secret", source: "project webhook events", message: "SLACK_WEBHOOK_OPERATIONS is not set" };
     const serviceStatus = {
-      github: githubStatus,
-      supabase: supabaseStatus,
-      kakao: { status: "tracking", source: "project events" },
-      slack: { status: SLACK_WEBHOOK_OPERATIONS ? "connected" : "needs_secret", source: "project webhook events" },
-      local_snapshots: numberValue(localCount),
+      github: { ...githubStatus, channels: { api: githubStatus, project: localStatus } },
+      supabase: { ...supabaseStatus, channels: { api: supabaseStatus, project: localStatus } },
+      kakao: {
+        status: "tracking",
+        source: "project events",
+        channels: {
+          api: { status: "not_supported", source: "official API", message: "Kakao 사용량은 프로젝트 계측으로 수집" },
+          project: localStatus,
+        },
+      },
+      slack: {
+        ...slackStatus,
+        channels: {
+          api: { status: "not_supported", source: "official API", message: "Slack 사용량은 Webhook 이벤트 계측으로 수집" },
+          project: slackStatus,
+        },
+      },
+      local_snapshots: numberValue(localStatus["snapshots"]),
       alerts_sent: alertCount,
     };
     const status = errors.length === 0 ? "success" : "partial";

@@ -191,7 +191,12 @@ async function createProductCategory(categoryData) {
     }
     const item = productCategoryRowToItem(data || row);
     upsertLocalProductCategory(item);
-    await logInfo('PRODUCT_CATEGORY_CREATE', { 카테고리: label, 코드: key });
+    await logInfo('PRODUCT_CATEGORY_CREATE', buildChangeLogDetails({
+      targetName: label,
+      targetType: '상품 카테고리',
+      targetId: key,
+      changes: buildChangeSet({}, item)
+    }));
     return { data: item, error: null, existing: false };
   } catch (err) {
     await logError('PRODUCT_CATEGORY_CREATE_ERROR', { 카테고리: label, 오류: String(err) });
@@ -236,7 +241,12 @@ async function updateProductCategory(codeKey, categoryData) {
     }
     const item = productCategoryRowToItem(data || Object.assign({ group_key: 'products.category', code_key: key }, row));
     upsertLocalProductCategory(item);
-    await logInfo('PRODUCT_CATEGORY_UPDATE', { 카테고리: label, 코드: key });
+    await logInfo('PRODUCT_CATEGORY_UPDATE', buildChangeLogDetails({
+      targetName: label,
+      targetType: '상품 카테고리',
+      targetId: key,
+      changes: buildChangeSet(current, item)
+    }));
     return { data: item, error: null };
   } catch (err) {
     await logError('PRODUCT_CATEGORY_UPDATE_ERROR', { 카테고리: label, 코드: key, 오류: String(err) });
@@ -279,7 +289,12 @@ async function deactivateProductCategory(codeKey) {
       return { error: error.message };
     }
     upsertLocalProductCategory({ key, is_active: false });
-    await logInfo('PRODUCT_CATEGORY_DELETE', { 코드: key });
+    await logInfo('PRODUCT_CATEGORY_DELETE', buildChangeLogDetails({
+      targetName: (getCodeItem('products.category', key) || {}).value || key,
+      targetType: '상품 카테고리',
+      targetId: key,
+      changes: buildChangeSet({ is_active:true }, { is_active:false }, { fields:['is_active'] })
+    }));
     return { error: null };
   } catch (err) {
     await logError('PRODUCT_CATEGORY_DELETE_ERROR', { 코드: key, 오류: String(err) });
@@ -287,7 +302,7 @@ async function deactivateProductCategory(codeKey) {
   }
 }
 
-async function createProduct(productData) {
+async function createProduct(productData, logContext = {}) {
   if (!_sb) return { data: null, error: 'Supabase not initialized' };
   try {
     const { data, error } = await _sb.from('products').insert(productData).select();
@@ -295,8 +310,15 @@ async function createProduct(productData) {
       await logError('PRODUCT_CREATE_FAIL', { 오류: error.message });
       return { data: null, error: error.message };
     }
-    await logInfo('PRODUCT_CREATE', { 상품명: productData.name });
-    return { data: data[0], error: null };
+    const created = data && data[0] ? data[0] : null;
+    await logInfo('PRODUCT_CREATE', buildChangeLogDetails({
+      targetName: (created && created.name) || productData.name,
+      targetType: '상품',
+      targetId: created && created.id,
+      changes: buildChangeSet({}, created || productData),
+      extra: logContext
+    }));
+    return { data: created, error: null };
   } catch (err) {
     await logError('PRODUCT_CREATE_ERROR', { 오류: String(err) });
     return { data: null, error: String(err) };
@@ -306,13 +328,20 @@ async function createProduct(productData) {
 async function updateProduct(id, updates) {
   if (!_sb) return { data: null, error: 'Supabase not initialized' };
   try {
+    const { data: before } = await _sb.from('products').select('*').eq('id', id).maybeSingle();
     const { data, error } = await _sb.from('products').update(updates).eq('id', id).select();
     if (error) {
       await logError('PRODUCT_UPDATE_FAIL', { id, 오류: error.message });
       return { data: null, error: error.message };
     }
-    await logInfo('PRODUCT_UPDATE', { id, 상품명: updates.name });
-    return { data: data[0], error: null };
+    const updated = data && data[0] ? data[0] : null;
+    await logInfo('PRODUCT_UPDATE', buildChangeLogDetails({
+      targetName: (updated && updated.name) || (before && before.name) || updates.name,
+      targetType: '상품',
+      targetId: id,
+      changes: buildChangeSet(before || {}, updated || updates)
+    }));
+    return { data: updated, error: null };
   } catch (err) {
     await logError('PRODUCT_UPDATE_ERROR', { id, 오류: String(err) });
     return { data: null, error: String(err) };
@@ -323,13 +352,20 @@ async function updateProductImageUrl(id, imageUrl, fieldName = 'image_url') {
   if (!_sb) return { data: null, error: 'Supabase not initialized' };
   const safeField = fieldName === 'detail_image_url' ? 'detail_image_url' : 'image_url';
   try {
+    const { data: before } = await _sb.from('products').select('id,name,image_url,detail_image_url').eq('id', id).maybeSingle();
     const { data, error } = await _sb.from('products').update({ [safeField]: imageUrl }).eq('id', id).select();
     if (error) {
       await logError('PRODUCT_IMAGE_UPDATE_FAIL', { id, 필드: safeField, 오류: error.message });
       return { data: null, error: error.message };
     }
-    await logInfo('PRODUCT_IMAGE_UPDATE', { id, 필드: safeField, 이미지: !!imageUrl });
-    return { data: data && data[0] ? data[0] : null, error: null };
+    const updated = data && data[0] ? data[0] : null;
+    await logInfo('PRODUCT_IMAGE_UPDATE', buildChangeLogDetails({
+      targetName: (updated && updated.name) || (before && before.name),
+      targetType: '상품',
+      targetId: id,
+      changes: buildChangeSet(before || {}, updated || { [safeField]: imageUrl }, { fields:[safeField] })
+    }));
+    return { data: updated, error: null };
   } catch (err) {
     await logError('PRODUCT_IMAGE_UPDATE_ERROR', { id, 필드: safeField, 오류: String(err) });
     return { data: null, error: String(err) };
@@ -370,6 +406,7 @@ async function deleteProductImage(imageUrl) {
 async function deleteProduct(id) {
   if (!_sb) return { error: 'Supabase not initialized' };
   try {
+    const { data: before } = await _sb.from('products').select('*').eq('id', id).maybeSingle();
     const { error } = await _sb.from('products').delete().eq('id', id);
     if (error) {
       if (/foreign key|violates|referenced/i.test(error.message)) {
@@ -378,7 +415,12 @@ async function deleteProduct(id) {
       await logError('PRODUCT_DELETE_FAIL', { id, 오류: error.message });
       return { error: error.message };
     }
-    await logInfo('PRODUCT_DELETE', { id });
+    await logInfo('PRODUCT_DELETE', buildChangeLogDetails({
+      targetName: before && before.name,
+      targetType: '상품',
+      targetId: id,
+      changes: buildChangeSet(before || {}, {}, { fields:['name', 'target_role', 'category', 'price', 'actual_purchase_price', 'image_url', 'detail_image_url', 'purchase_url', 'show_delivery_delay_notice', 'description', 'is_active'] })
+    }));
     return { error: null };
   } catch (err) {
     await logError('PRODUCT_DELETE_ERROR', { id, 오류: String(err) });
@@ -389,12 +431,19 @@ async function deleteProduct(id) {
 async function deactivateProduct(id) {
   if (!_sb) return { error: 'Supabase not initialized' };
   try {
-    const { error } = await _sb.from('products').update({ is_active: false }).eq('id', id);
+    const { data: before } = await _sb.from('products').select('*').eq('id', id).maybeSingle();
+    const { data, error } = await _sb.from('products').update({ is_active: false }).eq('id', id).select();
     if (error) {
       await logError('PRODUCT_DEACTIVATE_FAIL', { id, 오류: error.message });
       return { error: error.message };
     }
-    await logInfo('PRODUCT_DEACTIVATE', { id });
+    const updated = data && data[0] ? data[0] : null;
+    await logInfo('PRODUCT_DEACTIVATE', buildChangeLogDetails({
+      targetName: (updated && updated.name) || (before && before.name),
+      targetType: '상품',
+      targetId: id,
+      changes: buildChangeSet(before || {}, updated || { is_active:false }, { fields:['is_active'] })
+    }));
     return { error: null };
   } catch (err) {
     await logError('PRODUCT_DEACTIVATE_ERROR', { id, 오류: String(err) });

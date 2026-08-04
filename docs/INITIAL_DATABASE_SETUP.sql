@@ -6,7 +6,7 @@
 --   Supabase Dashboard > SQL Editor > New query
 --
 -- 실행 후 기본 로그인:
---   ID: admin_user
+--   ID: admin
 --   PW: 1234
 --   최초 로그인 후 비밀번호 변경 화면으로 이동됩니다.
 --
@@ -96,6 +96,7 @@ CREATE TABLE IF NOT EXISTS public.department_transfer_requests (
 CREATE TABLE IF NOT EXISTS public.talent_items (
   id uuid PRIMARY KEY DEFAULT extensions.gen_random_uuid(),
   name text NOT NULL,
+  emoji text NOT NULL DEFAULT '✨',
   target_type text NOT NULL CHECK (target_type IN ('teacher', 'student')),
   talent_amount integer NOT NULL CHECK (talent_amount > 0),
   is_active boolean DEFAULT true,
@@ -154,6 +155,7 @@ CREATE TABLE IF NOT EXISTS public.products (
   image_emoji text DEFAULT '',
   image_url text,
   detail_image_url text,
+  purchase_url text,
   target_role text NOT NULL CHECK (target_role IN ('teacher','student')),
   category text,
   sort_order integer DEFAULT 0,
@@ -234,8 +236,8 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
   action text NOT NULL,
   page text,
   details jsonb,
-  username text,
-  user_name text,
+  username text DEFAULT '계정 없음',
+  user_name text DEFAULT '계정 없음',
   is_acknowledged boolean DEFAULT false,
   acknowledged_by text,
   acknowledged_at timestamptz,
@@ -454,6 +456,56 @@ SECURITY DEFINER
 SET search_path = public
 AS $$
   SELECT permission_level FROM public.profiles WHERE id = auth.uid();
+$$;
+
+CREATE OR REPLACE FUNCTION public.can_view_managed_profile(p_target_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_caller_perm text;
+  v_caller_dept uuid;
+  v_caller_class integer;
+  v_target_type text;
+  v_target_dept uuid;
+  v_target_class integer;
+  v_caller_rank integer;
+BEGIN
+  IF p_target_id IS NULL OR auth.uid() IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT permission_level, department_id, class_number
+  INTO v_caller_perm, v_caller_dept, v_caller_class
+  FROM public.profiles
+  WHERE id = auth.uid();
+
+  IF v_caller_perm IS NULL THEN
+    RETURN false;
+  END IF;
+
+  v_caller_rank := public.get_permission_rank(v_caller_perm);
+
+  IF auth.uid() = p_target_id OR v_caller_rank >= 60 THEN
+    RETURN true;
+  END IF;
+
+  IF v_caller_rank <> 40 OR v_caller_dept IS NULL OR v_caller_class IS NULL THEN
+    RETURN false;
+  END IF;
+
+  SELECT user_type, department_id, class_number
+  INTO v_target_type, v_target_dept, v_target_class
+  FROM public.profiles
+  WHERE id = p_target_id;
+
+  RETURN v_target_type = 'student'
+    AND v_target_dept = v_caller_dept
+    AND v_target_class IS NOT DISTINCT FROM v_caller_class;
+END;
 $$;
 
 CREATE OR REPLACE FUNCTION public.set_updated_at()
@@ -998,12 +1050,28 @@ BEGIN
     v_actual_desc := v_item.name;
 
     SELECT count(*) INTO v_week_count
-    FROM public.talent_transactions
-    WHERE user_id = p_user_id
-      AND talent_item_id = p_talent_item_id
-      AND type = 'earn'
-      AND created_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul')
-      AND created_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') + interval '7 days';
+    FROM public.talent_transactions AS earned
+    WHERE earned.user_id = p_user_id
+      AND earned.talent_item_id = p_talent_item_id
+      AND earned.type = 'earn'
+      AND earned.created_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul')
+      AND earned.created_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') + interval '7 days'
+      -- A cancellation is stored as a use transaction referencing the original earn ID.
+      -- Cancelled grants must not consume this week's item allowance.
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.talent_transactions AS returned
+        WHERE returned.user_id = earned.user_id
+          AND returned.type = 'use'
+          AND (
+            returned.description LIKE ('반환: [' || earned.id::text || ']%')
+            -- Compatibility for old attendance cancellations created with an empty ID ([]).
+            OR (
+              returned.amount = earned.amount
+              AND returned.description = '반환: [] ' || COALESCE(earned.description, '')
+            )
+          )
+      );
 
     IF v_week_count > 0 AND NOT v_override_week_limit THEN
       RETURN json_build_object('success', false, 'error', 'Already given this item this week: ' || v_item.name);
@@ -1222,6 +1290,137 @@ BEGIN
   WHERE id = v_order.user_id;
 
   RETURN json_build_object('success', true, 'balance', (v_result->>'balance')::integer);
+END;
+$$;
+
+-- Purchase workflow authorization. This final definition supersedes the legacy
+-- purchase-confirm function above so direct SQL/API calls follow the same rules
+-- as the purchase-management screen.
+CREATE OR REPLACE FUNCTION public.process_product_order(
+  p_order_id uuid,
+  p_new_status text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_order public.product_orders%ROWTYPE;
+  v_caller_permission text;
+  v_caller_managed_dept_id uuid;
+  v_caller_rank integer;
+  v_order_department_id uuid;
+  v_purchase_result json;
+  v_allowed boolean := false;
+BEGIN
+  SELECT * INTO v_order
+  FROM public.product_orders
+  WHERE id = p_order_id
+  FOR UPDATE;
+
+  IF v_order IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Order not found');
+  END IF;
+
+  SELECT permission_level, managed_dept_id
+  INTO v_caller_permission, v_caller_managed_dept_id
+  FROM public.profiles
+  WHERE id = auth.uid();
+
+  IF v_caller_permission IS NULL THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized purchase workflow');
+  END IF;
+
+  SELECT department_id
+  INTO v_order_department_id
+  FROM public.profiles
+  WHERE id = v_order.user_id;
+
+  v_caller_rank := public.get_permission_rank(v_caller_permission);
+
+  IF v_caller_rank >= 90 THEN
+    v_allowed := (v_order.status = 'requested' AND p_new_status IN ('preparing', 'cancelled'))
+      OR (v_order.status = 'preparing' AND p_new_status IN ('purchased', 'requested'))
+      OR (v_order.status = 'purchased' AND p_new_status = 'delivered');
+  ELSIF v_caller_permission = 'purchase_teacher' THEN
+    v_allowed := (v_order.status = 'preparing' AND p_new_status = 'purchased')
+      OR (v_order.status = 'purchased' AND p_new_status = 'delivered');
+  ELSIF v_caller_permission IN ('dept_teacher', 'chief')
+    AND v_caller_managed_dept_id IS NOT NULL
+    AND v_caller_managed_dept_id = v_order_department_id THEN
+    v_allowed := v_order.status = 'requested' AND p_new_status IN ('preparing', 'cancelled');
+  END IF;
+
+  IF NOT v_allowed THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized order status transition');
+  END IF;
+
+  IF p_new_status = 'preparing' THEN
+    UPDATE public.product_orders
+    SET status = 'preparing', prepared_at = now(), prepared_by = auth.uid()
+    WHERE id = v_order.id;
+  ELSIF p_new_status = 'purchased' THEN
+    SELECT public.use_talent(
+      v_order.user_id,
+      v_order.price,
+      'Product purchase: ' || v_order.product_name,
+      auth.uid()
+    )
+    INTO v_purchase_result;
+
+    IF COALESCE((v_purchase_result->>'success')::boolean, false) = false THEN
+      RETURN v_purchase_result;
+    END IF;
+
+    UPDATE public.product_orders
+    SET status = 'purchased', purchased_at = now(), purchased_by = auth.uid()
+    WHERE id = v_order.id;
+
+    UPDATE public.profiles
+    SET pending_talent = GREATEST(COALESCE(pending_talent, 0) - v_order.price, 0)
+    WHERE id = v_order.user_id;
+  ELSIF p_new_status = 'delivered' THEN
+    UPDATE public.product_orders
+    SET status = 'delivered', delivered_at = now(), delivered_by = auth.uid()
+    WHERE id = v_order.id;
+  ELSIF p_new_status = 'requested' THEN
+    UPDATE public.product_orders
+    SET status = 'requested', prepared_at = null, prepared_by = null
+    WHERE id = v_order.id;
+  ELSIF p_new_status = 'cancelled' THEN
+    UPDATE public.product_orders
+    SET status = 'cancelled'
+    WHERE id = v_order.id;
+
+    UPDATE public.profiles
+    SET pending_talent = GREATEST(COALESCE(pending_talent, 0) - v_order.price, 0)
+    WHERE id = v_order.user_id;
+  END IF;
+
+  RETURN json_build_object(
+    'success', true,
+    'previous_status', v_order.status,
+    'status', p_new_status
+  );
+END;
+$$;
+
+CREATE OR REPLACE FUNCTION public.confirm_product_purchase(
+  p_order_id uuid,
+  p_admin_id uuid
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+BEGIN
+  IF p_admin_id IS DISTINCT FROM auth.uid() THEN
+    RETURN json_build_object('success', false, 'error', 'Actor does not match authenticated user');
+  END IF;
+
+  RETURN public.process_product_order(p_order_id, 'purchased');
 END;
 $$;
 
@@ -1577,6 +1776,9 @@ DROP POLICY IF EXISTS profiles_select_own ON public.profiles;
 CREATE POLICY profiles_select_own ON public.profiles FOR SELECT USING (auth.uid() = id);
 DROP POLICY IF EXISTS profiles_select_perm ON public.profiles;
 CREATE POLICY profiles_select_perm ON public.profiles FOR SELECT USING (public.get_permission_rank(public.get_my_role()) >= 60);
+DROP POLICY IF EXISTS profiles_select_teacher_scope ON public.profiles;
+CREATE POLICY profiles_select_teacher_scope ON public.profiles FOR SELECT TO authenticated
+  USING (public.can_view_managed_profile(id));
 DROP POLICY IF EXISTS profiles_insert_system ON public.profiles;
 CREATE POLICY profiles_insert_system ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 DROP POLICY IF EXISTS profiles_update_own ON public.profiles;
@@ -1621,7 +1823,7 @@ CREATE POLICY talent_items_delete ON public.talent_items FOR DELETE USING (publi
 
 DROP POLICY IF EXISTS tt_select_perm ON public.talent_transactions;
 CREATE POLICY tt_select_perm ON public.talent_transactions FOR SELECT
-  USING (auth.uid() = user_id OR public.get_permission_rank(public.get_my_role()) >= 60);
+  USING (public.can_view_managed_profile(user_id));
 DROP POLICY IF EXISTS tt_insert_system ON public.talent_transactions;
 CREATE POLICY tt_insert_system ON public.talent_transactions FOR INSERT WITH CHECK (true);
 
@@ -1682,8 +1884,6 @@ CREATE POLICY "Staff can view all orders" ON public.product_orders FOR SELECT TO
 DROP POLICY IF EXISTS "Users can create orders" ON public.product_orders;
 CREATE POLICY "Users can create orders" ON public.product_orders FOR INSERT TO authenticated WITH CHECK (user_id = auth.uid());
 DROP POLICY IF EXISTS "Staff can update orders" ON public.product_orders;
-CREATE POLICY "Staff can update orders" ON public.product_orders FOR UPDATE TO authenticated
-  USING (public.get_permission_rank(auth.uid()) >= 60);
 DROP POLICY IF EXISTS "Users can cancel own requested orders" ON public.product_orders;
 CREATE POLICY "Users can cancel own requested orders" ON public.product_orders FOR UPDATE TO authenticated
   USING (user_id = auth.uid() AND status = 'requested')
@@ -1847,6 +2047,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO anon, aut
 
 GRANT EXECUTE ON FUNCTION public.get_my_profile() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
+GRANT EXECUTE ON FUNCTION public.can_view_managed_profile(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.change_my_password(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_last_login() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_username_available(text) TO anon, authenticated;
@@ -1863,6 +2064,11 @@ GRANT EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, bo
 GRANT EXECUTE ON FUNCTION public.use_talent(uuid, integer, text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.request_product_order(uuid, uuid, text, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_product_order(uuid, uuid) TO authenticated;
+REVOKE ALL ON FUNCTION public.process_product_order(uuid, text) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.process_product_order(uuid, text) FROM anon;
+GRANT EXECUTE ON FUNCTION public.process_product_order(uuid, text) TO authenticated;
+REVOKE ALL ON FUNCTION public.confirm_product_purchase(uuid, uuid) FROM PUBLIC;
+REVOKE ALL ON FUNCTION public.confirm_product_purchase(uuid, uuid) FROM anon;
 GRANT EXECUTE ON FUNCTION public.confirm_product_purchase(uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.scan_qr_talent(uuid, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.submit_anonymous_question(text, text) TO anon, authenticated;
@@ -1910,11 +2116,11 @@ SET description = EXCLUDED.description,
     is_active = EXCLUDED.is_active,
     class_count = EXCLUDED.class_count;
 
--- 첫 관리자 계정: admin_user / 1234
+-- 첫 관리자 계정: admin / 1234
 DO $$
 DECLARE
   v_admin_id uuid;
-  v_email text := 'admin_user@cho-talents.app';
+  v_email text := 'admin@cho-talents.app';
 BEGIN
   SELECT id INTO v_admin_id FROM auth.users WHERE email = v_email LIMIT 1;
 
@@ -1933,7 +2139,7 @@ BEGIN
       v_email, extensions.crypt('1234', extensions.gen_salt('bf')),
       now(), now(), now(),
       '{"provider":"email","providers":["email"]}'::jsonb,
-      jsonb_build_object('username', 'admin_user', 'display_name', '관리자'),
+      jsonb_build_object('username', 'admin', 'display_name', '관리자'),
       '', '', '', '', false, false
     );
 
@@ -1950,7 +2156,7 @@ BEGIN
     id, email, username, display_name, user_type, permission_level,
     is_super_admin, is_first_login, talent_balance, pending_talent
   ) VALUES (
-    v_admin_id, v_email, 'admin_user', '관리자', 'teacher', 'admin',
+    v_admin_id, v_email, 'admin', '관리자', 'teacher', 'admin',
     true, true, 0, 0
   )
   ON CONFLICT (id) DO UPDATE
@@ -2025,6 +2231,8 @@ pages(page_key, min_view_rank, min_manage_rank) AS (
     ('talent_qr', 90, 90),
     ('talent_items', 90, 90),
     ('shop', 60, 60),
+    ('product_suggestions', 20, 20),
+    ('product_suggestion_votes', 60, 60),
     ('purchases', 60, 60),
     ('purchase_stats', 60, 60),
     ('reports', 80, 80),

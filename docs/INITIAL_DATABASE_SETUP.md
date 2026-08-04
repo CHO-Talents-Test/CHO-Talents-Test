@@ -6,27 +6,31 @@
 
 추가 코드 마스터 SQL: `docs/TASK-057_code_master.sql`
 상품 카테고리/상품 이미지 정책 SQL: `docs/TASK-058_product_category_policy.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`
-최신 운영 보강 SQL: `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-067_korean_activity_logs.sql`
+최신 운영 보강 SQL: `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-072_data_retention_180d.sql`, `docs/TASK-073_manual_retention_cleanup.sql`, `docs/TASK-081_user_login_statistics.sql`, `docs/TASK-082_exclude_super_admin_login_history.sql`, `docs/TASK-083_talent_item_emoji.sql`, `docs/TASK-084_user_login_statistics_detail.sql`, `docs/TASK-085_product_suggestions.sql`, `docs/TASK-086_product_suggestion_admin_decision.sql`, `docs/TASK-087_product_suggestion_detail_image.sql`, `docs/TASK-088_product_suggestion_adoption_talent.sql`, `docs/TASK-089_product_suggestion_slack_notifications.sql`, `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql`, `docs/TASK-098_purchase_request_cancellation.sql`, 기존 로그 정리용 `docs/TASK-074_activity_logs_english_details.sql`
 
 자동 실행 스크립트: `scripts/install-supabase-database.ps1`, `scripts/install-supabase-database.sh`
 
+사용자 통계 학생/교사 필터 보강 SQL: `docs/TASK-091_user_stats_filters.sql` (기존 운영 DB는 TASK-081, TASK-084 적용 후 실행)
+
 ## 실행 순서
+
+> 상품 추천 상세 이미지·최신 투표 정책·채택 보상·운영관리 Slack 알림·최고관리자 투표 특례를 적용하려면 `docs/TASK-087_product_suggestion_detail_image.sql`부터 `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql`까지 순서대로 실행하고 최신 `slack-notify` Edge Function을 배포합니다. 자동 설치 스크립트도 네 SQL 파일을 기본 합본에 포함합니다.
 
 1. 새 Supabase 프로젝트를 만든다.
 2. 새 프로젝트의 `Project URL`, `publishable/anon key`, DB connection string을 확인한다.
-3. 아래 수동 또는 자동 방식 중 하나로 DB 설치를 실행한다. SQL Editor 수동 방식이면 `INITIAL_DATABASE_SETUP.sql` 실행 후 `TASK-057_code_master.sql`, `TASK-058_product_category_policy.sql`, `TASK-065_registration_approval_contact.sql`, `TASK-066_notice_reads_and_category_manage.sql`, `TASK-067_korean_activity_logs.sql`, `TASK-068_product_category_page_and_sort_order.sql`, `TASK-069_product_detail_image.sql`을 이어서 실행한다.
+3. 아래 수동 또는 자동 방식 중 하나로 DB 설치를 실행한다. SQL Editor 수동 방식이면 `INITIAL_DATABASE_SETUP.sql` 실행 후 `TASK-057_code_master.sql`, `TASK-058_product_category_policy.sql`, `TASK-065_registration_approval_contact.sql`, `TASK-066_notice_reads_and_category_manage.sql`, `TASK-068_product_category_page_and_sort_order.sql`, `TASK-069_product_detail_image.sql`, `TASK-072_data_retention_180d.sql`, `TASK-073_manual_retention_cleanup.sql`, `TASK-081_user_login_statistics.sql`, `TASK-082_exclude_super_admin_login_history.sql`, `TASK-083_talent_item_emoji.sql`, `TASK-084_user_login_statistics_detail.sql`, `TASK-085_product_suggestions.sql`, `TASK-086_product_suggestion_admin_decision.sql`, `TASK-087_product_suggestion_detail_image.sql`, `TASK-088_product_suggestion_adoption_talent.sql`을 이어서 실행한다. 기존 운영 DB의 과거 로그 details를 정리할 때만 `TASK-074_activity_logs_english_details.sql`을 추가 실행한다.
 4. Storage에 `Talents_Items` 버킷이 생성되었는지 확인한다.
 5. Slack 알림을 사용할 경우 Edge Function `slack-notify`를 배포하고 Webhook Secret을 등록한다.
 6. 사이트 설정 파일의 Supabase URL/anon key를 새 프로젝트 값으로 바꾼다.
    - `config/public-config.js`
    - 필요 시 `.env.local`
-7. `admin_user / 1234`로 로그인한다.
+7. `admin / 1234`로 로그인한다.
 8. 최초 로그인 후 비밀번호를 변경한다.
 9. 부서, 사용자, 상품을 실제 운영 기준으로 새로 등록한다.
 
 ## 실행 방법 A: SQL Editor
 
-Supabase Dashboard의 SQL Editor에서 `docs/INITIAL_DATABASE_SETUP.sql`을 열고, 하단 `공개 런타임 설정과 비밀 참조값` 블록의 공개 설정값을 새 프로젝트 기준으로 수정한 뒤 전체를 실행한다. 이어서 `docs/TASK-057_code_master.sql`을 실행해 `code_groups`, `code_items`, 코드 컬럼 검증 트리거를 추가하고, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 실행해 상품 카테고리 추가/수정/삭제 권한, 상품 정렬 순번, 상품 상세 설명 이미지 컬럼, 공지 열람 현황 조회 권한을 보강한다. 승인 대기 로그인 안내와 기존 로그 한글 상세 백필이 필요하면 `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-067_korean_activity_logs.sql`도 적용한다.
+Supabase Dashboard의 SQL Editor에서 `docs/INITIAL_DATABASE_SETUP.sql`을 열고, 하단 `공개 런타임 설정과 비밀 참조값` 블록의 공개 설정값을 새 프로젝트 기준으로 수정한 뒤 전체를 실행한다. 이어서 `docs/TASK-057_code_master.sql`을 실행해 `code_groups`, `code_items`, 코드 컬럼 검증 트리거를 추가하고, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 실행해 상품 카테고리 추가/수정/삭제 권한, 상품 정렬 순번, 상품 상세 설명 이미지 컬럼, 공지 열람 현황 조회 권한을 보강한다. 승인 대기 로그인 안내가 필요하면 `docs/TASK-065_registration_approval_contact.sql`도 적용한다. 운영 데이터 180일 보존 정책과 수동 삭제 버튼용 RPC가 필요하면 `docs/TASK-072_data_retention_180d.sql` 실행 후 `docs/TASK-073_manual_retention_cleanup.sql`을 실행한다. 마지막으로 `docs/TASK-081_user_login_statistics.sql`, `docs/TASK-082_exclude_super_admin_login_history.sql`, `docs/TASK-083_talent_item_emoji.sql`, `docs/TASK-084_user_login_statistics_detail.sql`, `docs/TASK-085_product_suggestions.sql`, `docs/TASK-086_product_suggestion_admin_decision.sql`, `docs/TASK-087_product_suggestion_detail_image.sql`, `docs/TASK-088_product_suggestion_adoption_talent.sql`을 순서대로 실행해 성공 로그인 이력, 최고관리자 이력 제외, 달란트 항목 카드 이모지, 사용자 통계 상세 조회, 상품 추천/비밀 투표와 추천 이미지 Storage 정책, 관리자 예외 결정, 채택 보상과 순번 999 정책을 적용한다. 기존 운영 DB에 과거 한글 별칭/중복/client 로그 details가 남아 있으면 `docs/TASK-074_activity_logs_english_details.sql`을 마지막에 실행해 저장값을 정리한다.
 
 ```sql
 ('PROD', 'SUPABASE_URL', 'https://YOUR_PROJECT_REF.supabase.co', false, true, ...),
@@ -113,7 +117,7 @@ scripts/install-supabase-database.sh \
   --supabase-anon-key "YOUR_PUBLISHABLE_OR_ANON_KEY"
 ```
 
-`scripts/install-supabase-database.ps1`와 `scripts/install-supabase-database.sh`는 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 코드 마스터를 검증한다. 별도 마이그레이션을 추가로 합치려면 `-ExtraSqlPaths` 또는 `--extra-sql-path`에 경로를 넘긴다.
+`scripts/install-supabase-database.ps1`와 `scripts/install-supabase-database.sh`는 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`, `docs/TASK-081_user_login_statistics.sql`, `docs/TASK-082_exclude_super_admin_login_history.sql`, `docs/TASK-084_user_login_statistics_detail.sql`, `docs/TASK-085_product_suggestions.sql`, `docs/TASK-086_product_suggestion_admin_decision.sql`, `docs/TASK-087_product_suggestion_detail_image.sql`, `docs/TASK-088_product_suggestion_adoption_talent.sql`, `docs/TASK-089_product_suggestion_slack_notifications.sql`, `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql`, `docs/TASK-091_user_stats_filters.sql`, `docs/TASK-098_purchase_request_cancellation.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 코드 마스터를 검증한다. 상품 추천 Slack 알림을 사용하려면 최신 `slack-notify` Edge Function도 배포한다. 별도 마이그레이션을 추가로 합치려면 `-ExtraSqlPaths` 또는 `--extra-sql-path`에 경로를 넘긴다.
 
 ## 필수 테이블
 
@@ -121,10 +125,11 @@ scripts/install-supabase-database.sh \
 |---|---|---|
 | `code_groups`, `code_items` | 권한/유형/상태/카테고리/로그 액션 코드 마스터 | 기본 코드 그룹과 활성 코드값 |
 | `departments` | 부서/반 관리 | `기본 부서` 1개 |
-| `profiles` | Supabase Auth 사용자 프로필, 권한, 달란트 잔액, 마지막 로그인 | `admin_user` 최고 관리자 1명 |
+| `profiles` | Supabase Auth 사용자 프로필, 권한, 달란트 잔액, 마지막 로그인 | `admin` 최고 관리자 1명 |
+| `user_login_history` | 최고관리자를 제외한 성공 로그인 시점의 사용자·부서·권한 스냅샷. 직접 조회를 제한하고 사용자 통계 RPC로만 집계 | 비움 |
 | `registration_requests` | 가입 신청 | 비움 |
 | `department_transfer_requests` | 부서 이동 신청/승인 | 비움 |
-| `talent_items` | 달란트 지급 항목, 지급 규칙/설명 | 학생 8개, 교사 5개 |
+| `talent_items` | 달란트 지급 항목, 카드 이모지, 지급 규칙/설명 | 학생 8개, 교사 5개 |
 | `talent_transactions` | 달란트 적립/사용/반환/예외 지급 이력. 예외 지급은 `override_week_limit`, `override_reason`으로 표시 | 비움 |
 | `products` | 상품 목록. `sort_order`로 카테고리 안 표시 순서 관리, `image_url` 썸네일과 `detail_image_url` 상세 설명 이미지 분리 | 비움 |
 | `product_orders` | 상품 구매 신청/처리 | 비움 |
@@ -133,6 +138,7 @@ scripts/install-supabase-database.sh \
 | `reports` | 보고서 | 비움 |
 | `report_events` | 보고서 확인/변경 이력 | 비움 |
 | `activity_logs` | 접속/오류/작업 로그 | 비움 |
+| `service_usage_snapshots`, `service_usage_collection_runs` | 서비스 사용량 스냅샷과 수집 실행 이력. `TASK-072` 적용 시 180일 보존, `TASK-073` 적용 시 관리자 수동 정리 가능 | 비움 |
 | `page_permissions` | 권한별 페이지 매트릭스 | 기본 권한표 |
 | `role_page_access` | 역할별 페이지 접근/요소 숨김 설정 | 비움, 기본 허용 |
 | `role_page_features` | 역할별 페이지 기능 설정 | 비움, 기본 허용 |
@@ -160,6 +166,7 @@ scripts/install-supabase-database.sh \
 |---|---|---|---|---|
 | 부서 | 모두 | 80+ | 80+ | 90+ |
 | 프로필 | 본인 또는 60+ | 시스템/RPC | 본인 또는 60+ | 60+ |
+| 사용자 로그인 이력 | 직접 조회 불가 | `record_user_login()` | 직접 수정 없음 | 직접 삭제 없음 |
 | 가입 신청 | 80+ | 모두 | 80+ | 80+ |
 | 달란트 항목 | 모두 | 90+ | 90+ | 100+ |
 | 달란트 이력 | 본인 또는 60+ | RPC/시스템 | 직접 수정 없음 | 직접 삭제 없음 |
@@ -186,6 +193,7 @@ scripts/install-supabase-database.sh \
 | RPC | 용도 |
 |---|---|
 | `get_my_profile`, `update_last_login`, `change_my_password` | 로그인 세션/프로필/비밀번호 관리 |
+| `record_user_login`, `get_user_login_statistics`, `get_user_login_stat_detail` | 성공 로그인 이력 기록, 관리자(100+)의 KST 기준 날짜/요일/시간/부서/사용자별 집계와 각 통계 행의 상세 목록/로그인 이력 조회 |
 | `admin_list_users`, `admin_create_user`, `admin_update_user`, `admin_delete_user`, `admin_reset_password` | 사용자와 권한 관리 |
 | `give_talent`, `use_talent` | 달란트 적립/사용/반환. `give_talent`는 `p_override_week_limit`, `p_override_reason`으로 전도사님 이상 예외 지급을 검증 |
 | `request_product_order`, `confirm_product_purchase`, `cancel_product_order` | 구매 신청, 구매 확정, 구매 신청 취소 |
@@ -212,7 +220,7 @@ DB SQL은 Slack Webhook 원문을 저장하지 않고 `app_config`에 `env:SLACK
 `기본 부서`
 : 가입 신청 화면에서 부서 선택이 필수이므로 최소 1개가 필요하다. 실제 운영 전 이름과 반 개수를 수정한다.
 
-`admin_user`
+`admin`
 : 새 DB 진입용 최고 관리자 계정이다. 초기 비밀번호는 `1234`이며 첫 로그인 후 변경해야 한다.
 
 달란트 항목
@@ -250,4 +258,4 @@ FAQ
 - GitHub PAT, Supabase access token, service role key는 `app_config`에 원문으로 저장하지 않는다.
 - 상품 이미지를 사용하려면 `Talents_Items` Storage 버킷이 필요하다. SQL에서 자동 생성한다.
 - 새 프로젝트 URL과 anon key가 바뀌면 프론트 설정도 반드시 바꿔야 한다.
-- QR 수령, 구매 취소, 페이지당 항목 수 설정, 상품 정렬 순번, 상품 상세 설명 이미지 컬럼은 기본 설치 SQL에 통합되어 있다. 코드 마스터와 상품 카테고리 추가 정책은 SQL Editor 수동 설치 시 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 추가 실행하고, 자동 설치 스크립트 사용 시 기본 합본에 포함된다. v3.65.0~v3.66.0 보강 기능은 수동 설치 후 `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-067_korean_activity_logs.sql`을 이어서 적용한다.
+- QR 수령, 구매 취소, 페이지당 항목 수 설정, 상품 정렬 순번, 상품 상세 설명 이미지 컬럼은 기본 설치 SQL에 통합되어 있다. 코드 마스터와 상품 카테고리 추가 정책은 SQL Editor 수동 설치 시 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-069_product_detail_image.sql`을 추가 실행하고, 자동 설치 스크립트 사용 시 기본 합본에 포함된다. v3.65.0 이후 보강 기능은 수동 설치 후 `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-072_data_retention_180d.sql`, `docs/TASK-073_manual_retention_cleanup.sql`을 이어서 적용한다. 기존 DB의 과거 활동 로그 details 정리는 `docs/TASK-074_activity_logs_english_details.sql`을 별도로 실행한다.

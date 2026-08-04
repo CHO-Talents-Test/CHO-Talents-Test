@@ -45,6 +45,7 @@
           <button class="btn-ack admin-only-btn" style="margin-left:0.5rem;display:none;" onclick="deleteByRange()">범위 삭제</button>
           <button class="btn-ack admin-only-btn" style="background:#d63031;display:none;" onclick="deleteSelectedLogs()" id="btnDeleteLogs" disabled>선택 삭제</button>
           <button class="filter-btn admin-only-btn" onclick="toggleDeletedView()" id="btnToggleDeleted" style="margin-left:0.3rem;display:none;">🗑️ 삭제 대기 목록</button>
+          <button class="filter-btn admin-only-btn" onclick="cleanupOldActivityLogs()" id="btnCleanupOldLogs" style="margin-left:0.3rem;display:none;background:#495057;color:#fff;">180일 초과 실제 삭제</button>
           <span id="logPageSizeWrap" style="margin-left:auto;"></span>
         </div>
       </div>
@@ -65,11 +66,11 @@
           <tr>
             <th style="width:30px;" class="admin-only-btn" id="thChkAll"><input type="checkbox" id="logChkAll" onchange="toggleAllLogs(this)"></th>
             <th>시간 (KST)</th><th>레벨</th><th>액션</th><th>페이지</th>
-            <th>사용자</th><th>클라이언트</th><th>상태</th><th></th>
+            <th>사용자</th><th>상태</th><th></th>
           </tr>
         </thead>
         <tbody id="logsList">
-          <tr><td colspan="9" class="empty-state">로딩 중...</td></tr>
+          <tr><td colspan="8" class="empty-state">로딩 중...</td></tr>
         </tbody>
       </table>
 
@@ -102,7 +103,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -122,51 +123,92 @@
     let currentAckId = null;
     let userProfileMap = {};
     let userProfileById = {};
+    let registrationRequestMap = {};
+    let registrationRequestById = {};
 
     async function loadUserProfiles() {
-      const { data } = await _sb.from('profiles').select('id, username, display_name');
+      const [{ data }, { data: regData }] = await Promise.all([
+        _sb.from('profiles').select('id, username, display_name'),
+        _sb.from('registration_requests').select('id, username, display_name')
+      ]);
       userProfileMap = {};
       userProfileById = {};
       if (data) data.forEach(p => {
         if (p.username) userProfileMap[p.username] = p;
         if (p.id) userProfileById[p.id] = p;
       });
+      registrationRequestMap = {};
+      registrationRequestById = {};
+      if (regData) regData.forEach(r => {
+        if (r.username) registrationRequestMap[r.username] = r;
+        if (r.id) registrationRequestById[r.id] = r;
+      });
     }
 
     function formatProfileUser(profile) {
-      if (!profile) return '미등록';
-      const account = profile.username || '미등록';
+      if (!profile) return '계정 없음';
+      const account = profile.username || '계정 없음';
       const name = profile.display_name || '';
       return name && name !== account ? `${name} (${account})` : account;
     }
 
     function getUserDisplay(username) {
-      if (!username) return '-';
+      if (!username) return '계정 없음';
       return userProfileMap[username] ? formatProfileUser(userProfileMap[username]) : username;
+    }
+
+    function getKnownUserDisplay(accountOrId) {
+      if (!accountOrId) return null;
+      const key = String(accountOrId);
+      if (userProfileMap[key]) return formatProfileUser(userProfileMap[key]);
+      if (userProfileById[key]) return formatProfileUser(userProfileById[key]);
+      if (registrationRequestMap[key]) return formatProfileUser(registrationRequestMap[key]);
+      if (registrationRequestById[key]) return formatProfileUser(registrationRequestById[key]);
+      return null;
+    }
+
+    function getKnownUserProfile(accountOrId) {
+      if (!accountOrId) return null;
+      const key = String(accountOrId);
+      return userProfileMap[key] || userProfileById[key] || registrationRequestMap[key] || registrationRequestById[key] || null;
     }
 
     function getLogUserDisplay(log) {
       if (!log || typeof log === 'string') return getUserDisplay(log);
       const details = log.details || {};
-      const username = log.username || details._username || details._userAccount || details.cachedUsername || details.사용자;
+      const username = log.username || details.logUserAccount || details._username || details._userAccount || details.cachedUsername || details.사용자;
       if (username) {
-        if (userProfileMap[username]) return getUserDisplay(username);
-        const displayName = log.user_name || details._userName || details._displayName;
+        const known = getKnownUserDisplay(username);
+        if (known) return known;
+        const displayName = log.user_name || details.logUserName || details._userName || details._displayName;
         return displayName && displayName !== username ? `${displayName} (${username})` : username;
       }
       const authUserId = details.authUserId || details._authUserId;
       if (authUserId) {
-        const profile = userProfileById[authUserId];
-        return profile ? formatProfileUser(profile) : `미등록 (${authUserId})`;
+        const known = getKnownUserDisplay(authUserId);
+        return known || `미등록 (${authUserId})`;
       }
-      const displayName = log.user_name || details._userName || details._displayName;
-      return displayName || '-';
+      const requestId = details.requestId || details.registrationRequestId;
+      if (requestId) {
+        const known = getKnownUserDisplay(requestId);
+        if (known) return known;
+      }
+      const displayName = log.user_name || details.logUserName || details._userName || details._displayName;
+      return displayName || '계정 없음';
+    }
+
+    function applyKnownLogUserToDetails(log, details) {
+      const account = log.username || details.logUserAccount || details._username || details._userAccount || details.cachedUsername || details.사용자;
+      const profile = getKnownUserProfile(account);
+      if (!profile) return;
+      details.logUserAccount = profile.username || account;
+      details.logUserName = profile.display_name || profile.username || details.logUserName || account;
     }
 
     function formatActionCell(action) {
       const key = action || '-';
       const label = typeof getActionLabel === 'function' ? getActionLabel(action) : key;
-      return `<span style="font-weight:600;">${label}</span><br/><span style="font-size:0.7rem;color:#868e96;">${key}</span>`;
+      return `<span style="font-weight:600;">${label}</span>`;
     }
 
     function escapeHtml(value) {
@@ -182,6 +224,24 @@
     function formatKoreanLogDetails(details) {
       const clean = details ? Object.assign({}, details) : {};
       delete clean._client;
+      delete clean.client;
+      delete clean['클라이언트'];
+
+      const targetUserProfile = getKnownUserProfile(clean.targetUser);
+      const targetUserIdProfile = getKnownUserProfile(clean.targetUserId);
+      const targetProfile = targetUserIdProfile
+        || targetUserProfile
+        || getKnownUserProfile(clean.userId)
+        || getKnownUserProfile(clean.targetAccount);
+      if (targetProfile) {
+        const targetName = targetProfile.display_name || targetProfile.username || '';
+        const targetAccount = targetProfile.username || '';
+        if (clean.targetUser && targetUserProfile) clean.targetUser = targetUserProfile.display_name || targetUserProfile.username || '';
+        if (clean.targetUserId && targetUserIdProfile) clean.targetUserId = targetUserIdProfile.username || '';
+        if (!clean.targetName && targetName) clean.targetName = targetName;
+        if (!clean.targetAccount && targetAccount) clean.targetAccount = targetAccount;
+      }
+
       const display = (typeof getDisplayLogDetails === 'function') ? getDisplayLogDetails(clean) : clean;
       return Object.keys(display).length ? JSON.stringify(display, null, 2) : '-';
     }
@@ -204,10 +264,9 @@
     })();
 
     function setLogPeriod(type) {
-      const today = new Date();
-      const todayStr = today.toISOString().slice(0, 10);
+      const todayStr = formatKSTDateInput();
       let fromStr = todayStr;
-      if (type === 'week') { const d = new Date(today); d.setDate(d.getDate() - 6); fromStr = d.toISOString().slice(0, 10); }
+      if (type === 'week') { fromStr = addDateInputDays(todayStr, -6); }
       else if (type === 'month') { fromStr = todayStr.slice(0, 8) + '01'; }
       else if (type === 'year') { fromStr = todayStr.slice(0, 4) + '-01-01'; }
       document.getElementById('dateFrom').value = fromStr;
@@ -241,14 +300,14 @@
         `미확인 ERROR 이상 로그가 ${data.length}건 있습니다. 확인이 필요합니다.`;
 
       tbody.innerHTML = data.map(l => `
-        <tr style="background:#fff5f5;">
+        <tr style="background:#fff5f5;cursor:pointer;" onclick="showLogDetail('${l.id}')">
           <td>${formatKSTShort(l.created_at)}</td>
           <td><span class="level-badge ${l.level}">${l.level}</span></td>
           <td>${formatActionCell(l.action)}</td>
           <td>${l.page || '-'}</td>
           <td>${getLogUserDisplay(l)}</td>
           <td><span class="ack-badge pending">미확인</span></td>
-          <td><button class="filter-btn" onclick="showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button><button class="btn-ack" onclick="openAckModal('${l.id}')">확인하기</button></td>
+          <td><button class="filter-btn" onclick="event.stopPropagation();showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button><button class="btn-ack" onclick="event.stopPropagation();openAckModal('${l.id}')">확인하기</button></td>
         </tr>
       `).join('');
     }
@@ -306,7 +365,7 @@
       title.textContent = `활동 로그 (${logs.length}/${totalLogCount})`;
 
       if (logs.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9"><div class="empty-state">
+        tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state">
           <div class="empty-state-icon">📄</div><p>해당 조건의 로그가 없습니다.</p></div></td></tr>`;
         renderPagination(0);
         return;
@@ -321,22 +380,18 @@
             : `<span class="ack-badge pending">미확인</span>`)
           : '-';
         const actionHtml = isError && !l.is_acknowledged
-          ? `<button class="btn-ack" onclick="openAckModal('${l.id}')">확인</button>`
+          ? `<button class="btn-ack" onclick="event.stopPropagation();openAckModal('${l.id}')">확인</button>`
           : '';
-        const ci = l.details?._client;
-        const clientHtml = ci
-          ? `<span style="font-size:0.72rem;line-height:1.3;display:block;cursor:pointer;" title="IP: ${ci.ip||'-'}\n브라우저: ${ci.browser||'-'}\nOS: ${ci.os||'-'}\n해상도: ${ci.screenRes||'-'}\n창: ${ci.windowSize||'-'}\n기기: ${ci.deviceType||'-'}\n언어: ${ci.language||'-'}">${ci.ip||'-'}<br/>${ci.browser||'-'}<br/>${ci.deviceType||'-'}</span>`
-          : '<span style="font-size:0.72rem;color:#adb5bd;">-</span>';
-        return `<tr>
-          ${isAdminUser ? `<td><input type="checkbox" class="log-chk" value="${l.id}" onchange="updateLogDeleteBtn()"></td>` : ''}
+        const canDeleteLog = l.is_acknowledged !== false;
+        return `<tr style="cursor:pointer;" onclick="showLogDetail('${l.id}')">
+          ${isAdminUser ? `<td><input type="checkbox" class="log-chk" value="${l.id}" onclick="event.stopPropagation()" onchange="updateLogDeleteBtn()" ${canDeleteLog ? '' : 'disabled title="미확인 로그는 확인 완료 후 삭제할 수 있습니다."'}></td>` : ''}
           <td>${formatKST(l.created_at)}</td>
           <td><span class="level-badge ${l.level}">${l.level}</span></td>
           <td>${formatActionCell(l.action)}</td>
           <td>${l.page || '-'}</td>
           <td>${getLogUserDisplay(l)}</td>
-          <td>${clientHtml}</td>
           <td>${ackHtml}</td>
-          <td><button class="filter-btn" onclick="showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button>${actionHtml}</td>
+          <td><button class="filter-btn" onclick="event.stopPropagation();showLogDetail('${l.id}')" style="margin-right:0.3rem;">상세</button>${actionHtml}</td>
         </tr>`;
       }).join('');
 
@@ -508,9 +563,11 @@
     function showLogDetail(logId) {
       _sb.from('activity_logs').select('*').eq('id', logId).single().then(({ data: l }) => {
         if (!l) return;
-        const ci = l.details?._client;
         const detailsClean = l.details ? Object.assign({}, l.details) : {};
         delete detailsClean._client;
+        delete detailsClean.client;
+        delete detailsClean['클라이언트'];
+        applyKnownLogUserToDetails(l, detailsClean);
         const detailText = formatKoreanLogDetails(detailsClean);
         const hasDetails = detailText !== '-';
         let html = '<table style="width:100%;border-collapse:collapse;font-size:0.85rem;">';
@@ -519,14 +576,6 @@
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">액션</td><td style="padding:0.5rem;border:1px solid #eee;">' + formatActionCell(l.action) + '</td></tr>';
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">페이지</td><td style="padding:0.5rem;border:1px solid #eee;">' + (l.page || '-') + '</td></tr>';
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">사용자</td><td style="padding:0.5rem;border:1px solid #eee;">' + getLogUserDisplay(l) + '</td></tr>';
-        if (ci) {
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">IP</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.ip||'-') + '</td></tr>';
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">브라우저</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.browser||'-') + '</td></tr>';
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">OS</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.os||'-') + '</td></tr>';
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">기기</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.deviceType||'-') + '</td></tr>';
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">해상도</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.screenRes||'-') + ' (창: ' + (ci.windowSize||'-') + ')</td></tr>';
-          html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">언어</td><td style="padding:0.5rem;border:1px solid #eee;">' + (ci.language||'-') + '</td></tr>';
-        }
         html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;">확인</td><td style="padding:0.5rem;border:1px solid #eee;">' + (l.is_acknowledged ? '<span class="ack-badge done">확인됨</span> ' + (l.acknowledged_by||'') + (l.resolution_note ? ' - ' + l.resolution_note : '') : '<span class="ack-badge pending">미확인</span>') + '</td></tr>';
         if (hasDetails) {
           html += '<tr><td style="padding:0.5rem;font-weight:700;background:#fafbfc;border:1px solid #eee;vertical-align:top;">데이터</td><td style="padding:0.5rem;border:1px solid #eee;"><pre style="font-size:0.75rem;white-space:pre-wrap;word-break:break-all;max-height:220px;overflow-y:auto;margin:0;background:#f8f9fa;padding:0.5rem;border-radius:6px;">' + escapeHtml(detailText) + '</pre></td></tr>';
@@ -550,18 +599,18 @@
     });
 
     function toggleAllLogs(chkAll) {
-      document.querySelectorAll('.log-chk').forEach(c => { c.checked = chkAll.checked; });
+      document.querySelectorAll('.log-chk:not(:disabled)').forEach(c => { c.checked = chkAll.checked; });
       updateLogDeleteBtn();
     }
 
     function updateLogDeleteBtn() {
-      const checked = document.querySelectorAll('.log-chk:checked').length;
+      const checked = document.querySelectorAll('.log-chk:not(:disabled):checked').length;
       document.getElementById('btnDeleteLogs').disabled = checked === 0;
       document.getElementById('btnDeleteLogs').textContent = checked > 0 ? '선택 삭제 (' + checked + ')' : '선택 삭제';
     }
 
     async function deleteSelectedLogs() {
-      const ids = Array.from(document.querySelectorAll('.log-chk:checked')).map(c => c.value);
+      const ids = Array.from(document.querySelectorAll('.log-chk:not(:disabled):checked')).map(c => c.value);
       if (ids.length === 0) return;
       if (!confirm(ids.length + '건의 로그를 삭제 대기 상태로 변경하시겠습니까?')) return;
 
@@ -572,13 +621,45 @@
           alert('실패:\n\n' + tErr(error));
           return;
         }
-        await logInfo('LOG_SELECT_DELETE', { 건수: count || ids.length });
+        if (!count) {
+          alert('삭제할 수 있는 확인 완료 로그가 없습니다.\n\n미확인 로그는 확인 완료 후 삭제할 수 있습니다.');
+          await loadAll();
+          return;
+        }
+        await logInfo('LOG_SELECT_DELETE', { 건수: count });
         document.getElementById('logChkAll').checked = false;
-        alert((count || ids.length) + '건의 로그가 삭제 대기 상태로 변경되었습니다.\n\n실제 삭제는 관리자가 SQL로 직접 수행합니다.');
+        alert(count + '건의 로그가 삭제 대기 상태로 변경되었습니다.\n\n미확인 로그는 확인 완료 전까지 삭제되지 않습니다.');
         await loadAll();
       } catch (err) {
         await logError('LOG_SELECT_DELETE_ERROR', { 오류: String(err) });
         alert('오류: ' + tErr(err.message));
+      }
+    }
+
+    async function cleanupOldActivityLogs() {
+      if ((session.permissionRank || 0) < 100) {
+        alert('활동 로그 수동 삭제는 관리자만 가능합니다.');
+        return;
+      }
+      if (!confirm('180일이 지난 확인 완료 활동 로그를 실제 삭제합니다.\n\n미확인 로그는 삭제되지 않습니다.\n계속하시겠습니까?')) return;
+
+      const btn = document.getElementById('btnCleanupOldLogs');
+      btn.disabled = true;
+      btn.textContent = '삭제 중...';
+      try {
+        const { data, error } = await _sb.rpc('cleanup_activity_logs_retention_180d');
+        if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
+        const count = Number(row?.activity_logs_deleted || 0);
+        await logInfo('LOG_RETENTION_CLEANUP', { 건수: count, cutoffAt: row?.cutoff_at || null });
+        alert(`활동 로그 정리 완료\n\n확인 완료 로그 ${count.toLocaleString('ko-KR')}건이 삭제되었습니다.\n미확인 로그는 보존됩니다.`);
+        await loadAll();
+      } catch (error) {
+        await logError('LOG_RETENTION_CLEANUP_FAIL', { 오류: error.message || String(error) });
+        alert('활동 로그 정리 실패: ' + tErr(error.message || String(error)) + '\n\nSupabase SQL Editor에서 docs/TASK-073_manual_retention_cleanup.sql 적용 여부를 확인해주세요.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '180일 초과 실제 삭제';
       }
     }
 
@@ -612,7 +693,7 @@
       document.getElementById('pagination').innerHTML = '';
 
       if (logs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><div class="empty-state-icon">✅</div><p>삭제 대기 중인 로그가 없습니다.</p></div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><div class="empty-state-icon">✅</div><p>삭제 대기 중인 로그가 없습니다.</p></div></td></tr>';
         return;
       }
 
@@ -625,7 +706,6 @@
           <td>${formatActionCell(l.action)}</td>
           <td>${l.page || '-'}</td>
           <td>${getLogUserDisplay(l)}</td>
-          <td><span style="font-size:0.72rem;color:#d63031;">삭제 대기<br/>${deletedAt}</span></td>
           <td><span class="ack-badge pending" style="background:#ffe3e3;color:#d63031;">삭제 대기</span></td>
           <td><button class="filter-btn" onclick="restoreLog('${l.id}')">복원</button></td>
         </tr>`;

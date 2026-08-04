@@ -16,7 +16,7 @@
     <section class="guide-hero">
       <div class="guide-kicker">구매 담당 교사 · 70등급</div>
       <h1>구매 담당 교사 가이드</h1>
-      <p>전체 부서의 상품 주문을 확인하고 구매 흐름을 진행하는 권한자용 안내입니다. 구매 담당 교사는 부서 담당 교사와 같은 관리 메뉴를 사용하면서, 구매 관리와 상품 배지에서 전체 부서 주문을 처리하고 상품 카테고리를 관리합니다.</p>
+      <p>전체 부서의 상품 주문을 확인하고 구매 흐름을 진행하는 권한자용 안내입니다. 구매 담당 교사는 부서 담당 교사와 같은 관리 메뉴를 사용하면서, 구매 관리와 상품 배지에서 전체 부서 주문 및 미투표 상품 추천을 확인하고 상품 카테고리를 관리합니다.</p>
     </section>
 
     <div class="guide-switcher">
@@ -106,7 +106,7 @@
       <div class="guide-grid">
         <div class="guide-card">
           <h3>24시간 유휴 자동 로그아웃</h3>
-          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다. 새 버전 배포 후 구버전 세션이 감지되어도 재로그인 안내가 표시될 수 있습니다.</p>
+          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다. 새 버전 배포 후 구버전 세션이 감지되어도 재로그인 안내가 표시될 수 있습니다. 현재 안내 기준은 v3.79.0입니다.</p>
         </div>
         <div class="guide-card">
           <h3>모바일 상단 우측 (768px 이하)</h3>
@@ -117,13 +117,24 @@
         </div>
       </div>
     </section>
+    <section class="guide-section">
+      <h2>🆕 v3.79.0 업데이트</h2>
+      <p><strong>상품 &gt; 구매 통계</strong>에서 전체·부서별·사용자별 표의 행을 클릭하면 상품·부서·사용자별 상세 집계를 바로 확인할 수 있습니다. 즐겨찾기는 최대 20개까지 선택할 수 있습니다.</p>
+    </section>
+    <section class="guide-section">
+      <h2>🗳️ 추천 상품 비밀 투표</h2>
+      <div class="guide-card">
+        <p>구매 담당 교사도 <strong>상품 &gt; 상품 추천 투표</strong>에서 등록 시점 투표 정원에 포함된 추천 상품을 비밀 투표합니다. 종료 전 찬성/반대 득표 수는 <code>profiles.is_super_admin=true</code>인 최고관리자만 확인할 수 있고 종료 후에는 투표를 바꿀 수 없습니다. 또한 <strong>상품 &gt; 상품 일괄 등록</strong>에서 엑셀 양식으로 여러 상품을 등록할 수 있습니다.</p>
+        <p style="margin-top:0.65rem;">현재 투표 가능한 인원이 등록 시점 과반보다 줄어들면 일반 투표는 완료되지 않습니다. 이 경우 <code>profiles.is_super_admin=true</code>인 최고관리자만 현재 유효 정원의 과반 결과가 있을 때 투표 종료를 처리합니다. 채택되면 추천 등록자에게 <strong>상품 추천 채택</strong> 1달란트가 자동 지급되고 상품은 순번 999·비활성으로 생성됩니다. 추천 등록과 투표 종료 시 운영관리 Slack 채널에는 상품명·결과·익명 득표 수만 안내됩니다. 최고관리자는 별도로 투표중 상세 모달에서 채택 또는 불채택을 예외 결정할 수 있으며, 구매 담당 교사는 이 제어를 사용할 수 없습니다.</p>
+      </div>
+    </section>
   </main>
 
   <footer class="page-footer">
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -143,10 +154,7 @@
       navUpdateAuth(session);
       await initTheme();
       const rank = session.permissionRank || 0;
-      document.querySelectorAll('.guide-switcher a').forEach(a => {
-        if (a.href.includes('chief-teacher-guide') && rank < 80) a.style.display = 'none';
-        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
-      });
+      applyGuideSwitcherAccess(rank);
       autoLogPageView();
     })();
   </script>

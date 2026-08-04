@@ -21,8 +21,22 @@
         </div>
       </div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:1rem 0 0.5rem;border-bottom:2px solid #fab005;padding-bottom:0.3rem;">
-        <h3 style="font-size:0.95rem;margin:0;" id="teacherTitle">👩‍🏫 교사용 상품 (0건)</h3>
+      <div class="product-list-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:0.7rem;flex-wrap:wrap;margin:1rem 0 0.5rem;border-bottom:2px solid #fab005;padding-bottom:0.3rem;">
+        <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
+          <h3 style="font-size:0.95rem;margin:0;" id="teacherTitle">👩‍🏫 교사용 상품 (0건)</h3>
+          <div style="display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;">
+            <label for="teacherStatusFilter" class="sr-only">교사용 상품 상태</label>
+            <select id="teacherStatusFilter" aria-label="교사용 상품 상태 필터" onchange="onProductStatusFilterChange('teacher')" style="padding:0.35rem 0.55rem;border:1px solid var(--admin-border);border-radius:8px;background:var(--t-card,#fff);color:var(--admin-text);font-size:0.8rem;">
+              <option value="all">전체 상태</option>
+              <option value="active">활성</option>
+              <option value="inactive">비활성</option>
+            </select>
+            <label for="teacherCategoryFilter" class="sr-only">교사용 상품 카테고리</label>
+            <select id="teacherCategoryFilter" aria-label="교사용 상품 카테고리 필터" onchange="onProductCategoryFilterChange('teacher')" style="padding:0.35rem 0.55rem;border:1px solid var(--admin-border);border-radius:8px;background:var(--t-card,#fff);color:var(--admin-text);font-size:0.8rem;">
+              <option value="">전체 카테고리</option>
+            </select>
+          </div>
+        </div>
         <span id="teacherPageSizeWrap"></span>
       </div>
       <table class="admin-table" id="teacherProductTable">
@@ -31,8 +45,22 @@
       </table>
       <div id="teacherPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
 
-      <div style="display:flex;align-items:center;justify-content:space-between;margin:1.5rem 0 0.5rem;border-bottom:2px solid #51cf66;padding-bottom:0.3rem;">
-        <h3 style="font-size:0.95rem;margin:0;" id="studentTitle">🎒 학생용 상품 (0건)</h3>
+      <div class="product-list-toolbar" style="display:flex;align-items:center;justify-content:space-between;gap:0.7rem;flex-wrap:wrap;margin:1.5rem 0 0.5rem;border-bottom:2px solid #51cf66;padding-bottom:0.3rem;">
+        <div style="display:flex;align-items:center;gap:0.55rem;flex-wrap:wrap;">
+          <h3 style="font-size:0.95rem;margin:0;" id="studentTitle">🎒 학생용 상품 (0건)</h3>
+          <div style="display:flex;align-items:center;gap:0.35rem;flex-wrap:wrap;">
+            <label for="studentStatusFilter" class="sr-only">학생용 상품 상태</label>
+            <select id="studentStatusFilter" aria-label="학생용 상품 상태 필터" onchange="onProductStatusFilterChange('student')" style="padding:0.35rem 0.55rem;border:1px solid var(--admin-border);border-radius:8px;background:var(--t-card,#fff);color:var(--admin-text);font-size:0.8rem;">
+              <option value="all">전체 상태</option>
+              <option value="active">활성</option>
+              <option value="inactive">비활성</option>
+            </select>
+            <label for="studentCategoryFilter" class="sr-only">학생용 상품 카테고리</label>
+            <select id="studentCategoryFilter" aria-label="학생용 상품 카테고리 필터" onchange="onProductCategoryFilterChange('student')" style="padding:0.35rem 0.55rem;border:1px solid var(--admin-border);border-radius:8px;background:var(--t-card,#fff);color:var(--admin-text);font-size:0.8rem;">
+              <option value="">전체 카테고리</option>
+            </select>
+          </div>
+        </div>
         <span id="studentPageSizeWrap"></span>
       </div>
       <table class="admin-table" id="studentProductTable">
@@ -48,20 +76,21 @@
       <h3 class="modal-title" id="modalTitle">상품 등록</h3>
       <div class="form-error" id="modalError"></div>
       <div style="margin-bottom:0.8rem;">
-        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품명</label>
-        <input type="text" id="mName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품명 <span class="required-mark">필수</span></label>
+        <input type="text" id="mName" required aria-required="true" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" />
       </div>
       <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
         <div style="flex:1;">
-          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">대상</label>
-          <select id="mTarget" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">대상 <span class="required-mark">필수</span></label>
+          <select id="mTarget" required aria-required="true" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;">
+            <option value="">대상을 선택하세요</option>
             <option value="student">학생</option>
             <option value="teacher">교사</option>
           </select>
         </div>
         <div style="flex:1;">
-          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">카테고리</label>
-          <select id="mCategory" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;"></select>
+          <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">카테고리 <span class="required-mark">필수</span></label>
+          <select id="mCategory" required aria-required="true" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;"></select>
         </div>
       </div>
       <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
@@ -75,11 +104,16 @@
         </div>
       </div>
       <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">실제 상품 가격(원) <span class="required-mark">필수</span></label>
+        <input type="number" id="mActualPurchasePrice" min="1" step="1" required aria-required="true" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="예: 15000" />
+        <div style="margin-top:0.25rem;font-size:0.76rem;color:var(--admin-text-muted);">구매 관리에서만 확인할 수 있으며 사용자 상품 구매 화면에는 표시되지 않습니다.</div>
+      </div>
+      <div style="margin-bottom:0.8rem;">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">이모지</label>
         <input type="text" id="mEmoji" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="🎁" />
       </div>
       <div style="margin-bottom:0.8rem;">
-        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">썸네일 이미지</label>
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">썸네일 이미지 <span class="required-mark">필수</span></label>
         <div id="dropZone" class="product-drop-zone">
           <div id="dropContent">
             <div style="font-size:2rem;margin-bottom:0.3rem;">📷</div>
@@ -88,7 +122,7 @@
           </div>
           <div id="imgPreview" style="display:none;"></div>
         </div>
-        <input type="file" id="mImageFile" accept="image/*" style="display:none;" />
+        <input type="file" id="mImageFile" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" aria-required="true" style="display:none;" />
         <input type="hidden" id="mImageUrl" />
         <div style="margin-top:0.4rem;">
           <button type="button" id="btnUrlToggle" onclick="toggleUrlInput()" style="background:none;border:none;color:var(--admin-primary);cursor:pointer;font-size:0.8rem;text-decoration:underline;">URL 직접 입력</button>
@@ -97,6 +131,13 @@
           </div>
         </div>
         <div id="uploadStatus" style="margin-top:0.3rem;font-size:0.8rem;text-align:center;"></div>
+      </div>
+      <div id="deliveryDelayNoticeWrap" style="margin:-0.2rem 0 0.8rem;">
+        <label style="display:flex;align-items:flex-start;gap:0.45rem;cursor:pointer;font-size:0.85rem;font-weight:600;">
+          <input type="checkbox" id="mDeliveryDelayNotice" style="margin-top:0.15rem;" />
+          <span>배송 지연 안내</span>
+        </label>
+        <p style="margin:0.25rem 0 0 1.55rem;font-size:0.78rem;color:var(--admin-text-muted);">선택하면 상품 썸네일 아래에 “배송 상황에 따라 상품 지급이 늦어질 수 있습니다”를 표시합니다.</p>
       </div>
       <div style="margin-bottom:0.8rem;">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상세 설명 이미지</label>
@@ -108,7 +149,7 @@
           </div>
           <div id="detailImgPreview" style="display:none;"></div>
         </div>
-        <input type="file" id="mDetailImageFile" accept="image/*" style="display:none;" />
+        <input type="file" id="mDetailImageFile" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" style="display:none;" />
         <input type="hidden" id="mDetailImageUrl" />
         <div style="margin-top:0.4rem;">
           <button type="button" onclick="toggleDetailUrlInput()" style="background:none;border:none;color:var(--admin-primary);cursor:pointer;font-size:0.8rem;text-decoration:underline;">URL 직접 입력</button>
@@ -121,6 +162,11 @@
       <div style="margin-bottom:0.8rem;">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">설명</label>
         <textarea id="mDesc" style="width:100%;min-height:60px;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;resize:vertical;"></textarea>
+      </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">구매 URL <span class="required-mark">필수</span></label>
+        <input type="url" id="mPurchaseUrl" required aria-required="true" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="https://example.com/purchase" />
+        <div style="margin-top:0.25rem;font-size:0.76rem;color:var(--admin-text-muted);">구매 관리의 상품별 상세에서만 확인할 수 있으며 상품 구매 화면에는 표시되지 않습니다.</div>
       </div>
       <div style="margin-bottom:0.8rem;" id="activeWrap">
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">상품 상태</label>
@@ -142,7 +188,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -159,9 +205,11 @@
     .product-row{cursor:pointer;}
     .product-row:hover{background:var(--t-hover-bg,#f8f9fa);}
     [data-theme="dark"] .product-row:hover{background:#1f2937;}
+    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
     .product-drop-zone{border:2px dashed var(--admin-border);border-radius:12px;padding:1.2rem;text-align:center;cursor:pointer;transition:all 0.2s;background:var(--t-input-bg,#fafafa);color:var(--admin-text);}
     .drop-help{font-size:0.85rem;color:var(--admin-text-muted);}
     .drop-meta{font-size:0.75rem;color:var(--t-text-light,#b2bec3);margin-top:0.2rem;}
+    .required-mark{display:inline-block;margin-left:0.25rem;color:#e03131;font-size:0.72rem;font-weight:800;}
     [data-theme="dark"] .product-drop-zone{background:#101827;color:var(--t-text);border-color:var(--t-input-border,#33415c);}
   </style>
   <script>
@@ -207,7 +255,7 @@
     async function updateBadge() { await updateLogBadge(); }
 
     async function loadProducts() {
-      const { data } = await fetchProducts(null, { activeOnly: true });
+      const { data } = await fetchProducts(null, { activeOnly: false });
       allProducts = data || [];
       renderProducts();
     }
@@ -234,13 +282,53 @@
 
     let _shopTeachers = [], _shopStudents = [];
     function renderProducts() {
-      _shopTeachers = sortShopProducts(allProducts.filter(p => p.target_role === 'teacher'));
-      _shopStudents = sortShopProducts(allProducts.filter(p => p.target_role === 'student'));
+      updateProductCategoryFilters();
+      _shopTeachers = sortShopProducts(filterProductsByStatus('teacher'));
+      _shopStudents = sortShopProducts(filterProductsByStatus('student'));
       document.getElementById('tableTitle').textContent = `상품 목록 (${allProducts.length}건)`;
       renderShopGroup(_shopTeachers, 'teacher', 'teacherProducts', 'teacherPaging', 'teacherTitle', '👩‍🏫 교사용 상품');
       renderShopGroup(_shopStudents, 'student', 'studentProducts', 'studentPaging', 'studentTitle', '🎒 학생용 상품');
       initSortableHeaders('teacherProductTable', function(){ return _shopTeachers; }, function(d){ _shopTeachers = d; shopPages.teacher = 1; renderShopGroup(d,'teacher','teacherProducts','teacherPaging','teacherTitle','👩‍🏫 교사용 상품'); });
       initSortableHeaders('studentProductTable', function(){ return _shopStudents; }, function(d){ _shopStudents = d; shopPages.student = 1; renderShopGroup(d,'student','studentProducts','studentPaging','studentTitle','🎒 학생용 상품'); });
+    }
+
+    function filterProductsByStatus(targetRole) {
+      const statusFilter = document.getElementById(targetRole + 'StatusFilter');
+      const categoryFilter = document.getElementById(targetRole + 'CategoryFilter');
+      const status = statusFilter ? statusFilter.value : 'all';
+      const category = categoryFilter ? categoryFilter.value : '';
+      return allProducts.filter(product => product.target_role === targetRole &&
+        (!category || (product.category || 'etc') === category) &&
+        (status === 'all' ||
+          (status === 'active' && product.is_active !== false) ||
+          (status === 'inactive' && product.is_active === false))
+      );
+    }
+
+    function updateProductCategoryFilters() {
+      ['teacher', 'student'].forEach(targetRole => {
+        const select = document.getElementById(targetRole + 'CategoryFilter');
+        if (!select) return;
+        const previous = select.value;
+        const categories = [...new Set(allProducts
+          .filter(product => product.target_role === targetRole)
+          .map(product => product.category || 'etc'))]
+          .sort((a, b) => getProductCategoryLabel(a).localeCompare(getProductCategoryLabel(b), 'ko'));
+        select.innerHTML = '<option value="">전체 카테고리</option>' + categories
+          .map(category => `<option value="${escapeHtml(category)}">${escapeHtml(getProductCategoryLabel(category))}</option>`)
+          .join('');
+        select.value = categories.includes(previous) ? previous : '';
+      });
+    }
+
+    function onProductStatusFilterChange(targetRole) {
+      shopPages[targetRole] = 1;
+      renderProducts();
+    }
+
+    function onProductCategoryFilterChange(targetRole) {
+      shopPages[targetRole] = 1;
+      renderProducts();
     }
 
     function renderShopGroup(list, groupKey, tbodyId, pagingId, titleId, titleLabel) {
@@ -272,7 +360,7 @@
         <td>${escapeHtml(getProductCategoryLabel(p.category))}</td>
         <td>${escapeHtml(getProductSortOrder(p))}</td>
         <td>${imageHtml}</td>
-        <td><strong>${escapeHtml(p.name)}</strong><br><small style="color:var(--admin-text-muted);">${escapeHtml(p.description || '')}</small></td>
+        <td><strong>${escapeHtml(p.name)}</strong>${p.is_active === false ? ' <span class="level-badge FATAL">비활성</span>' : ''}<br><small style="color:var(--admin-text-muted);">${escapeHtml(p.description || '')}</small></td>
         <td style="font-weight:700;">${fmtNum(p.price)}</td>
         <td>
           <div class="mgmt-dropdown" onclick="event.stopPropagation()">
@@ -318,19 +406,20 @@
 
     function refreshProductCategorySelect(selectedValue) {
       const select = document.getElementById('mCategory');
-      const selected = selectedValue || select.value || 'etc';
-      select.innerHTML = renderProductCategoryOptions(selected);
-      select.value = selected;
+      const selected = selectedValue == null ? select.value : selectedValue;
+      select.innerHTML = '<option value="">카테고리를 선택하세요</option>' + renderProductCategoryOptions(selected || 'etc');
+      select.value = selected || '';
     }
 
     function openAddModal() {
       editingId = null;
       document.getElementById('modalTitle').textContent = '상품 등록';
-      ['mName','mEmoji','mImageUrlText','mDetailImageUrlText','mDesc'].forEach(id => document.getElementById(id).value = '');
-      refreshProductCategorySelect('etc');
-      document.getElementById('mTarget').value = 'student';
+      ['mName','mEmoji','mImageUrlText','mDetailImageUrlText','mDesc','mPurchaseUrl','mActualPurchasePrice'].forEach(id => document.getElementById(id).value = '');
+      refreshProductCategorySelect('');
+      document.getElementById('mTarget').value = '';
       document.getElementById('mPrice').value = '';
       document.getElementById('mSortOrder').value = '0';
+      document.getElementById('mDeliveryDelayNotice').checked = false;
       document.getElementById('mImageUrl').value = '';
       document.getElementById('mImageFile').value = '';
       document.getElementById('mDetailImageUrl').value = '';
@@ -354,6 +443,7 @@
       document.getElementById('mTarget').value = p.target_role;
       refreshProductCategorySelect(p.category || 'etc');
       document.getElementById('mPrice').value = p.price;
+      document.getElementById('mActualPurchasePrice').value = p.actual_purchase_price || '';
       document.getElementById('mSortOrder').value = getProductSortOrder(p);
       document.getElementById('mEmoji').value = p.image_emoji || '';
       document.getElementById('mImageUrl').value = p.image_url || '';
@@ -363,6 +453,8 @@
       document.getElementById('mDetailImageUrl').value = p.detail_image_url || '';
       document.getElementById('mDetailImageFile').value = '';
       document.getElementById('mDetailImageUrlText').value = p.detail_image_url || '';
+      document.getElementById('mPurchaseUrl').value = p.purchase_url || '';
+      document.getElementById('mDeliveryDelayNotice').checked = p.show_delivery_delay_notice === true;
       if (p.detail_image_url) showDetailImgPreview(p.detail_image_url); else resetDetailImgPreview();
       document.getElementById('urlInputWrap').style.display = p.image_url ? 'block' : 'none';
       document.getElementById('detailUrlInputWrap').style.display = p.detail_image_url ? 'block' : 'none';
@@ -382,22 +474,69 @@
     async function saveProduct() {
       const errEl = document.getElementById('modalError');
       const name = document.getElementById('mName').value.trim();
+      const targetRole = document.getElementById('mTarget').value;
+      const category = document.getElementById('mCategory').value;
       const price = parseInt(document.getElementById('mPrice').value);
+      const actualPurchasePrice = parseInt(document.getElementById('mActualPurchasePrice').value, 10);
       const sortOrder = parseInt(document.getElementById('mSortOrder').value, 10);
       if (!name) { errEl.textContent = '상품명을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!targetRole) { errEl.textContent = '대상을 선택해주세요.'; errEl.classList.add('show'); return; }
+      if (!category) { errEl.textContent = '카테고리를 선택해주세요.'; errEl.classList.add('show'); return; }
       if (!price || price <= 0) { errEl.textContent = '유효한 가격을 입력해주세요.'; errEl.classList.add('show'); return; }
+      if (!Number.isFinite(actualPurchasePrice) || actualPurchasePrice <= 0) { errEl.textContent = '실제 상품 가격을 1원 이상 입력해주세요.'; errEl.classList.add('show'); return; }
 
       const fileInput = document.getElementById('mImageFile');
       const selectedFile = fileInput && fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
       let imageUrl = document.getElementById('mImageUrl').value.trim() || null;
       const urlText = document.getElementById('mImageUrlText').value.trim();
       if (!selectedFile && urlText) imageUrl = urlText;
+      if (!selectedFile && !imageUrl) {
+        errEl.textContent = '썸네일 이미지를 파일 또는 URL로 등록해주세요.';
+        errEl.classList.add('show');
+        return;
+      }
+      if (!selectedFile && imageUrl) {
+        const checkedImageUrl = await validateExternalImageUrl(imageUrl);
+        if (checkedImageUrl.error) {
+          errEl.textContent = `썸네일 ${checkedImageUrl.error}`;
+          errEl.classList.add('show');
+          return;
+        }
+        imageUrl = checkedImageUrl.url;
+      }
 
       const detailFileInput = document.getElementById('mDetailImageFile');
       const selectedDetailFile = detailFileInput && detailFileInput.files && detailFileInput.files[0] ? detailFileInput.files[0] : null;
       let detailImageUrl = document.getElementById('mDetailImageUrl').value.trim() || null;
       const detailUrlText = document.getElementById('mDetailImageUrlText').value.trim();
       if (!selectedDetailFile && detailUrlText) detailImageUrl = detailUrlText;
+      if (!selectedDetailFile && detailImageUrl) {
+        const checkedDetailImageUrl = await validateExternalImageUrl(detailImageUrl);
+        if (checkedDetailImageUrl.error) {
+          errEl.textContent = `상세 설명 ${checkedDetailImageUrl.error}`;
+          errEl.classList.add('show');
+          return;
+        }
+        detailImageUrl = checkedDetailImageUrl.url;
+      }
+      const purchaseUrlInput = document.getElementById('mPurchaseUrl').value.trim();
+      let purchaseUrl = null;
+      if (!purchaseUrlInput) {
+        errEl.textContent = '구매 URL을 입력해주세요.';
+        errEl.classList.add('show');
+        return;
+      }
+      if (purchaseUrlInput) {
+        try {
+          const parsedPurchaseUrl = new URL(purchaseUrlInput);
+          if (!/^https?:$/.test(parsedPurchaseUrl.protocol)) throw new Error('invalid protocol');
+          purchaseUrl = parsedPurchaseUrl.href;
+        } catch (e) {
+          errEl.textContent = '구매 URL은 http 또는 https 주소로 입력해주세요.';
+          errEl.classList.add('show');
+          return;
+        }
+      }
 
       if (editingId && selectedFile) {
         const statusEl = document.getElementById('uploadStatus');
@@ -415,13 +554,16 @@
       }
 
       const row = {
-        name, target_role: document.getElementById('mTarget').value,
-        category: document.getElementById('mCategory').value || 'etc',
+        name, target_role: targetRole,
+        category,
         price,
+        actual_purchase_price: actualPurchasePrice,
         sort_order: Number.isFinite(sortOrder) ? sortOrder : 0,
         image_emoji: document.getElementById('mEmoji').value.trim() || '🎁',
         image_url: imageUrl,
         detail_image_url: detailImageUrl,
+        purchase_url: purchaseUrl,
+        show_delivery_delay_notice: document.getElementById('mDeliveryDelayNotice').checked,
         description: document.getElementById('mDesc').value.trim() || null
       };
 
@@ -430,14 +572,12 @@
       if (editingId) {
         const { error } = await updateProduct(editingId, row);
         if (error) { await logError('PRODUCT_UPDATE_FAIL', { id: editingId, 상품명: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
-        await logInfo('PRODUCT_UPDATE', { id: editingId, 상품명: name });
       } else {
         row.created_by = session.id;
         if (selectedFile) row.image_url = null;
         if (selectedDetailFile) row.detail_image_url = null;
         const { data: createdProduct, error } = await createProduct(row);
         if (error) { await logError('PRODUCT_CREATE_FAIL', { 상품명: name, 오류: error }); errEl.textContent = tErr(error); errEl.classList.add('show'); return; }
-        await logInfo('PRODUCT_CREATE', { 상품명: name, 금액: price });
         if ((selectedFile || selectedDetailFile) && (!createdProduct || !createdProduct.id)) {
           errEl.textContent = '상품 ID를 확인하지 못해 이미지 업로드를 진행할 수 없습니다.';
           errEl.classList.add('show');
@@ -537,16 +677,27 @@
     dropZone.addEventListener('click', () => fileInput.click());
     dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.style.borderColor = 'var(--admin-primary)'; dropZone.style.background = 'var(--t-hover-bg, rgba(108,92,231,0.05))'; });
     dropZone.addEventListener('dragleave', resetDropZoneStyle);
-    dropZone.addEventListener('drop', e => { e.preventDefault(); resetDropZoneStyle(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleFileSelect(f); });
+    dropZone.addEventListener('drop', e => { e.preventDefault(); resetDropZoneStyle(); const f = e.dataTransfer.files[0]; if (f) handleFileSelect(f); });
     fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFileSelect(fileInput.files[0]); });
     function handleFileSelect(file) {
+      const validationError = typeof getImageUploadValidationError === 'function'
+        ? getImageUploadValidationError(file)
+        : (!file.type || !file.type.startsWith('image/') ? '이미지 파일만 선택할 수 있습니다.' : null);
+      if (validationError) { fileInput.value = ''; document.getElementById('uploadStatus').innerHTML = `<span style="color:#ff6b6b;">${validationError}</span>`; return; }
       const maxBytes = typeof MAX_IMAGE_UPLOAD_INPUT_BYTES === 'number' ? MAX_IMAGE_UPLOAD_INPUT_BYTES : 20*1024*1024;
       if (file.size > maxBytes) { document.getElementById('uploadStatus').innerHTML = '<span style="color:#ff6b6b;">20MB 이하 이미지 파일만 업로드 가능합니다</span>'; return; }
       const dt = new DataTransfer(); dt.items.add(file); fileInput.files = dt.files;
       const reader = new FileReader(); reader.onload = e => showImgPreview(e.target.result); reader.readAsDataURL(file);
       document.getElementById('uploadStatus').innerHTML = `<span style="color:#636e72;">📎 ${file.name} (${(file.size/1024).toFixed(1)}KB)</span>`;
     }
-    document.getElementById('mImageUrlText').addEventListener('input', function() { const u = this.value.trim(); if (u) { document.getElementById('mImageFile').value = ''; showImgPreview(u); } else resetImgPreview(); });
+    document.getElementById('mImageUrlText').addEventListener('input', function() {
+      const u = this.value.trim();
+      document.getElementById('mImageFile').value = '';
+      resetImgPreview();
+      document.getElementById('uploadStatus').innerHTML = u
+        ? '<span style="color:#636e72;">저장할 때 실제 이미지 URL인지 확인합니다.</span>'
+        : '';
+    });
     const detailDropZone = document.getElementById('detailDropZone');
     const detailFileInput = document.getElementById('mDetailImageFile');
     function resetDetailDropZoneStyle() {
@@ -556,16 +707,27 @@
     detailDropZone.addEventListener('click', () => detailFileInput.click());
     detailDropZone.addEventListener('dragover', e => { e.preventDefault(); detailDropZone.style.borderColor = 'var(--admin-primary)'; detailDropZone.style.background = 'var(--t-hover-bg, rgba(108,92,231,0.05))'; });
     detailDropZone.addEventListener('dragleave', resetDetailDropZoneStyle);
-    detailDropZone.addEventListener('drop', e => { e.preventDefault(); resetDetailDropZoneStyle(); const f = e.dataTransfer.files[0]; if (f && f.type.startsWith('image/')) handleDetailFileSelect(f); });
+    detailDropZone.addEventListener('drop', e => { e.preventDefault(); resetDetailDropZoneStyle(); const f = e.dataTransfer.files[0]; if (f) handleDetailFileSelect(f); });
     detailFileInput.addEventListener('change', () => { if (detailFileInput.files[0]) handleDetailFileSelect(detailFileInput.files[0]); });
     function handleDetailFileSelect(file) {
+      const validationError = typeof getImageUploadValidationError === 'function'
+        ? getImageUploadValidationError(file)
+        : (!file.type || !file.type.startsWith('image/') ? '이미지 파일만 선택할 수 있습니다.' : null);
+      if (validationError) { detailFileInput.value = ''; document.getElementById('detailUploadStatus').innerHTML = `<span style="color:#ff6b6b;">${validationError}</span>`; return; }
       const maxBytes = typeof MAX_IMAGE_UPLOAD_INPUT_BYTES === 'number' ? MAX_IMAGE_UPLOAD_INPUT_BYTES : 20*1024*1024;
       if (file.size > maxBytes) { document.getElementById('detailUploadStatus').innerHTML = '<span style="color:#ff6b6b;">20MB 이하 이미지 파일만 업로드 가능합니다</span>'; return; }
       const dt = new DataTransfer(); dt.items.add(file); detailFileInput.files = dt.files;
       const reader = new FileReader(); reader.onload = e => showDetailImgPreview(e.target.result); reader.readAsDataURL(file);
       document.getElementById('detailUploadStatus').innerHTML = `<span style="color:#636e72;">📎 ${file.name} (${(file.size/1024).toFixed(1)}KB)</span>`;
     }
-    document.getElementById('mDetailImageUrlText').addEventListener('input', function() { const u = this.value.trim(); if (u) { document.getElementById('mDetailImageFile').value = ''; showDetailImgPreview(u); } else resetDetailImgPreview(); });
+    document.getElementById('mDetailImageUrlText').addEventListener('input', function() {
+      const u = this.value.trim();
+      document.getElementById('mDetailImageFile').value = '';
+      resetDetailImgPreview();
+      document.getElementById('detailUploadStatus').innerHTML = u
+        ? '<span style="color:#636e72;">저장할 때 실제 이미지 URL인지 확인합니다.</span>'
+        : '';
+    });
     document.getElementById('productModal').addEventListener('click', e => { if(e.target.classList.contains('modal-overlay')) closeModal(); });
   </script>
   <div id="version-container"></div>

@@ -18,7 +18,7 @@ UPDATE profiles SET user_type = 'teacher', permission_level = 'teacher'      WHE
 UPDATE profiles SET user_type = 'student', permission_level = 'student'      WHERE role = 'student';
 
 -- 3. 최고관리자 설정
-UPDATE profiles SET is_super_admin = true, display_name = '관리자(admin)' WHERE username = 'admin_user';
+UPDATE profiles SET is_super_admin = true, display_name = '관리자(admin)' WHERE username = 'admin';
 
 -- 4. registration_requests 테이블 확장
 ALTER TABLE registration_requests ADD COLUMN IF NOT EXISTS user_type TEXT NOT NULL DEFAULT 'student'

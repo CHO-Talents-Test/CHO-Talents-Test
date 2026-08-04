@@ -98,10 +98,18 @@ function Get-PublicConfigTargetEnv {
   return 'PROD'
 }
 
-$AppConfigEnv = Use-Default $AppConfigEnv (Get-PublicConfigTargetEnv)
+if ([string]::IsNullOrWhiteSpace($AppConfigEnv)) {
+  throw 'AppConfigEnv is required. Pass -AppConfigEnv DEV|PROD or set APP_CONFIG_ENV.'
+}
+$AppConfigEnv = $AppConfigEnv.Trim().ToUpperInvariant()
+if ($AppConfigEnv -notin @('DEV', 'PROD')) {
+  throw 'AppConfigEnv must be DEV or PROD.'
+}
 $AuthEmailDomain = Use-Default $AuthEmailDomain '@cho-talents.app'
-$GithubOwner = Use-Default $GithubOwner 'CHO-Talents'
-$GithubRepo = Use-Default $GithubRepo 'CHO-Talents'
+$defaultGithubOwner = if ($AppConfigEnv -eq 'DEV') { 'CHO-Talents-Test' } else { 'CHO-Talents' }
+$defaultGithubRepo = if ($AppConfigEnv -eq 'DEV') { 'CHO-Talents-Test' } else { 'CHO-Talents' }
+$GithubOwner = Use-Default $GithubOwner $defaultGithubOwner
+$GithubRepo = Use-Default $GithubRepo $defaultGithubRepo
 $GithubBranch = Use-Default $GithubBranch 'develop'
 
 if ([string]::IsNullOrWhiteSpace($SupabaseUrl)) {
@@ -119,12 +127,25 @@ if (-not (Test-Path -LiteralPath $SqlPath)) {
 $resolvedSqlPath = (Resolve-Path -LiteralPath $SqlPath).Path
 $baseSql = Get-Content -LiteralPath $resolvedSqlPath -Raw -Encoding UTF8
 
-if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
+$hasExtraSqlPaths = @($ExtraSqlPaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }).Count -gt 0
+if (-not $hasExtraSqlPaths) {
   $defaultCodeMasterSql = Join-Path $ScriptRoot '..\docs\TASK-057_code_master.sql'
   $defaultProductCategoryPolicySql = Join-Path $ScriptRoot '..\docs\TASK-058_product_category_policy.sql'
   $defaultProductCategoryPageSql = Join-Path $ScriptRoot '..\docs\TASK-068_product_category_page_and_sort_order.sql'
   $defaultProductDetailImageSql = Join-Path $ScriptRoot '..\docs\TASK-069_product_detail_image.sql'
   $defaultServiceUsageSql = Join-Path $ScriptRoot '..\docs\TASK-070_service_usage_monitoring.sql'
+  $defaultServiceUsageWebhookFailureSql = Join-Path $ScriptRoot '..\docs\TASK-080_service_usage_source_and_webhook_failures.sql'
+  $defaultUserLoginStatisticsSql = Join-Path $ScriptRoot '..\docs\TASK-081_user_login_statistics.sql'
+  $defaultSuperAdminLoginExclusionSql = Join-Path $ScriptRoot '..\docs\TASK-082_exclude_super_admin_login_history.sql'
+  $defaultUserLoginStatisticsDetailSql = Join-Path $ScriptRoot '..\docs\TASK-084_user_login_statistics_detail.sql'
+  $defaultProductSuggestionsSql = Join-Path $ScriptRoot '..\docs\TASK-085_product_suggestions.sql'
+  $defaultProductSuggestionAdminDecisionSql = Join-Path $ScriptRoot '..\docs\TASK-086_product_suggestion_admin_decision.sql'
+  $defaultProductSuggestionDetailImageSql = Join-Path $ScriptRoot '..\docs\TASK-087_product_suggestion_detail_image.sql'
+  $defaultProductSuggestionAdoptionTalentSql = Join-Path $ScriptRoot '..\docs\TASK-088_product_suggestion_adoption_talent.sql'
+  $defaultProductSuggestionSlackNotificationsSql = Join-Path $ScriptRoot '..\docs\TASK-089_product_suggestion_slack_notifications.sql'
+  $defaultProductSuggestionSuperAdminVotePrivilegesSql = Join-Path $ScriptRoot '..\docs\TASK-090_product_suggestion_super_admin_vote_privileges.sql'
+  $defaultUserStatsFiltersSql = Join-Path $ScriptRoot '..\docs\TASK-091_user_stats_filters.sql'
+  $defaultPurchaseRequestCancellationSql = Join-Path $ScriptRoot '..\docs\TASK-098_purchase_request_cancellation.sql'
   if (Test-Path -LiteralPath $defaultCodeMasterSql) {
     $ExtraSqlPaths = @($defaultCodeMasterSql)
   }
@@ -139,6 +160,42 @@ if ($null -eq $ExtraSqlPaths -or $ExtraSqlPaths.Count -eq 0) {
   }
   if (Test-Path -LiteralPath $defaultServiceUsageSql) {
     $ExtraSqlPaths += $defaultServiceUsageSql
+  }
+  if (Test-Path -LiteralPath $defaultServiceUsageWebhookFailureSql) {
+    $ExtraSqlPaths += $defaultServiceUsageWebhookFailureSql
+  }
+  if (Test-Path -LiteralPath $defaultUserLoginStatisticsSql) {
+    $ExtraSqlPaths += $defaultUserLoginStatisticsSql
+  }
+  if (Test-Path -LiteralPath $defaultSuperAdminLoginExclusionSql) {
+    $ExtraSqlPaths += $defaultSuperAdminLoginExclusionSql
+  }
+  if (Test-Path -LiteralPath $defaultUserLoginStatisticsDetailSql) {
+    $ExtraSqlPaths += $defaultUserLoginStatisticsDetailSql
+  }
+  if (Test-Path -LiteralPath $defaultProductSuggestionsSql) {
+    $ExtraSqlPaths += $defaultProductSuggestionsSql
+  }
+  if (Test-Path -LiteralPath $defaultProductSuggestionAdminDecisionSql) {
+    $ExtraSqlPaths += $defaultProductSuggestionAdminDecisionSql
+  }
+  if (Test-Path -LiteralPath $defaultProductSuggestionDetailImageSql) {
+    $ExtraSqlPaths += $defaultProductSuggestionDetailImageSql
+  }
+  if (Test-Path -LiteralPath $defaultProductSuggestionAdoptionTalentSql) {
+    $ExtraSqlPaths += $defaultProductSuggestionAdoptionTalentSql
+  }
+  if (Test-Path -LiteralPath $defaultProductSuggestionSlackNotificationsSql) {
+    $ExtraSqlPaths += $defaultProductSuggestionSlackNotificationsSql
+  }
+  if (Test-Path -LiteralPath $defaultProductSuggestionSuperAdminVotePrivilegesSql) {
+    $ExtraSqlPaths += $defaultProductSuggestionSuperAdminVotePrivilegesSql
+  }
+  if (Test-Path -LiteralPath $defaultUserStatsFiltersSql) {
+    $ExtraSqlPaths += $defaultUserStatsFiltersSql
+  }
+  if (Test-Path -LiteralPath $defaultPurchaseRequestCancellationSql) {
+    $ExtraSqlPaths += $defaultPurchaseRequestCancellationSql
   }
 }
 
@@ -209,7 +266,7 @@ SET key_value = EXCLUDED.key_value,
 NOTIFY pgrst, 'reload schema';
 "@
 
-$combinedSql = ($baseSql.TrimEnd(), $extraSqlBlocks, $appConfigPatch) -join "`r`n`r`n"
+$combinedSql = (@($baseSql.TrimEnd()) + $extraSqlBlocks + @($appConfigPatch)) -join "`r`n`r`n"
 $writtenOutputPath = $null
 
 if ($GenerateOnly -and [string]::IsNullOrWhiteSpace($OutputSqlPath)) {

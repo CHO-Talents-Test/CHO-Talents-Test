@@ -15,6 +15,7 @@
     .usage-actions { display:flex; gap:.45rem; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
     .collect-btn { border:0; border-radius:9px; padding:.62rem .95rem; background:var(--admin-primary); color:#fff; font-weight:700; cursor:pointer; }
     .collect-btn:disabled { opacity:.55; cursor:wait; }
+    .cleanup-btn { background:#495057; }
     .last-collected { font-size:.76rem; color:var(--admin-text-muted); text-align:right; }
     .threshold-strip { display:flex; align-items:center; flex-wrap:wrap; gap:.45rem .75rem; padding:.7rem .9rem; margin-bottom:1rem; background:var(--admin-card); border:1px solid var(--admin-border); border-radius:10px; font-size:.8rem; }
     .threshold-dot { display:inline-block; width:9px; height:9px; border-radius:50%; margin-right:.3rem; }
@@ -36,10 +37,21 @@
     .connection-badge.connected,.connection-badge.tracking { color:#087f5b; background:#d3f9d8; }
     .connection-badge.partial { color:#d9480f; background:#fff3bf; }
     .connection-badge.needs_secret { color:#c92a2a; background:#ffe3e3; }
+    .source-statuses { display:flex; flex-wrap:wrap; gap:.35rem; margin-top:.55rem; }
+    .source-badge { display:inline-flex; align-items:center; gap:.25rem; border-radius:999px; padding:.2rem .48rem; font-size:.65rem; font-weight:750; background:var(--t-subtle-surface,#f1f3f5); color:var(--admin-text-muted); border:1px solid var(--admin-border); }
+    .source-badge.connected,.source-badge.tracking { color:#087f5b; background:#d3f9d8; border-color:#b2f2bb; }
+    .source-badge.partial { color:#d9480f; background:#fff3bf; border-color:#ffe066; }
+    .source-badge.needs_secret,.source-badge.failed { color:#c92a2a; background:#ffe3e3; border-color:#ffc9c9; }
+    .source-badge.not_supported { color:var(--admin-text-muted); background:transparent; }
 
     .platform-tabs { display:flex; gap:.35rem; flex-wrap:wrap; margin-bottom:.85rem; }
     .platform-tab { border:1px solid var(--admin-border); background:var(--admin-card); color:var(--admin-text); border-radius:999px; padding:.42rem .78rem; font-weight:700; font-size:.78rem; cursor:pointer; }
     .platform-tab.active { background:var(--admin-primary); color:#fff; border-color:var(--admin-primary); }
+    .source-filter { display:flex; align-items:center; flex-wrap:wrap; gap:.4rem; padding:.65rem .8rem; margin-bottom:.85rem; background:var(--admin-card); border:1px solid var(--admin-border); border-radius:10px; font-size:.76rem; }
+    .source-filter-label { font-weight:800; margin-right:.15rem; }
+    .source-filter-btn { border:1px solid var(--admin-border); background:var(--t-card,var(--admin-card)); color:var(--admin-text); border-radius:999px; padding:.3rem .58rem; font-size:.72rem; font-weight:700; cursor:pointer; }
+    .source-filter-btn.active { background:var(--admin-primary); color:#fff; border-color:var(--admin-primary); }
+    .source-filter-note { color:var(--admin-text-muted); margin-left:.2rem; }
     .service-panel { background:var(--admin-card); border:1px solid var(--admin-border); border-radius:14px; padding:1rem; margin-bottom:1rem; }
     .service-panel.hidden { display:none; }
     .service-heading { display:flex; align-items:center; justify-content:space-between; gap:.8rem; margin-bottom:.7rem; }
@@ -51,6 +63,9 @@
     .metric-card.status-caution { border-color:#fcc419; } .metric-card.status-warning { border-color:#fd7e14; } .metric-card.status-danger { border-color:#fa5252; box-shadow:0 0 0 1px rgba(250,82,82,.13); }
     .metric-head { display:flex; justify-content:space-between; align-items:flex-start; gap:.5rem; }
     .metric-label { font-weight:800; font-size:.88rem; line-height:1.3; }
+    .metric-label-wrap { min-width:0; }
+    .metric-source-type { display:inline-flex; margin-top:.3rem; padding:.13rem .38rem; border-radius:999px; background:#e7f5ff; color:#1971c2; font-size:.61rem; font-weight:800; }
+    .metric-source-type.project { background:#ebfbee; color:#2b8a3e; }
     .metric-category { font-size:.65rem; color:var(--admin-text-muted); background:var(--t-subtle-surface,#f1f3f5); border-radius:999px; padding:.15rem .4rem; white-space:nowrap; }
     .metric-values { display:flex; justify-content:space-between; align-items:flex-end; gap:.5rem; margin:.75rem 0 .45rem; }
     .metric-used { font-size:1.18rem; font-weight:850; font-variant-numeric:tabular-nums; }
@@ -70,7 +85,7 @@
     .metric-link { border:0; padding:0; background:none; color:var(--admin-primary); font-size:.68rem; font-weight:700; cursor:pointer; text-decoration:none; }
     .empty-panel { padding:2.5rem; text-align:center; color:var(--admin-text-muted); }
 
-    .activity-grid { display:grid; grid-template-columns:1fr 1.25fr; gap:.75rem; margin-top:1rem; }
+    .activity-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:.75rem; margin-top:1rem; }
     .activity-card { background:var(--admin-card); border:1px solid var(--admin-border); border-radius:12px; padding:1rem; overflow:auto; }
     .activity-card h3 { font-size:.92rem; margin-bottom:.65rem; }
     .activity-table { width:100%; border-collapse:collapse; font-size:.73rem; }
@@ -101,7 +116,8 @@
       </div>
       <div class="usage-actions">
         <div class="last-collected" id="lastCollected">마지막 수집: 확인 중...</div>
-        <button class="collect-btn" id="collectBtn" onclick="collectNow()">↻ 지금 수집</button>
+        <button class="collect-btn" id="collectBtn" onclick="collectNow()" hidden>↻ 지금 수집</button>
+        <button class="collect-btn cleanup-btn" id="cleanupServiceUsageBtn" onclick="cleanupServiceUsage()" hidden>180일 초과 정리</button>
       </div>
     </div>
 
@@ -111,14 +127,19 @@
       <span><i class="threshold-dot dot-caution"></i>주의 70%</span>
       <span><i class="threshold-dot dot-warning"></i>경고 85%</span>
       <span><i class="threshold-dot dot-danger"></i>위험 95%</span>
-      <span class="schedule-note">매일 00:00 · 06:00 · 12:00 · 18:00 (KST) 자동 수집</span>
+      <span class="schedule-note">매시간 정각 (KST) 자동 수집</span>
     </div>
 
     <div class="platform-summary" id="platformSummary"></div>
     <div class="platform-tabs" id="platformTabs"></div>
+    <div class="source-filter" id="sourceFilter"></div>
     <div id="servicePanels"><div class="empty-panel">서비스 사용량을 불러오는 중...</div></div>
 
     <div class="activity-grid">
+      <section class="activity-card">
+        <h3>⚠️ 최근 수집 실패 항목</h3>
+        <div id="recentCollectionFailures"><div class="empty-panel">불러오는 중...</div></div>
+      </section>
       <section class="activity-card">
         <h3>🔔 최근 할당량 알림</h3>
         <div id="recentAlerts"><div class="empty-panel">불러오는 중...</div></div>
@@ -126,6 +147,10 @@
       <section class="activity-card">
         <h3>🕒 최근 수집 이력</h3>
         <div id="recentRuns"><div class="empty-panel">불러오는 중...</div></div>
+      </section>
+      <section class="activity-card">
+        <h3>⚠️ 최근 Slack Webhook 실패</h3>
+        <div id="recentWebhookFailures"><div class="empty-panel">불러오는 중...</div></div>
       </section>
     </div>
   </main>
@@ -141,7 +166,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -155,7 +180,12 @@
     let metrics = [];
     let runs = [];
     let alerts = [];
+    let webhookFailures = [];
+    let webhookFailureLoadError = '';
     let activeService = 'all';
+    let activeMetricSource = 'all';
+    const MANUAL_COLLECT_PERMISSION_RANK = 100;
+    const MANUAL_CLEANUP_PERMISSION_RANK = 100;
 
     const SERVICE_INFO = {
       github: { name:'GitHub', icon:'🐙', color:'#24292f', features:['저장소 1개 통합 관리','공개/비공개 저장소 무제한','협업자 무제한','Community support'] },
@@ -174,15 +204,17 @@
       session = await initPage(80, '../login.html');
       if (!session) return;
       navUpdateAuth(session);
+      syncCollectButtonVisibility();
       updatePendingBadge(); updateNavOrderBadge(); updateLogBadge(); autoLogPageView();
       await loadDashboard();
     })();
 
     async function loadDashboard() {
-      const [metricRes, runRes, alertRes] = await Promise.all([
+      const [metricRes, runRes, alertRes, webhookFailureRes] = await Promise.all([
         _sb.rpc('get_service_usage_dashboard'),
         _sb.from('service_usage_collection_runs').select('*').order('started_at', { ascending:false }).limit(8),
-        _sb.from('service_usage_alerts').select('*').order('created_at', { ascending:false }).limit(8)
+        _sb.from('service_usage_alerts').select('*').order('created_at', { ascending:false }).limit(8),
+        _sb.rpc('get_service_usage_recent_webhook_failures', { p_limit:20 })
       ]);
       if (metricRes.error) {
         document.getElementById('servicePanels').innerHTML = `<div class="setup-error"><strong>서비스 통계 DB 구성이 필요합니다.</strong><br>${esc(metricRes.error.message)}<br><code>docs/TASK-070_service_usage_monitoring.sql</code> 적용 후 다시 시도하세요.</div>`;
@@ -193,20 +225,70 @@
       metrics = metricRes.data || [];
       runs = runRes.data || [];
       alerts = alertRes.data || [];
+      webhookFailures = webhookFailureRes.error ? [] : (webhookFailureRes.data || []);
+      webhookFailureLoadError = webhookFailureRes.error ? webhookFailureRes.error.message : '';
       renderAll();
     }
 
     function renderAll() {
-      renderSummary(); renderTabs(); renderPanels(); renderRuns(); renderAlerts();
+      syncCollectButtonVisibility();
+      renderSummary(); renderTabs(); renderSourceFilter(); renderPanels(); renderRuns(); renderCollectionFailures(); renderAlerts(); renderWebhookFailures();
       const dates = metrics.map(m => m.collected_at).filter(Boolean).sort();
       document.getElementById('lastCollected').textContent = dates.length
         ? `마지막 수집: ${formatKST(dates[dates.length - 1])}` : '마지막 수집: 수집 전';
+    }
+
+    function canManualCollect() {
+      return Number(session && session.permissionRank || 0) >= MANUAL_COLLECT_PERMISSION_RANK;
+    }
+
+    function canManualCleanup() {
+      return Number(session && session.permissionRank || 0) >= MANUAL_CLEANUP_PERMISSION_RANK;
+    }
+
+    function syncCollectButtonVisibility() {
+      const btn = document.getElementById('collectBtn');
+      if (btn) btn.hidden = !canManualCollect();
+      const cleanupBtn = document.getElementById('cleanupServiceUsageBtn');
+      if (cleanupBtn) cleanupBtn.hidden = !canManualCleanup();
     }
 
     function latestRunStatus(serviceKey) {
       const latest = runs[0];
       const info = latest && latest.service_status && latest.service_status[serviceKey];
       return info || { status:'needs_secret', message:'수집 이력 없음' };
+    }
+    function sourceCounts(serviceKey) {
+      const rows = metrics.filter(m => m.service === serviceKey);
+      const apiRows = rows.filter(m => m.source_type === 'api');
+      const projectRows = rows.filter(m => m.source_type !== 'api');
+      const count = group => ({ total: group.length, collected: group.filter(m => m.collected_at).length });
+      return { api: count(apiRows), project: count(projectRows) };
+    }
+    function sourceStatus(serviceKey, group) {
+      const counts = sourceCounts(serviceKey)[group];
+      const connection = latestRunStatus(serviceKey);
+      const channel = connection.channels && connection.channels[group];
+      const status = counts.total === 0
+        ? 'not_supported'
+        : channel && channel.status
+          ? channel.status
+          : counts.collected === 0
+            ? 'not_collected'
+            : counts.collected === counts.total ? 'connected' : 'partial';
+      const label = group === 'api' ? '공식 API' : '프로젝트 자체';
+      const countText = counts.total ? `${counts.collected}/${counts.total}` : '해당 없음';
+      return {
+        status,
+        label: `${label} ${countText}`,
+        title: channel && (channel.message || channel.source) ? `${channel.source || ''}${channel.message ? ` · ${channel.message}` : ''}` : ''
+      };
+    }
+    function renderSourceBadges(serviceKey) {
+      return `<div class="source-statuses">${['api','project'].map(group => {
+        const item = sourceStatus(serviceKey, group);
+        return `<span class="source-badge ${esc(item.status)}" title="${escAttr(item.title)}">${esc(item.label)} · ${connectionLabel(item.status)}</span>`;
+      }).join('')}</div>`;
     }
 
     function renderSummary() {
@@ -218,6 +300,7 @@
         const connection = latestRunStatus(key);
         return `<article class="platform-card ${activeService === key ? 'active' : ''}" style="--platform:${info.color}" onclick="selectService('${key}')">
           <div class="platform-top"><span class="platform-name"><span class="platform-icon">${info.icon}</span> ${info.name}</span><span class="connection-badge ${esc(connection.status)}">${connectionLabel(connection.status)}</span></div>
+          ${renderSourceBadges(key)}
           <div class="platform-risk">${formatPercent(maxPct)} <small>최대 사용률</small></div>
           <div class="platform-meta"><span>수집 ${rows.length}/${metrics.filter(m=>m.service===key).length}항목</span><span>${risky ? `주의 이상 ${risky}개` : '모두 안정'}</span></div>
         </article>`;
@@ -233,15 +316,29 @@
 
     function selectService(key) { activeService = key; renderSummary(); renderTabs(); renderPanels(); }
 
+    function metricSourceGroup(metric) { return metric.source_type === 'api' ? 'api' : 'project'; }
+    function metricSourceLabel(metric) { return metricSourceGroup(metric) === 'api' ? '공식/API 계측' : '프로젝트 자체 계측'; }
+    function renderSourceFilter() {
+      const filters = [['all','전체 항목'],['api','공식/API 계측'],['project','프로젝트 자체 계측']];
+      const note = activeMetricSource === 'api'
+        ? '외부 제공자 API가 반환한 값만 표시합니다.'
+        : activeMetricSource === 'project'
+          ? '브라우저·Edge Function·DB 직접·추정 및 프로젝트 정책 항목을 표시합니다.'
+          : '각 카드의 계측 기준 배지와 출처를 함께 확인하세요.';
+      document.getElementById('sourceFilter').innerHTML = `<span class="source-filter-label">계측 기준</span>${filters.map(([key,label]) => `<button class="source-filter-btn ${activeMetricSource===key?'active':''}" type="button" onclick="selectMetricSource('${key}')">${label}</button>`).join('')}<span class="source-filter-note">${note}</span>`;
+    }
+    function selectMetricSource(source) { activeMetricSource = source; renderSourceFilter(); renderPanels(); }
+
     function renderPanels() {
       document.getElementById('servicePanels').innerHTML = Object.entries(SERVICE_INFO).map(([key, info]) => {
-        const rows = metrics.filter(m => m.service === key);
+        const rows = metrics.filter(m => m.service === key && (activeMetricSource === 'all' || metricSourceGroup(m) === activeMetricSource));
         const hidden = activeService !== 'all' && activeService !== key;
         const connection = latestRunStatus(key);
         return `<section class="service-panel ${hidden?'hidden':''}" id="panel-${key}">
           <div class="service-heading"><h2>${info.icon} ${info.name}</h2><span class="connection-badge ${esc(connection.status)}" title="${esc(connection.message || '')}">${connectionLabel(connection.status)}</span></div>
+          ${renderSourceBadges(key)}
           <div class="plan-features">${info.features.map(feature=>`<span class="feature-chip">${esc(feature)}</span>`).join('')}</div>
-          <div class="metric-grid">${rows.map(renderMetric).join('')}</div>
+          <div class="metric-grid">${rows.map(renderMetric).join('') || '<div class="empty-panel">선택한 계측 기준의 항목이 없습니다.</div>'}</div>
         </section>`;
       }).join('');
     }
@@ -257,8 +354,9 @@
       const reset = resetLabel(m.reset_cycle, m.period_end);
       const forecast = forecastText(m);
       const policy = m.reset_cycle === 'policy';
+      const sourceGroup = metricSourceGroup(m);
       return `<article class="metric-card status-${esc(status)}">
-        <div class="metric-head"><div class="metric-label">${esc(m.label)}</div><span class="metric-category">${esc(m.category)}</span></div>
+        <div class="metric-head"><div class="metric-label-wrap"><div class="metric-label">${esc(m.label)}</div><span class="metric-source-type ${sourceGroup}">${metricSourceLabel(m)}</span></div><span class="metric-category">${esc(m.category)}</span></div>
         <div class="metric-values">
           <div><div class="metric-used">${collected ? formatValue(used,m.unit) : '수집 전'}</div><div class="metric-limit">${policy ? '무료 플랜 정책' : quota == null ? '무료 한도 없음 · 누적 표시' : `한도 ${formatValue(quota,m.unit)}`}</div></div>
           <div class="metric-remaining">${quota > 0 && !policy ? `<strong>${formatPercent(remainPct)}</strong>남음 · ${formatValue(Number(m.remaining_value||0),m.unit)}` : `<strong>${statusLabel(status)}</strong>${reset}`}</div>
@@ -296,8 +394,62 @@
       el.innerHTML=`<table class="activity-table"><thead><tr><th>시작</th><th>구분</th><th>상태</th><th>오류</th></tr></thead><tbody>${runs.map(r=>`<tr><td>${formatKST(r.started_at)}</td><td>${r.trigger_type==='manual'?'수동':'예약'}</td><td class="run-status ${esc(r.status)}">${runStatusLabel(r.status)}</td><td>${Array.isArray(r.errors)?r.errors.length:0}건</td></tr>`).join('')}</tbody></table>`;
     }
 
+    function collectionFailureEntries() {
+      return runs.flatMap(run => {
+        const errors = Array.isArray(run.errors) ? run.errors : [];
+        const directFailures = errors.map(error => ({
+          startedAt: run.started_at,
+          service: error && error.service || 'collector',
+          endpoint: error && (error.endpoint || error.metric_key || error.metric) || '수집 처리',
+          message: error && (error.message || error.error || error.reason) || '수집 중 오류가 발생했습니다.'
+        }));
+        if (directFailures.length || run.status !== 'failed') return directFailures;
+        return [{
+          startedAt: run.started_at,
+          service: 'collector',
+          endpoint: '수집 처리',
+          message: '수집 실행이 실패했지만 세부 오류 정보가 기록되지 않았습니다.'
+        }];
+      });
+    }
+
+    function renderCollectionFailures() {
+      const el = document.getElementById('recentCollectionFailures');
+      const failures = collectionFailureEntries();
+      if (!failures.length) {
+        el.innerHTML = '<div class="empty-panel">최근 수집 실패 항목이 없습니다.</div>';
+        return;
+      }
+      el.innerHTML = `<table class="activity-table"><thead><tr><th>시간</th><th>서비스</th><th>수집 항목</th><th>실패 사유</th></tr></thead><tbody>${failures.map(item => {
+        const service = (SERVICE_INFO[item.service] || {}).name || item.service;
+        return `<tr><td>${formatKSTShort(item.startedAt)}</td><td>${esc(service)}</td><td>${esc(item.endpoint)}</td><td title="${escAttr(item.message)}">${esc(item.message)}</td></tr>`;
+      }).join('')}</tbody></table>`;
+    }
+
+    function webhookFailureTypeLabel(type) {
+      return ({ purchase_new:'구매 신청', purchase_status:'구매 상태 변경', user_register:'가입 신청', dept_transfer:'부서 이동', log_alert:'운영 로그', qna_new:'Q&A 질문', service_quota_alert:'서비스 할당량 알림' })[type] || type || '-';
+    }
+    function webhookFailureReasonLabel(reason) {
+      return ({ http_error:'HTTP 오류', network_error:'네트워크 오류', missing_webhook_config:'Webhook 미설정' })[reason] || '전송 오류';
+    }
+    function renderWebhookFailures() {
+      const el = document.getElementById('recentWebhookFailures');
+      if (webhookFailureLoadError) {
+        el.innerHTML = `<div class="setup-error">실패 상세 조회 RPC가 필요합니다.<br><code>docs/TASK-080_service_usage_source_and_webhook_failures.sql</code> 적용 후 다시 조회하세요.</div>`;
+        return;
+      }
+      if (!webhookFailures.length) { el.innerHTML='<div class="empty-panel">기록된 Webhook 실패가 없습니다.</div>'; return; }
+      el.innerHTML=`<table class="activity-table"><thead><tr><th>시간</th><th>알림 유형</th><th>실패 사유</th><th>상태</th></tr></thead><tbody>${webhookFailures.map(row=>`<tr><td>${formatKSTShort(row.occurred_at)}</td><td>${esc(webhookFailureTypeLabel(row.notification_type))}</td><td>${esc(webhookFailureReasonLabel(row.failure_reason))}</td><td>${row.http_status ? `HTTP ${Number(row.http_status)}` : '-'}</td></tr>`).join('')}</tbody></table>`;
+    }
+
     async function collectNow() {
-      const btn=document.getElementById('collectBtn'); btn.disabled=true; btn.textContent='수집 중...';
+      const btn=document.getElementById('collectBtn');
+      if (!canManualCollect()) {
+        syncCollectButtonVisibility();
+        alert('서비스 사용량 수동 수집은 관리자 이상만 가능합니다.');
+        return;
+      }
+      btn.disabled=true; btn.textContent='수집 중...';
       try {
         if (typeof flushServiceUsageTelemetry==='function') await flushServiceUsageTelemetry();
         const { data,error }=await _sb.functions.invoke('service-usage-collect',{body:{trigger:'manual'}});
@@ -307,7 +459,41 @@
       } catch(error) {
         await logError('SERVICE_USAGE_COLLECT_FAIL',{오류:error.message||String(error)});
         alert('서비스 사용량 수집 실패: '+tErr(error.message||String(error)));
-      } finally { btn.disabled=false; btn.textContent='↻ 지금 수집'; }
+      } finally { btn.disabled=false; btn.textContent='↻ 지금 수집'; syncCollectButtonVisibility(); }
+    }
+
+    async function cleanupServiceUsage() {
+      if (!canManualCleanup()) {
+        syncCollectButtonVisibility();
+        alert('서비스 통계 수동 정리는 관리자 이상만 가능합니다.');
+        return;
+      }
+      if (!confirm('180일이 지난 서비스 통계 스냅샷과 수집 이력을 실제 삭제합니다.\n\n계속하시겠습니까?')) return;
+
+      const btn = document.getElementById('cleanupServiceUsageBtn');
+      btn.disabled = true;
+      btn.textContent = '정리 중...';
+      try {
+        const { data, error } = await _sb.rpc('cleanup_service_usage_retention_180d');
+        if (error) throw error;
+        const row = Array.isArray(data) ? data[0] : data;
+        const snapshotCount = Number(row?.service_usage_snapshots_deleted || 0);
+        const runCount = Number(row?.service_usage_collection_runs_deleted || 0);
+        await logInfo('SERVICE_USAGE_RETENTION_CLEANUP', {
+          snapshots: snapshotCount,
+          collectionRuns: runCount,
+          cutoffAt: row?.cutoff_at || null
+        });
+        alert(`서비스 통계 정리 완료\n\n스냅샷 ${snapshotCount.toLocaleString('ko-KR')}건\n수집 이력 ${runCount.toLocaleString('ko-KR')}건`);
+        await loadDashboard();
+      } catch (error) {
+        await logError('SERVICE_USAGE_RETENTION_CLEANUP_FAIL', { 오류: error.message || String(error) });
+        alert('서비스 통계 정리 실패: ' + tErr(error.message || String(error)) + '\n\nSupabase SQL Editor에서 docs/TASK-073_manual_retention_cleanup.sql 적용 여부를 확인해주세요.');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = '180일 초과 정리';
+        syncCollectButtonVisibility();
+      }
     }
 
     async function openHistory(serviceKey, metricKey) {
@@ -324,9 +510,15 @@
     function renderHistoryChart(rows,metric) {
       const chart=document.getElementById('historyChart'); const list=document.getElementById('historyList');
       if(!rows.length){chart.innerHTML='<div class="empty-panel">아직 추이 데이터가 없습니다.</div>';list.innerHTML='';return;}
-      const values=rows.map(r=>Number(r.usage_value||0)); const max=Math.max(...values,Number(metric.quota_value||0),1); const min=Math.min(...values,0);
+      const values=rows.map(r=>Number(r.usage_value||0));
+      const quota=Number(metric.quota_value||0); const peakUsage=Math.max(...values,0);
+      // Keep low usage readable.  The quota only becomes part of the scale once
+      // the metric reaches the same 70% caution threshold used for alerts.
+      const showQuotaLine=quota>0&&peakUsage/quota>=.7;
+      const max=showQuotaLine?Math.max(peakUsage*1.08,quota):Math.max(peakUsage*1.08,1);
+      const min=Math.min(...values,0);
       const points=values.map((v,i)=>{const x=rows.length===1?50:5+i*(90/(rows.length-1));const y=92-(v-min)/(max-min||1)*82;return `${x},${y}`;}).join(' ');
-      const quotaY=metric.quota_value?92-(Number(metric.quota_value)-min)/(max-min||1)*82:null;
+      const quotaY=showQuotaLine?92-(quota-min)/(max-min||1)*82:null;
       chart.innerHTML=`<svg class="history-chart" viewBox="0 0 100 100" preserveAspectRatio="none"><line x1="5" y1="92" x2="95" y2="92" stroke="var(--admin-border)" stroke-width=".6"/>${quotaY!=null?`<line x1="5" y1="${quotaY}" x2="95" y2="${quotaY}" stroke="#e03131" stroke-width=".5" stroke-dasharray="2 2"/>`:''}<polyline points="${points}" fill="none" stroke="var(--admin-primary)" stroke-width="1.7" vector-effect="non-scaling-stroke" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
       list.innerHTML=`<table class="activity-table"><thead><tr><th>수집 시각</th><th>사용량</th><th>한도</th><th>출처</th></tr></thead><tbody>${rows.slice().reverse().map(r=>`<tr><td>${formatKST(r.collected_at)}</td><td>${formatValue(Number(r.usage_value),metric.unit)}</td><td>${r.quota_value==null?'-':formatValue(Number(r.quota_value),metric.unit)}</td><td>${r.is_estimated?'추정 · ':''}${esc(r.source)}</td></tr>`).join('')}</tbody></table>`;
     }
@@ -344,7 +536,7 @@
     function formatPercent(value){return `${Number(value||0).toLocaleString('ko-KR',{maximumFractionDigits:1})}%`;}
     function resetLabel(cycle,end){const map={hourly:'매시간 초기화',daily:'매일 초기화',monthly:'매월 초기화',rolling_14d:'최근 14일',rolling_90d:'최근 90일',cumulative:'누적',policy:'플랜 정책'};return map[cycle]||(end?formatKSTShort(end):'-');}
     function statusLabel(s){return ({normal:'정상',caution:'주의',warning:'경고',danger:'위험',unlimited:'누적',policy:'정책',not_collected:'수집 전'})[s]||s;}
-    function connectionLabel(s){return ({connected:'API 연결',tracking:'프로젝트 계측',partial:'일부 연결',needs_secret:'Secret 필요'})[s]||'확인 필요';}
+    function connectionLabel(s){return ({connected:'API 연결',tracking:'프로젝트 계측',partial:'일부 연결',needs_secret:'Secret 필요',not_supported:'해당 없음',not_collected:'수집 전',failed:'실패'})[s]||'확인 필요';}
     function runStatusLabel(s){return ({running:'수집 중',success:'성공',partial:'일부 성공',failed:'실패'})[s]||s;}
     function alertStatusLabel(s){return ({pending:'발송 대기',sent:'발송 완료',failed:'발송 실패'})[s]||s;}
     function formatKST(value){return new Date(value).toLocaleString('ko-KR',{timeZone:'Asia/Seoul',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});}
