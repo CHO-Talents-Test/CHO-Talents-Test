@@ -92,12 +92,24 @@
         <ul class="guide-list">
           <li>달란트 항목의 지급 규칙과 설명이 학생 가이드/적립 화면에 보이는 문구와 맞는지 확인합니다.</li>
           <li>상품 삭제 전 진행 중인 주문이 없는지 구매 관리에서 먼저 확인합니다.</li>
-          <li>상품 카테고리, QR 대상/반복 유형, 구매 상태, 로그/작업 유형 명칭은 공통 코드 기준으로 표시됩니다. 상품 카테고리는 상품 카테고리 관리 페이지에서 추가·수정·삭제하며, 상품 이미지는 썸네일과 상세 설명 이미지로 나누어 관리합니다. 명칭을 바꿀 때는 개별 화면 문구보다 코드 마스터 기준을 먼저 확인합니다.</li>
+          <li>상품 카테고리, QR 대상/반복 유형, 구매 상태, 로그/작업 유형 명칭은 공통 코드 기준으로 표시됩니다. 로그 상세는 영어 key로 저장하고 화면과 Slack 알림에서는 한글로 변환합니다. 상품 카테고리는 상품 카테고리 관리 페이지에서 추가·수정·삭제하며, 상품 이미지는 썸네일과 상세 설명 이미지로 나누어 관리합니다. 명칭을 바꿀 때는 개별 화면 문구보다 코드 마스터 기준을 먼저 확인합니다.</li>
           <li>공지 운영 후 열람 현황에서 등록일시/등록자와 사용자 유형을 확인하고, 전체/확인자/미확인자 콤보박스로 대상을 좁혀 아직 확인하지 않은 사용자에게 필요한 안내를 별도로 전달합니다.</li>
           <li>부서 비활성화 전 소속 사용자와 가입 신청, 부서 이동 요청을 확인합니다.</li>
           <li>Q&amp;A 삭제는 민감한 내용, 중복, 잘못된 질문에 한정하고 FAQ 전환 가능성을 먼저 봅니다.</li>
           <li>Slack 알림 룰 페이지에서 어떤 이벤트가 어느 채널로 가는지 확인해 운영자에게 안내합니다.</li>
+          <li>서비스 통계 페이지에서 GitHub/Supabase/Kakao/Slack 무료 할당량 사용률을 확인합니다. 자동 수집은 매시간 정각에 실행되고, 70%·85%·95% 알림은 운영 Slack 채널로 전송됩니다. 180일 초과 수동 삭제는 관리자(100+) 전용입니다.</li>
         </ul>
+      </div>
+    </section>
+    <section class="guide-section">
+      <h2>🆕 v3.79.0 업데이트</h2>
+      <p>즐겨찾기 바로가기는 최대 20개까지 저장할 수 있습니다. 로그인 이력 기반 사용자 통계는 관리자(100+) 전용 관리 기능입니다.</p>
+    </section>
+    <section class="guide-section">
+      <h2>🗳️ 추천 상품 비밀 투표</h2>
+      <div class="guide-card">
+        <p><strong>상품 &gt; 상품 추천 투표</strong>에서 추천 상품의 상품명, 이미지·상세 이미지, 설명, 금액, 카테고리를 확인하고 비밀 투표합니다. 일반 권한자는 종료 전 득표 수를 볼 수 없고, 종료된 투표는 변경할 수 없습니다. 구매 URL은 <strong>상품 보기</strong> 버튼으로 엽니다.</p>
+        <p style="margin-top:0.65rem;">전도사님 권한은 찬성/반대 투표와 상세 확인을 제공하지만, 채택 시 추천 등록자에게 <strong>상품 추천 채택</strong> 1달란트가 자동 지급됩니다. 등록과 종료 결과는 운영관리 Slack 채널에 상품명·결과·익명 득표 수만 안내됩니다. 정원 감소 상황의 투표 종료, 전체 진행률 집계, 투표중 채택/불채택 예외 결정은 <code>profiles.is_super_admin=true</code>인 최고관리자 전용입니다.</p>
       </div>
     </section>
   </main>
@@ -106,7 +118,7 @@
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -125,6 +137,7 @@
       }
       navUpdateAuth(session);
       await initTheme();
+      applyGuideSwitcherAccess(session.permissionRank || 0);
       autoLogPageView();
     })();
   </script>

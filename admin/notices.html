@@ -183,7 +183,7 @@
       <div class="notice-image-row">
         <label for="noticeImageInput">이미지 첨부</label>
         <div class="notice-image-upload">
-          <input type="file" id="noticeImageInput" accept="image/*" onchange="previewNoticeImage(this)" />
+          <input type="file" id="noticeImageInput" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" onchange="previewNoticeImage(this)" />
           <button type="button" class="btn-cancel" onclick="clearNoticeImageSelection()">이미지 제거</button>
         </div>
         <div class="notice-image-url">
@@ -251,7 +251,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -396,6 +396,18 @@
           setNoticeImagePreview(editingNoticeImageUrl, '현재 첨부된 이미지', 'stored');
         } else {
           resetNoticeImagePreview();
+        }
+        return;
+      }
+      const validationError = typeof getImageUploadValidationError === 'function'
+        ? getImageUploadValidationError(file)
+        : (!file.type || !file.type.startsWith('image/') ? '이미지 파일만 선택할 수 있습니다.' : null);
+      if (validationError) {
+        input.value = '';
+        const errorEl = document.getElementById('noticeError');
+        if (errorEl) {
+          errorEl.textContent = validationError;
+          errorEl.classList.add('show');
         }
         return;
       }

@@ -111,7 +111,7 @@
       <div class="guide-grid">
         <div class="guide-card">
           <h3>24시간 유휴 자동 로그아웃</h3>
-          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다. 새 버전 배포 후 구버전 세션이 감지되어도 재로그인 안내가 표시될 수 있습니다.</p>
+          <p>로그인 후 <strong>24시간 동안 사이트를 사용하지 않으면</strong> 세션이 만료되어 자동 로그아웃됩니다. 페이지 조회, 클릭, 스크롤, 키 입력 등 활동이 있으면 24시간 타이머가 <strong>처음부터 다시</strong> 시작됩니다. 새 버전 배포 후 구버전 세션이 감지되어도 재로그인 안내가 표시될 수 있습니다. 현재 안내 기준은 v3.79.0입니다.</p>
         </div>
         <div class="guide-card">
           <h3>모바일 상단 우측 (768px 이하)</h3>
@@ -135,13 +135,24 @@
         </ul>
       </div>
     </section>
+    <section class="guide-section">
+      <h2>🆕 v3.79.0 업데이트</h2>
+      <p>구매 통계의 전체·부서별·사용자별 표는 <strong>행을 클릭</strong>해 기존 상세 모달을 열 수 있습니다. 메인 즐겨찾기는 최대 20개까지 선택할 수 있습니다.</p>
+    </section>
+    <section class="guide-section">
+      <h2>🗳️ 추천 상품 비밀 투표</h2>
+      <div class="guide-card">
+        <p><strong>상품 &gt; 상품 추천 투표</strong>에서 추천 상품의 입력 정보와 상세 설명 이미지를 확인한 뒤 찬성 또는 반대를 선택합니다. 종료 전 찬성/반대 득표 수는 <code>profiles.is_super_admin=true</code>인 최고관리자만 볼 수 있으며, 종료된 투표는 변경할 수 없습니다. 상세 창의 구매 URL은 <strong>상품 보기</strong> 버튼으로 엽니다.</p>
+        <p style="margin-top:0.65rem;">추천 등록 시점의 60등급 이상 인원이 기본 정원입니다. 본인이 투표하기 전에는 결과와 찬성/반대 수가 숨겨지고, 완료된 건도 투표중으로 보이며 미완료 필터에 남습니다. 투표 후에만 결과를 확인할 수 있습니다. 채택 시 추천 등록자에게 <strong>상품 추천 채택</strong> 1달란트가 자동 지급되고, 생성 상품은 순번 999·비활성으로 상품 관리에 등록됩니다. 투표가 끝나면 운영관리 Slack 채널에 상품명·결과·익명 득표 수가 안내되며, 투표자 이름은 전송되지 않습니다. 모바일에서는 상세 모달에서도 찬성 또는 반대를 선택할 수 있습니다. 상품 메뉴 배지는 구매 관리 처리 대기와 본인의 미투표 추천 수를 합산하며, 투표 화면은 구매 관리 바로 아래에 있습니다.</p>
+      </div>
+    </section>
   </main>
 
   <footer class="page-footer">
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -161,11 +172,7 @@
       navUpdateAuth(session);
       await initTheme();
       const rank = session.permissionRank || 0;
-      document.querySelectorAll('.guide-switcher a').forEach(a => {
-        if (a.href.includes('purchase-teacher-guide') && rank < 70) a.style.display = 'none';
-        if (a.href.includes('chief-teacher-guide') && rank < 80) a.style.display = 'none';
-        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
-      });
+      applyGuideSwitcherAccess(rank);
       autoLogPageView();
     })();
   </script>

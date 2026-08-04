@@ -354,7 +354,7 @@
       </div>
     </div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -1028,6 +1028,28 @@
       return rawRequestRows.find(r => r.id === id) || null;
     }
 
+    function getExceptionRequestLogContext(row, extra = {}) {
+      const targetProfile = getProfile(row.user_id);
+      const requesterProfile = getProfile(row.requested_by);
+      const targetName = targetProfile ? getUserLabel(targetProfile) : (row.user_display_name || row.user_id || '-');
+      const itemName = row.talent_item_name || getItemName(row.talent_item_id);
+      const targetDeptId = targetProfile?.department_id || row.department_id || '';
+      const targetDept = departmentRows.find(d => d.id === targetDeptId);
+      return Object.assign({
+        requestId: row.id,
+        targetUserId: row.user_id,
+        targetAccount: targetProfile?.username || null,
+        targetName,
+        requestedByAccount: requesterProfile?.username || null,
+        requestedByName: requesterProfile ? getUserLabel(requesterProfile) : (row.requested_by_name || '-'),
+        talentItemId: row.talent_item_id,
+        itemName,
+        금액: row.amount,
+        사유: row.override_reason || row.review_note || '-',
+        부서: targetDept ? targetDept.name : ''
+      }, extra);
+    }
+
     async function processExceptionRequestApproval(row, options = {}) {
       if (!canApproveExceptionRequests()) {
         return { ok: false, error: '예외 지급 승인 권한은 전도사님 이상에게만 있습니다.' };
@@ -1049,7 +1071,10 @@
         overrideReason: row.override_reason || '예외 지급 승인'
       });
       if (giveResult && giveResult.success === false) {
-        await logError('TALENT_EXCEPTION_APPROVE_FAIL', { requestId: row.id, userId: row.user_id, itemId: row.talent_item_id, error: giveResult.error });
+        await logError('TALENT_EXCEPTION_APPROVE_FAIL', {
+          ...getExceptionRequestLogContext(row),
+          오류: giveResult.error
+        });
         return { ok: false, error: giveResult.error };
       }
 
@@ -1065,7 +1090,10 @@
         return { ok: false, error: update.error };
       }
 
-      await logInfo('TALENT_EXCEPTION_APPROVE', { requestId: row.id, userId: row.user_id, itemId: row.talent_item_id, target, itemName });
+      await logInfo('TALENT_EXCEPTION_APPROVE', {
+        ...getExceptionRequestLogContext(row, { transactionId: giveResult?.txn_id || giveResult?.id || null }),
+        변경내역: `예외 지급 승인: ${target} / 항목: ${itemName} / 금액: ${fmtNum(row.amount || 0)} 달란트 / 사유: ${row.override_reason || '-'}`
+      });
       return { ok: true };
     }
 
@@ -1103,7 +1131,11 @@
         alert('거부 처리 실패: ' + tErr(update.error));
         return;
       }
-      await logInfo('TALENT_EXCEPTION_REJECT', { requestId: id, userId: row.user_id, reason: note || '거부' });
+      const logContext = getExceptionRequestLogContext(row, { 사유: note || '거부' });
+      await logInfo('TALENT_EXCEPTION_REJECT', {
+        ...logContext,
+        변경내역: `예외 지급 거부: ${logContext.targetName} / 항목: ${logContext.itemName} / 사유: ${note || '거부'}`
+      });
       await reloadAll();
     }
 
@@ -1226,8 +1258,6 @@
   <script src="../js/version.js"></script>
 </body>
 </html>
-
-
 
 
 

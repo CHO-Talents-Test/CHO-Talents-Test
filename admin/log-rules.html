@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v3.69.0 기준 인증/권한 리디렉트 원인, 최신 버전 세션 감지, QR 위치 권한 차단, 상품 카테고리 관리, 공지 사항 관리/열람 현황, 이미지 업로드, 달란트 예외 지급 요청/승인도 로그로 구분합니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. 수정·상태 변경 로그는 대상, 변경 항목, 이전 값, 변경 값을 구조화해 저장하며 비밀번호·비밀 투표 정보는 기록하지 않습니다. 로그 화면과 Slack 알림은 저장된 영어 action/details를 한글로 치환해 보여줍니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -63,7 +63,7 @@
             <td><span class="level-tag info">INFO</span></td>
             <td>정상 동작 기록</td>
             <td>❌</td>
-            <td>모든 성공 작업, 페이지 방문, 정상 이벤트</td>
+            <td>모든 성공 작업, 정상 이벤트 (PAGE_VIEW는 저장하지 않음)</td>
           </tr>
           <tr>
             <td><span class="level-tag warn">WARN</span></td>
@@ -142,7 +142,7 @@
             <td><code>PAGE_VIEW</code></td>
             <td><span class="level-tag info">INFO</span></td>
             <td>모든 페이지 로드 시 autoLogPageView()</td>
-            <td>페이지 경로, 사용자명</td>
+            <td>v3.40.0부터 저장하지 않음</td>
           </tr>
           <tr>
             <td><code>JS_ERROR</code></td>
@@ -180,29 +180,28 @@
         // level: 'TRACE'|'DEBUG'|'INFO'|'WARN'|'ERROR'|'FATAL'|'CRITICAL'<br>
         // action: 작업 식별자 (예: 'USER_CREATE')<br>
         // page: 페이지 경로 (null이면 자동 감지)<br>
-        // details: 추가 정보 객체
+        // details: 처리 상세 정보 객체 (공통 필드는 저장 전 제거)
       </div>
       <h3>편의 함수</h3>
       <div class="code-block">
-        logInfo('TALENT_GIVE', { userId, 금액: amount, description })<br>
-        logWarn('TALENT_GIVE_DENIED', { userId, 사유: '권한 부족' })<br>
+        logInfo('TALENT_GIVE', { userId, amount, description })<br>
+        logWarn('TALENT_GIVE_DENIED', { userId, reason: '권한 부족' })<br>
         logError('TALENT_GIVE_FAIL', { userId, error: err.message })
       </div>
       <div class="note-box">
-        <strong>한글 상세:</strong> v3.66.0부터 <code>writeLog()</code>는 원본 영문/기술 키를 유지하면서 <code>details._actionLabel</code>, <code>details._actionKo</code>, 한글 키 별칭을 함께 저장합니다. 로그/작업 이력 상세 모달은 한글 키를 우선 표시합니다.
+        <strong>details 저장 기준:</strong> v3.74.0부터 <code>writeLog()</code>는 details를 영어 key로 정규화하고 중복 항목을 제거합니다. <code>action</code>, 작업자, 로그 작성 일시, 로그 레벨, 발생 페이지처럼 기본 컬럼 또는 화면 기본 영역에 표시되는 값은 details에 저장하지 않습니다.
       </div>
-      <h3>자동 첨부 데이터 (details._client)</h3>
+      <h3>기본 표시 필드와 details 제외 항목</h3>
       <table class="rule-table">
         <thead>
-          <tr><th>필드</th><th>내용</th></tr>
+          <tr><th>구분</th><th>처리 기준</th></tr>
         </thead>
         <tbody>
-          <tr><td>browser</td><td>브라우저 이름/버전</td></tr>
-          <tr><td>os</td><td>운영체제</td></tr>
-          <tr><td>screen</td><td>화면 해상도</td></tr>
-          <tr><td>device</td><td>디바이스 유형 (desktop/mobile/tablet)</td></tr>
-          <tr><td>lang</td><td>브라우저 언어</td></tr>
-          <tr><td>ip</td><td>클라이언트 IP (ipify.org)</td></tr>
+          <tr><td>작업</td><td><code>activity_logs.action</code>에 영어 action code로 저장하고 화면/Slack에서 한글 작업명으로 치환</td></tr>
+          <tr><td>사용자 계정</td><td><code>profiles.display_name(username)</code> 우선 표시. 승인 전 계정은 <code>registration_requests.display_name(username)</code> 기준으로 표시</td></tr>
+          <tr><td>일시/레벨/페이지</td><td><code>created_at</code>, <code>level</code>, <code>page</code> 기본 컬럼으로 표시하고 details에는 중복 저장하지 않음</td></tr>
+          <tr><td>처리 상세</td><td>대상, 금액, 상태 변경, 오류 메시지, 사유 등 실제 처리 내용만 영어 key로 details에 저장</td></tr>
+          <tr><td>클라이언트 정보</td><td><code>_client</code>, <code>클라이언트</code>, IP, 브라우저, OS, 화면 크기, 기기 정보는 신규 로그에 저장하지 않음</td></tr>
         </tbody>
       </table>
     </div>
@@ -221,7 +220,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr><td><code>login.html</code></td><td>로그인 성공, 인증 실패, 로그인 예외</td><td><code>LOGIN_SUCCESS</code>, <code>LOGIN_FAIL</code>, <code>LOGIN_ERROR</code></td><td>Supabase Auth 결과, <code>profiles</code>/<code>get_my_profile</code>, 입력 아이디</td><td>WARN+ 공통 <code>log_alert</code></td></tr>
+          <tr><td><code>login.html</code></td><td>로그인 성공, 인증 실패, 로그인 예외</td><td><code>LOGIN_SUCCESS</code>, <code>LOGIN_FAIL</code>, <code>LOGIN_ERROR</code></td><td>Supabase Auth 결과, <code>profiles</code>/<code>get_my_profile</code>, 입력 아이디. 성공 시 <code>record_user_login</code>이 <code>user_login_history</code>에 사용자·부서 스냅샷을 별도 기록</td><td><code>LOGIN_ERROR</code> 등 WARN+ 공통 <code>log_alert</code>. 성공 로그인 이력 기록은 Slack 알림 대상 아님</td></tr>
           <tr><td><code>register.html</code></td><td>가입 신청 제출 성공/실패</td><td><code>REGISTER_REQUEST</code>, <code>REGISTER_REQUEST_FAIL</code></td><td><code>registration_requests</code>, 입력 아이디/이름/부서, 부서명 조회 결과</td><td><code>user_register</code> 신청 부서 채널</td></tr>
           <tr><td><code>admin/users.html</code></td><td>사용자 등록/수정/삭제, 비밀번호 초기화, 가입 승인/거절, 부서 이동 요청/승인/거절/즉시 이동</td><td><code>USER_*</code>, <code>PASSWORD_RESET</code>, <code>REGISTER_APPROVE</code>, <code>REGISTER_REJECT</code>, <code>DEPT_TRANSFER_*</code></td><td><code>profiles</code>, <code>registration_requests</code>, <code>department_transfer_requests</code>, <code>admin_*_user</code> RPC 결과</td><td><code>dept_transfer</code> 이동 대상 부서 채널, WARN+ 공통</td></tr>
           <tr><td><code>admin/managers.html</code></td><td>운영 권한 부여/수정, 권한 변경 실패</td><td><code>MANAGER_UPDATE</code>, <code>MANAGER_PROMOTE</code>, 실패/오류 액션</td><td><code>profiles</code>, <code>departments</code>, <code>admin_update_user</code> RPC</td><td>WARN+ 공통</td></tr>
@@ -232,15 +231,16 @@
           <tr><td><code>talent-receive.html</code></td><td>QR 수령 성공, 위치 권한 차단, QR/RPC 실패</td><td><code>qr_scan</code>, <code>QR_LOCATION_PERMISSION_BLOCKED</code>, 실패/오류 액션</td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>, <code>scan_qr_talent</code> RPC, Geolocation 결과</td><td>WARN+ 공통. 위치 권한 차단은 INFO라 기본 Slack 제외</td></tr>
           <tr><td><code>admin/talent-qr.html</code></td><td>QR 생성/수정/활성 토글, 수령자 조회 실패</td><td><code>qr_create</code>, <code>qr_edit</code>, <code>qr_toggle</code>, <code>QR_CREATE_*</code></td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>, 선택 항목/기간/위치/반복/수령자 필터</td><td>WARN+ 공통</td></tr>
           <tr><td><code>shop.html</code></td><td>상품 구매 신청/대리 구매 성공, 잔액 부족/거부, 주문 RPC 오류, 대리 구매 대상 조회 실패</td><td><code>ORDER_REQUEST_SUCCESS</code>, <code>ORDER_REQUEST_DENIED</code>, <code>ORDER_REQUEST_FAIL</code>, <code>PROXY_ORDER_*</code>, <code>PROXY_USER_LOAD_*</code></td><td><code>products</code>, <code>profiles.talent_balance/pending_talent</code>, <code>product_orders</code>, <code>request_product_order</code> RPC</td><td><code>purchase_new</code> 신청자 부서 채널, WARN+ 공통</td></tr>
-          <tr><td><code>admin/shop.html</code>, <code>js/product.js</code></td><td>상품 등록/수정/삭제/비활성화, 썸네일/상세 이미지 업로드 및 이미지 URL 연결</td><td><code>PRODUCT_CREATE</code>, <code>PRODUCT_UPDATE</code>, <code>PRODUCT_IMAGE_UPDATE</code>, <code>PRODUCT_DEACTIVATE</code>, <code>IMAGE_UPLOAD*</code></td><td><code>products</code>, <code>products.image_url</code>, <code>products.detail_image_url</code>, Storage <code>Talents_Items</code>, 이미지 압축/업로드 결과</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/shop.html</code>, <code>admin/product-bulk-register.html</code>, <code>js/product.js</code></td><td>상품 등록/수정/삭제/비활성화, 상품 일괄 등록, 이미지 URL 연결</td><td><code>PRODUCT_CREATE</code>, <code>PRODUCT_BULK_CREATE</code>, <code>PRODUCT_UPDATE</code>, <code>PRODUCT_IMAGE_UPDATE</code>, <code>PRODUCT_DEACTIVATE</code></td><td>상품 대상과 변경 항목의 이전 값→변경 값, 일괄 등록 성공/실패 건수와 실패 행</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/product-categories.html</code>, <code>js/product.js</code></td><td>상품 카테고리 등록/수정/삭제/사용 중 삭제 실패</td><td><code>PRODUCT_CATEGORY_CREATE</code>, <code>PRODUCT_CATEGORY_UPDATE</code>, <code>PRODUCT_CATEGORY_DELETE</code>, 실패/오류 액션</td><td><code>code_groups</code>/<code>code_items</code>의 <code>products.category</code>, <code>products.category</code> 사용 여부</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/purchases.html</code></td><td>주문 상태 변경, 되돌리기, 구매 확정, 일괄 준비/구매/지급 처리</td><td><code>ORDER_STATUS_CHANGE</code>, <code>ORDER_REVERT</code>, <code>ORDER_PURCHASE_CONFIRM</code>, <code>ORDER_BULK_*</code></td><td><code>product_orders</code>, <code>confirm_product_purchase</code> RPC, 상태 코드 <code>product_orders.status</code></td><td><code>purchase_status</code> 구매 신청→상품 준비 전환만 상품 관리 채널, WARN+ 공통</td></tr>
-          <tr><td><code>my-orders.html</code></td><td>본인 주문 취소, 취소 RPC 실패/폴백, 환불 실패</td><td><code>order_cancel</code>, <code>ORDER_CANCEL_*</code>, <code>ORDER_CANCEL_REFUND_FAIL</code></td><td><code>product_orders</code>, <code>cancel_product_order</code> RPC, <code>profiles.pending_talent</code></td><td>WARN+ 공통</td></tr>
+          <tr><td><code>my-orders.html</code></td><td>본인 주문 취소, 취소 RPC 실패/환불 미확인 중단</td><td><code>ORDER_CANCEL</code>, <code>ORDER_CANCEL_*</code></td><td><code>product_orders</code>, <code>cancel_product_order</code> RPC</td><td>WARN+ 공통</td></tr>
           <tr><td><code>qna.html</code></td><td>질문/댓글/답변 등록, FAQ 지정, 삭제</td><td><code>QNA_CREATE</code>, <code>QNA_ANSWER</code>, <code>QNA_COMMENT</code>, <code>QNA_DELETE</code>, <code>QNA_FAQ_SET</code></td><td><code>qna</code>, <code>qna_comments</code>, 작성자 프로필, FAQ 플래그</td><td><code>qna_new</code> Q&amp;A 채널, WARN+ 공통</td></tr>
           <tr><td><code>admin/notices.html</code>, <code>index.html</code></td><td>공지 등록/수정/삭제/활성 토글, 공지 보기, 열람 현황 조회, 다시 열지 않음</td><td><code>ANNOUNCEMENT_CREATE</code>, <code>ANNOUNCEMENT_UPDATE</code>, <code>ANNOUNCEMENT_TOGGLE</code>, <code>ANNOUNCEMENT_DELETE</code>, <code>ANNOUNCEMENT_VIEW</code>, <code>ANNOUNCEMENT_READ_STATUS_VIEW</code>, <code>ANNOUNCEMENT_DISMISS</code></td><td><code>announcements</code>, <code>announcement_dismissals</code>, <code>profiles</code>, 열람 현황 사용자 유형/확인상태 필터</td><td>WARN+ 공통</td></tr>
-          <tr><td><code>admin/logs.html</code>, <code>admin/audit.html</code></td><td>로그 확인/일괄 확인, 범위/선택 삭제, 복원, 작업 이력 조회</td><td><code>LOG_ACKNOWLEDGED</code>, <code>LOG_BULK_ACK</code>, <code>LOG_RANGE_DELETE</code>, <code>LOG_SELECT_DELETE</code>, <code>LOG_RESTORE</code></td><td><code>activity_logs</code>, 확인자/확인 메모, <code>is_deleted</code>/<code>is_acknowledged</code></td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/logs.html</code>, <code>admin/audit.html</code></td><td>로그 확인/일괄 확인, 범위/선택 삭제, 180일 초과 확인 완료 로그 실제 삭제, 복원, 작업 이력 조회</td><td><code>LOG_ACKNOWLEDGED</code>, <code>LOG_BULK_ACK</code>, <code>LOG_RANGE_DELETE</code>, <code>LOG_SELECT_DELETE</code>, <code>LOG_RETENTION_CLEANUP</code>, <code>LOG_RESTORE</code></td><td><code>activity_logs</code>, 확인자/확인 메모, <code>is_deleted</code>/<code>is_acknowledged</code>. 미확인 로그는 실제 삭제 제외</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/page-access.html</code>, <code>admin/page-features.html</code>, <code>admin/page-permissions.html</code></td><td>역할별 페이지 접근/기능/권한 매트릭스 변경</td><td><code>ROLE_ACCESS_UPDATE</code>, <code>ROLE_FEATURE_UPDATE</code>, <code>PAGE_PERM_UPDATE</code></td><td><code>role_page_access</code>, <code>role_page_features</code>, <code>page_permissions</code>, 권한 코드/등급</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/reports.html</code></td><td>보고서 조회/저장/삭제/시드 등록</td><td><code>REPORT_VIEW</code>, <code>REPORT_SAVE</code>, <code>REPORT_DELETE</code>, <code>REPORT_SEED</code>, 실패/오류 액션</td><td><code>reports</code>, 보고서 유형/제목/내용, 작성자</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/service-stats.html</code>, <code>service-usage-collect</code></td><td>서비스 사용량 수동/예약 수집, 수집 실패, 무료 할당량 임계값 도달, 180일 초과 서비스 통계 수동 정리</td><td><code>service_usage_collection_runs</code>, <code>service_usage_alerts</code>, <code>service_quota_alert</code>, <code>SERVICE_USAGE_RETENTION_CLEANUP</code></td><td><code>service_usage_metrics</code>, <code>service_usage_events</code>, <code>service_usage_snapshots</code>, Edge Function 수집 결과. 예약 수집은 매시간 정각, 수집 스냅샷/실행 이력은 180일 보존</td><td><code>service_quota_alert</code> 70%·85%·95% 최초 도달 시 운영 채널</td></tr>
         </tbody>
       </table>
     </div>
@@ -254,13 +254,13 @@
         <thead><tr><th>액션</th><th>레벨</th><th>발생 시점</th></tr></thead>
         <tbody>
           <tr><td>LOGIN_SUCCESS</td><td><span class="level-tag info">INFO</span></td><td>로그인 성공</td></tr>
-          <tr><td>LOGIN_FAIL</td><td><span class="level-tag warn">WARN</span></td><td>잘못된 자격증명</td></tr>
+          <tr><td>LOGIN_FAIL</td><td><span class="level-tag info">INFO</span></td><td>잘못된 자격증명</td></tr>
           <tr><td>LOGIN_ERROR</td><td><span class="level-tag error">ERROR</span></td><td>로그인 처리 중 예외</td></tr>
           <tr><td>AUTH_SESSION_MISSING</td><td><span class="level-tag info">INFO</span> / <span class="level-tag warn">WARN</span></td><td>보호 페이지 진입 시 Supabase Auth 세션이 없거나 만료됨(INFO). Auth 조회 오류/예외는 WARN</td></tr>
-          <tr><td>AUTH_PROFILE_LOAD_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>Auth 세션은 있으나 <code>get_my_profile</code> RPC가 프로필을 반환하지 못함</td></tr>
-          <tr><td>AUTH_REDIRECT</td><td><span class="level-tag warn">WARN</span></td><td>세션 없음/만료, 최초 로그인, 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단, 24시간 유휴 만료로 리디렉트</td></tr>
+          <tr><td>AUTH_PROFILE_LOAD_FAIL</td><td><span class="level-tag info">INFO</span> / <span class="level-tag error">ERROR</span></td><td><code>get_my_profile</code> 실패 후 캐시/직접 조회로 복구되면 INFO, 복구 실패는 ERROR</td></tr>
+          <tr><td>AUTH_REDIRECT</td><td><span class="level-tag info">INFO</span> / <span class="level-tag warn">WARN</span></td><td>세션 없음/만료, 최초 로그인, 24시간 유휴 만료는 INFO. 권한 등급 부족, 허용 권한 불일치, DB 페이지 접근 차단은 WARN</td></tr>
           <tr><td>AUTH_PAGE_ACCESS_CHECK_FAIL</td><td><span class="level-tag error">ERROR</span></td><td><code>role_page_access</code> 조회 중 오류</td></tr>
-          <tr><td>APP_VERSION_STALE_SESSION</td><td><span class="level-tag warn">WARN</span></td><td>새 버전 배포 후 현재 페이지/세션 버전이 최신 버전과 달라 세션 종료 및 재로그인 안내</td></tr>
+          <tr><td>APP_VERSION_STALE_SESSION</td><td><span class="level-tag info">INFO</span></td><td>새 버전 배포 후 현재 페이지/세션 버전이 최신 버전과 달라 세션 종료 및 재로그인 안내</td></tr>
           <tr><td>LOGOUT</td><td><span class="level-tag info">INFO</span></td><td>로그아웃 (수동 또는 24시간 세션 만료 자동 로그아웃)</td></tr>
           <tr><td>PASSWORD_CHANGE</td><td><span class="level-tag info">INFO</span></td><td>비밀번호 변경 성공</td></tr>
           <tr><td>PASSWORD_CHANGE_FAIL</td><td><span class="level-tag error">ERROR</span></td><td>비밀번호 변경 RPC 오류</td></tr>
@@ -311,7 +311,7 @@
           <tr><td>ORDER_REQUEST_DENIED</td><td><span class="level-tag warn">WARN</span></td><td>구매 거부 (잔액 부족 등)</td></tr>
           <tr><td>ORDER_STATUS_CHANGE</td><td><span class="level-tag info">INFO</span></td><td>주문 상태 변경</td></tr>
           <tr><td>ORDER_CANCEL</td><td><span class="level-tag info">INFO</span></td><td>주문 취소</td></tr>
-          <tr><td>ORDER_CANCEL_REFUND_FAIL</td><td><span class="level-tag warn">WARN</span></td><td>주문 취소 후 달란트 반환 실패 (RLS 또는 권한 문제)</td></tr>
+          <tr><td>ORDER_CANCEL_REFUND_FAIL</td><td><span class="level-tag warn">WARN</span></td><td>구버전 로그. 현재 주문 취소는 환불 RPC 성공 확인 전에는 주문 상태를 변경하지 않음</td></tr>
           <tr><td>PRODUCT_CREATE / UPDATE / DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 CRUD</td></tr>
           <tr><td>PRODUCT_CATEGORY_CREATE / UPDATE / DELETE</td><td><span class="level-tag info">INFO</span></td><td>상품 카테고리 관리 페이지에서 카테고리 등록, 수정, 삭제(비활성화). 사용 중인 카테고리 삭제 시도는 실패 로그로 확인</td></tr>
         </tbody>
@@ -346,9 +346,27 @@
         <tbody>
           <tr><td>ROLE_ACCESS_UPDATE / ROLE_FEATURE_UPDATE</td><td><span class="level-tag info">INFO</span></td><td>페이지 접근/기능 권한 변경</td></tr>
           <tr><td>LOG_ACKNOWLEDGED / LOG_BULK_ACK</td><td><span class="level-tag info">INFO</span></td><td>로그 확인 처리</td></tr>
-          <tr><td>LOG_RANGE_DELETE / LOG_SELECT_DELETE</td><td><span class="level-tag info">INFO</span></td><td>로그 삭제 (소프트)</td></tr>
+          <tr><td>LOG_RANGE_DELETE / LOG_SELECT_DELETE</td><td><span class="level-tag info">INFO</span></td><td>로그 삭제 대기 처리. 미확인 로그는 선택/범위 삭제 대상에서 제외</td></tr>
+          <tr><td>LOG_RETENTION_CLEANUP / LOG_RETENTION_CLEANUP_FAIL</td><td><span class="level-tag info">INFO</span> / <span class="level-tag error">ERROR</span></td><td>관리자(100+)가 로그 페이지에서 확인 완료된 180일 초과 활동 로그를 실제 삭제하거나 실패</td></tr>
+          <tr><td>SERVICE_USAGE_COLLECT / SERVICE_QUOTA_ALERT</td><td><span class="level-tag info">INFO</span></td><td>서비스 사용량 수집 이력과 할당량 임계값 알림. 상세 수집 결과는 전용 서비스 통계 테이블 기준</td></tr>
+          <tr><td>SERVICE_USAGE_RETENTION_CLEANUP / SERVICE_USAGE_RETENTION_CLEANUP_FAIL</td><td><span class="level-tag info">INFO</span> / <span class="level-tag error">ERROR</span></td><td>관리자(100+)가 서비스 통계 페이지에서 180일 초과 스냅샷/수집 이력을 수동 정리하거나 실패</td></tr>
         </tbody>
       </table>
+    </div>
+
+    <div class="rule-section">
+      <h2>🗳️ 상품 추천 비밀 투표 기록</h2>
+      <table class="rule-table">
+        <thead><tr><th>구분</th><th>기록 기준</th></tr></thead>
+        <tbody>
+          <tr><td>추천 등록</td><td><code>PRODUCT_SUGGESTION_CREATE</code>에 추천 상품 ID, 상품명, 등록 시점 정원/과반만 기록합니다.</td></tr>
+          <tr><td>개별 투표</td><td>비밀 투표를 위해 개별 찬성/반대와 투표자 식별 정보는 <code>activity_logs</code>에 기록하지 않습니다.</td></tr>
+          <tr><td>최고관리자 종료/결과</td><td><code>PRODUCT_SUGGESTION_CLOSE</code>, <code>PRODUCT_SUGGESTION_ADOPT</code>, <code>PRODUCT_SUGGESTION_REJECT</code>에는 종료 또는 <code>최고관리자 예외 결정</code> 처리유형만 기록합니다. 진행 중 집계 열람, 직접 결정, 정원 감소 종료는 <code>profiles.is_super_admin=true</code> 계정만 가능하며, 종료 건의 익명 집계 외에 투표자 목록과 개별 찬반은 남기지 않습니다.</td></tr>
+          <tr><td>채택 자동 지급</td><td><code>PRODUCT_SUGGESTION_ADOPTION_TALENT</code>에는 추천 상품, <code>상품 추천 채택</code> 항목, 1달란트 자동 지급 사실만 기록합니다. 추천 등록자·투표자 식별 정보와 개별 찬반은 기록하지 않습니다.</td></tr>
+          <tr><td>운영관리 Slack</td><td>추천 등록 완료와 채택/불채택 종료 시 별도 Slack 이벤트를 전송합니다. 등록 알림은 상품명·시각, 종료 알림은 상품명·결과·익명 득표 수만 포함하며 추천자·투표자 식별 정보는 전송하지 않습니다.</td></tr>
+        </tbody>
+      </table>
+      <div class="note-box">추천자 이력은 채택 상품의 <code>products.created_by</code>와 추천 연결 테이블에서 관리하며, 투표 화면과 투표 로그에는 표시하지 않습니다.</div>
     </div>
 
     <div class="rule-section">
@@ -357,7 +375,8 @@
       <table class="rule-table">
         <thead><tr><th>대상 로그</th><th>호출 type</th><th>대상 채널</th><th>포함 정보</th></tr></thead>
         <tbody>
-          <tr><td>WARN / ERROR / FATAL / CRITICAL</td><td><code>log_alert</code></td><td>운영 채널</td><td>레벨, 액션, 페이지, 상세 정보</td></tr>
+          <tr><td>WARN / ERROR / FATAL / CRITICAL</td><td><code>log_alert</code></td><td>운영 채널</td><td>레벨, 한글 액션명, 페이지, 한글로 치환된 상세 정보</td></tr>
+          <tr><td>서비스 사용률 70% / 85% / 95% 최초 도달</td><td><code>service_quota_alert</code></td><td>운영 채널</td><td>서비스명, 지표, 사용률, 남은 양, 서비스 통계 링크</td></tr>
         </tbody>
       </table>
       <div class="note-box">
@@ -378,18 +397,18 @@
         <strong>소프트 삭제:</strong> 로그는 물리적으로 삭제되지 않고 <code>is_deleted=true</code>로 표시됩니다.
       </div>
       <div class="note-box">
-        <strong>한글 라벨/상세:</strong> 액션 라벨은 <code>js/codes.js</code> 기본 코드북과 DB <code>activity_logs.action</code> 코드 그룹을 우선 사용합니다. <code>writeLog()</code> 호출 시 자동으로 <code>details._actionLabel</code>/<code>details._actionKo</code>와 한글 상세 키가 추가되어 기존 로그도 하위호환 표시됩니다. 기존 DB 데이터는 <code>docs/TASK-067_korean_activity_logs.sql</code>로 백필합니다.
+        <strong>한글 라벨/상세:</strong> 신규 로그는 영어 action/details로 저장하고, 화면과 Slack 알림에서 <code>js/codes.js</code> 기본 코드북, DB <code>activity_logs.action</code> 코드 그룹, 공통 details key 매핑을 기준으로 한글 치환합니다. 기존 DB의 한글 별칭/중복/client details는 <code>docs/TASK-074_activity_logs_english_details.sql</code>로 정리합니다.
       </div>
       <div class="note-box">
-        <strong>로그 관리 페이지:</strong> <a href="logs.html" style="color:var(--admin-primary);">운영 &gt; 로그</a>에서 조회/확인 처리/삭제 가능. 페이지당 항목 수 콤보 박스는 필터 영역 가장 아래의 <strong>삭제 대기 목록</strong> 줄 오른쪽에 배치되며, 선택값은 계정별 설정으로 저장됩니다.
+        <strong>로그 관리 페이지:</strong> <a href="logs.html" style="color:var(--admin-primary);">운영 &gt; 로그</a>에서 조회/확인 처리/삭제 가능. 상단 <strong>미확인 ERROR+ 로그(확인 필수)</strong> 그리드는 행 전체를 클릭하면 해당 로그의 상세 모달을 열며, 상세·확인하기 버튼은 행 이동과 분리되어 동작합니다. 페이지당 항목 수 콤보 박스는 필터 영역 가장 아래의 <strong>삭제 대기 목록</strong> 줄 오른쪽에 배치되며, 선택값은 계정별 설정으로 저장됩니다. 확인 완료된 활동 로그는 180일 보존 후 자동 정리되며, 관리자(100+)는 <strong>180일 초과 실제 삭제</strong> 버튼으로 즉시 정리할 수 있습니다. 미확인 로그는 확인 완료 전까지 자동/수동 실제 삭제되지 않으며 선택 삭제 체크박스도 비활성화됩니다.
       </div>
       <div class="note-box">
-        <strong>Slack 알림 룰:</strong> <a href="slack-rules.html" style="color:var(--admin-primary);">운영 &gt; Slack 알림 룰</a>에서 구매/가입/부서 이동/Q&amp;A/로그 알림 라우팅을 확인 가능
+        <strong>Slack 알림 룰:</strong> <a href="slack-rules.html" style="color:var(--admin-primary);">운영 &gt; Slack 알림 룰</a>에서 구매/가입/부서 이동/Q&amp;A/로그/서비스 할당량 알림 라우팅을 확인 가능
       </div>
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>

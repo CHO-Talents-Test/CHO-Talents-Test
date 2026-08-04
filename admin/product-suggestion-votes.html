@@ -1,0 +1,416 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상품 추천 투표 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <style>
+    .ps-vote-toolbar { display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; margin-bottom:0.8rem; }
+    .ps-filter-tabs { display:flex; gap:0.35rem; flex-wrap:wrap; }
+    .ps-filter-tabs button { border:1px solid var(--admin-border); border-radius:6px; padding:0.42rem 0.65rem; cursor:pointer; color:var(--admin-text); background:var(--admin-card); font:inherit; font-size:0.82rem; }
+    .ps-filter-tabs button.active { color:#fff; background:var(--admin-primary); border-color:var(--admin-primary); }
+    .ps-status { display:inline-flex; align-items:center; justify-content:center; min-width:52px; padding:0.22rem 0.48rem; border-radius:999px; font-size:0.76rem; font-weight:700; white-space:nowrap; }
+    .ps-status-voting { background:#fff3bf; color:#8f5b00; }
+    .ps-status-adopted { background:#d3f9d8; color:#237034; }
+    .ps-status-rejected { background:#ffe3e3; color:#c92a2a; }
+    [data-theme="dark"] .ps-status-voting { background:#5c4705; color:#ffe066; }
+    [data-theme="dark"] .ps-status-adopted { background:#1f5130; color:#b2f2bb; }
+    [data-theme="dark"] .ps-status-rejected { background:#5b2525; color:#ffa8a8; }
+    .ps-vote-row { cursor:pointer; }
+    .ps-vote-row:hover { background:var(--t-hover-bg,#f8f9fa); }
+    .ps-product-cell { min-width:185px; }
+    .ps-product-cell small { display:block; margin-top:0.22rem; color:var(--admin-text-muted); line-height:1.35; }
+    .ps-media { display:flex; align-items:center; gap:0.5rem; min-width:150px; }
+    .ps-thumb { width:46px; height:46px; flex:0 0 auto; object-fit:cover; border:1px solid var(--admin-border); border-radius:6px; background:var(--t-hover-bg,#f1f3f5); }
+    .ps-link { color:var(--admin-primary); font-size:0.78rem; word-break:break-all; }
+    .ps-vote-actions { display:flex; gap:0.35rem; flex-wrap:wrap; }
+    .ps-vote-btn { min-width:48px; border:1px solid var(--admin-border); border-radius:6px; padding:0.36rem 0.5rem; cursor:pointer; background:var(--admin-card); color:var(--admin-text); font:inherit; font-size:0.78rem; }
+    .ps-vote-btn.approve.selected { border-color:#2b8a3e; background:#d3f9d8; color:#1b5e2b; font-weight:700; }
+    .ps-vote-btn.reject.selected { border-color:#c92a2a; background:#ffe3e3; color:#a61e1e; font-weight:700; }
+    .ps-vote-btn:disabled { opacity:0.55; cursor:not-allowed; }
+    .ps-admin-progress { margin-top:0.4rem; padding:0.42rem 0.5rem; border-left:3px solid var(--admin-primary); background:var(--t-hover-bg,#f8f9fa); color:var(--admin-text-muted); font-size:0.73rem; line-height:1.45; }
+    .ps-admin-close { margin-top:0.42rem; border:1px solid #e67700; border-radius:6px; padding:0.34rem 0.48rem; color:#9c5a00; background:#fff9db; cursor:pointer; font:inherit; font-size:0.75rem; }
+    .ps-admin-close:disabled { opacity:0.55; cursor:not-allowed; }
+    .ps-admin-decision-actions { display:flex; align-items:center; justify-content:flex-end; gap:0.45rem; flex-wrap:wrap; }
+    .ps-admin-decision-btn { border:1px solid var(--admin-primary); border-radius:6px; padding:0.42rem 0.6rem; cursor:pointer; background:var(--admin-card); color:var(--admin-primary); font:inherit; font-size:0.78rem; font-weight:700; }
+    .ps-admin-decision-btn.reject { border-color:#c92a2a; color:#a61e1e; }
+    .ps-detail-grid { display:grid; grid-template-columns:110px minmax(0,1fr); gap:0.7rem 0.9rem; margin-top:0.8rem; font-size:0.9rem; }
+    .ps-detail-grid dt { color:var(--admin-text-muted); font-weight:700; }
+    .ps-detail-grid dd { margin:0; white-space:pre-wrap; word-break:break-word; color:var(--admin-text); }
+    .ps-detail-image { max-width:100%; max-height:360px; object-fit:contain; border:1px solid var(--admin-border); border-radius:6px; }
+    .ps-product-view-link { display:inline-flex; align-items:center; justify-content:center; padding:0.42rem 0.7rem; border-radius:6px; background:var(--admin-primary); color:#fff; text-decoration:none; font-size:0.82rem; font-weight:700; }
+    .ps-product-view-link:hover { filter:brightness(0.95); }
+    .ps-empty-note { font-size:0.79rem; color:var(--admin-text-muted); }
+    .ps-detail-vote-actions { display:flex; align-items:center; justify-content:flex-end; gap:0.45rem; flex-wrap:wrap; }
+    #suggestionDetailModal .modal-actions { flex-wrap:wrap; }
+    @media (max-width:720px) {
+      .admin-table { min-width:0; width:100%; table-layout:fixed; }
+      .ps-mobile-hidden, .ps-product-summary, .ps-grid-admin-progress { display:none; }
+      .admin-table th, .admin-table td { padding:0.55rem 0.28rem; font-size:0.76rem; }
+      .admin-table th:nth-child(1) { width:18%; }
+      .admin-table th:nth-child(2) { width:38%; }
+      .admin-table th:nth-child(4), .admin-table th:nth-child(5) { width:14%; }
+      .admin-table th:nth-child(6) { width:16%; }
+      .ps-product-cell { min-width:0; overflow-wrap:anywhere; }
+      .ps-vote-actions { justify-content:center; }
+      .ps-vote-btn { min-width:0; padding:0.34rem 0.38rem; font-size:0.74rem; }
+      .filter-btn { padding:0.36rem 0.42rem; font-size:0.74rem; }
+      .ps-detail-grid { grid-template-columns:1fr; gap:0.25rem; }
+      .ps-detail-grid dt { margin-top:0.55rem; }
+      .ps-detail-vote-actions { justify-content:stretch; }
+      .ps-detail-vote-actions .ps-vote-btn { flex:1 1 0; min-height:38px; }
+      .ps-admin-decision-actions { justify-content:stretch; }
+      .ps-admin-decision-btn { flex:1 1 0; min-height:38px; }
+      .ps-admin-decision-actions, .ps-detail-vote-actions { flex:1 1 100%; }
+      #suggestionDetailModal .modal-actions > .btn-confirm { margin-left:auto; }
+    }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <main class="admin-container">
+    <h2 style="margin-bottom:1rem;">상품 추천 투표</h2>
+    <section class="admin-table-wrap">
+      <div class="ps-vote-toolbar">
+        <div class="ps-filter-tabs" aria-label="추천 상품 필터">
+          <button type="button" data-filter="all" class="active" onclick="changeVoteFilter('all')">전체</button>
+          <button type="button" data-filter="incomplete" onclick="changeVoteFilter('incomplete')">미완료 (투표중)</button>
+          <button type="button" data-filter="completed" onclick="changeVoteFilter('completed')">완료</button>
+        </div>
+        <button class="filter-btn" type="button" onclick="loadVoteItems()">새로고침</button>
+      </div>
+      <div class="admin-table-wrap" style="box-shadow:none;border:0;padding:0;overflow-x:auto;">
+        <table class="admin-table" aria-describedby="votePrivacyNote">
+          <thead><tr><th>채택여부</th><th>상품명</th><th class="ps-mobile-hidden">상품 URL 또는 이미지</th><th>찬성</th><th>반대</th><th>상세</th></tr></thead>
+          <tbody id="voteItemBody"><tr><td colspan="6" class="empty-state">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <p id="votePrivacyNote" class="ps-empty-note" style="margin-top:0.7rem;">추천자와 투표자 정보는 표시하지 않습니다.</p>
+    </section>
+  </main>
+
+  <div class="modal-overlay hidden" id="suggestionDetailModal" role="dialog" aria-modal="true" aria-labelledby="suggestionDetailTitle">
+    <div class="modal-box" style="max-width:680px;">
+      <h3 class="modal-title" id="suggestionDetailTitle">추천 상품 상세</h3>
+      <dl class="ps-detail-grid" id="suggestionDetailContent"></dl>
+      <div id="suggestionAdminProgress"></div>
+      <div class="modal-actions">
+        <div class="ps-admin-decision-actions" id="suggestionAdminDecisionActions"></div>
+        <div class="ps-detail-vote-actions" id="suggestionDetailVoteActions"></div>
+        <button type="button" class="btn-confirm" onclick="closeSuggestionDetail()">닫기</button>
+      </div>
+    </div>
+  </div>
+
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/page-size.js"></script>
+  <script src="../js/product.js"></script>
+  <script src="../js/slack-notify.js"></script>
+  <script src="../js/product-suggestion.js"></script>
+  <script src="../js/version.js"></script>
+  <script>
+    initSupabase();
+    let session;
+    let voteFilter = 'unvoted';
+    let voteItems = new Map();
+    let filteredVoteItems = [];
+    let votePage = 1;
+    let votePageSize = null;
+
+    (async () => {
+      await navInit();
+      session = await initPage(60, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      if (typeof loadCodeItems === 'function') await loadCodeItems(['products.category']);
+      votePageSize = await loadPageSize('product_suggestion_votes', 10);
+      ensureUnvotedFilterButton();
+      ensureVotePageSizeSelector();
+      loadVoteItems();
+    })();
+
+    function isSuggestionSuperAdmin() {
+      return !!(session && session.isSuperAdmin === true);
+    }
+
+    function changeVoteFilter(filter) {
+      voteFilter = filter;
+      votePage = 1;
+      syncVoteFilterButtons();
+      loadVoteItems();
+    }
+
+    function ensureUnvotedFilterButton() {
+      const allButton = document.querySelector('[data-filter="all"]');
+      if (allButton && !document.querySelector('[data-filter="unvoted"]')) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.dataset.filter = 'unvoted';
+        button.textContent = '미투표';
+        button.addEventListener('click', () => changeVoteFilter('unvoted'));
+        allButton.parentNode.insertBefore(button, allButton);
+      }
+      syncVoteFilterButtons();
+    }
+
+    function syncVoteFilterButtons() {
+      document.querySelectorAll('[data-filter]').forEach(button => {
+        button.classList.toggle('active', button.dataset.filter === voteFilter);
+      });
+    }
+
+    function getVoteItemBackendFilter() {
+      return voteFilter === 'unvoted' ? 'all' : voteFilter;
+    }
+
+    function isUnvotedVoteItem(item) {
+      return item.actual_status === 'voting' && item.viewer_has_voted !== true;
+    }
+
+    function getDisplayedVoteItems(items) {
+      return voteFilter === 'unvoted'
+        ? items.filter(isUnvotedVoteItem)
+        : items;
+    }
+
+    function getVotePagingElement() {
+      let paging = document.getElementById('votePaging');
+      if (paging) return paging;
+      paging = document.createElement('div');
+      paging.id = 'votePaging';
+      paging.style.cssText = 'display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.8rem;flex-wrap:wrap;';
+      const note = document.getElementById('votePrivacyNote');
+      if (note && note.parentNode) note.parentNode.insertBefore(paging, note);
+      return paging;
+    }
+
+    function getVotePageSize() {
+      return votePageSize || 10;
+    }
+
+    function getVotePageSizeElement() {
+      let wrap = document.getElementById('votePageSizeWrap');
+      if (wrap) return wrap;
+      const refreshButton = document.querySelector('button[onclick="loadVoteItems()"]');
+      if (!refreshButton || !refreshButton.parentNode) return null;
+      wrap = document.createElement('span');
+      wrap.id = 'votePageSizeWrap';
+      wrap.style.cssText = 'display:inline-flex;align-items:center;gap:0.35rem;margin-right:0.5rem;font-size:0.78rem;color:var(--admin-text-muted);';
+      refreshButton.parentNode.insertBefore(wrap, refreshButton);
+      return wrap;
+    }
+
+    function ensureVotePageSizeSelector() {
+      renderVotePageSizeSelector();
+    }
+
+    function renderVotePageSizeSelector() {
+      const wrap = getVotePageSizeElement();
+      if (!wrap) return;
+      wrap.innerHTML = `표시 ${renderPageSizeSelector('product_suggestion_votes', getVotePageSize(), 'onVotePageSizeChange(this.value)')}`;
+    }
+
+    async function onVotePageSizeChange(value) {
+      votePageSize = parseInt(value, 10) || 10;
+      await savePageSize('product_suggestion_votes', votePageSize);
+      votePage = 1;
+      renderVoteItems();
+    }
+
+    async function loadVoteItems() {
+      const body = document.getElementById('voteItemBody');
+      body.innerHTML = '<tr><td colspan="6" class="empty-state">로딩 중...</td></tr>';
+      const { data, error } = await fetchProductSuggestionVoteItems(getVoteItemBackendFilter());
+      if (!error) {
+        filteredVoteItems = getDisplayedVoteItems(data);
+        voteItems = new Map(filteredVoteItems.map(item => [item.suggestion_id, item]));
+        renderVoteItems();
+        return;
+      }
+      if (error) {
+        filteredVoteItems = [];
+        getVotePagingElement().innerHTML = '';
+        body.innerHTML = `<tr><td colspan="6" class="empty-state">${psEscapeHtml(tErr(error))}</td></tr>`;
+        return;
+      }
+      voteItems = new Map(data.map(item => [item.suggestion_id, item]));
+      if (!data.length) {
+        body.innerHTML = '<tr><td colspan="6" class="empty-state">조건에 맞는 추천 상품이 없습니다.</td></tr>';
+        return;
+      }
+      body.innerHTML = data.map(renderVoteItem).join('');
+    }
+
+    function renderVoteItems() {
+      const body = document.getElementById('voteItemBody');
+      const pageSize = getVotePageSize();
+      const totalPages = Math.max(1, Math.ceil(filteredVoteItems.length / pageSize));
+      if (votePage > totalPages) votePage = totalPages;
+      const start = (votePage - 1) * pageSize;
+      const pageItems = filteredVoteItems.slice(start, start + pageSize);
+      if (!pageItems.length) {
+        body.innerHTML = '<tr><td colspan="6" class="empty-state">조건에 맞는 추천 상품이 없습니다.</td></tr>';
+      } else {
+        body.innerHTML = pageItems.map(renderVoteItem).join('');
+      }
+      renderVotePaging(totalPages);
+    }
+
+    function renderVotePaging(totalPages) {
+      renderVotePageSizeSelector();
+      const paging = getVotePagingElement();
+      if (filteredVoteItems.length === 0 || totalPages <= 1) {
+        paging.innerHTML = '';
+        return;
+      }
+      paging.innerHTML = buildPagingButtons(votePage, totalPages, 'goVotePage(__PAGE__)');
+    }
+
+    function goVotePage(page) {
+      const totalPages = Math.max(1, Math.ceil(filteredVoteItems.length / getVotePageSize()));
+      votePage = Math.min(Math.max(1, page), totalPages);
+      renderVoteItems();
+    }
+
+    function renderVoteItem(item) {
+      const isSuperAdmin = isSuggestionSuperAdmin();
+      const productDetail = psEscapeHtml(item.description || '설명 없음').slice(0, 95);
+      const media = item.image_url
+        ? `<div class="ps-media"><img class="ps-thumb" src="${psEscapeHtml(item.image_url)}" alt="" />${item.product_url ? `<a class="ps-link" href="${psEscapeHtml(item.product_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">상품 링크</a>` : ''}</div>`
+        : `<a class="ps-link" href="${psEscapeHtml(item.product_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">상품 링크 열기</a>`;
+      const approveButton = renderVoteButton(item, 'approve');
+      const rejectButton = renderVoteButton(item, 'reject');
+      const resultVisible = item.approve_count != null;
+      const approveCell = resultVisible
+        ? `<strong>${fmtNum(item.approve_count)}</strong><div class="ps-vote-actions" style="margin-top:0.4rem;">${approveButton}</div>`
+        : `<div class="ps-vote-actions">${approveButton}</div>`;
+      const rejectCell = resultVisible
+        ? `<strong>${fmtNum(item.reject_count)}</strong><div class="ps-vote-actions" style="margin-top:0.4rem;">${rejectButton}</div>`
+        : `<div class="ps-vote-actions">${rejectButton}</div>`;
+      const adminProgress = isSuperAdmin ? renderAdminProgress(item, 'ps-grid-admin-progress') : '';
+      return `<tr class="ps-vote-row" onclick="openSuggestionDetail('${item.suggestion_id}')">
+        <td>${psStatusBadge(item.display_status)}</td>
+        <td class="ps-product-cell"><strong>${psEscapeHtml(item.name)}</strong><small class="ps-product-summary">${productDetail}${(item.description || '').length > 95 ? '...' : ''}</small>${adminProgress}</td>
+        <td class="ps-mobile-hidden">${media}</td>
+        <td>${approveCell}</td>
+        <td>${rejectCell}</td>
+        <td><button class="filter-btn" type="button" onclick="event.stopPropagation();openSuggestionDetail('${item.suggestion_id}')">상세</button></td>
+      </tr>`;
+    }
+
+    function renderVoteButton(item, vote) {
+      const canVote = item.actual_status === 'voting';
+      const label = vote === 'approve' ? '찬성' : '반대';
+      const selected = item.viewer_vote === vote ? ' selected' : '';
+      return `<button class="ps-vote-btn ${vote}${selected}" ${canVote ? '' : 'disabled'} onclick="event.stopPropagation();castSuggestionVote('${item.suggestion_id}','${vote}')">${label}</button>`;
+    }
+
+    function renderAdminProgress(item, extraClass = '') {
+      const counts = `투표 ${fmtNum(item.vote_count)}명 / 현재 유효 ${fmtNum(item.current_electorate_count)}명 · 찬성 ${fmtNum(item.approve_count)} · 반대 ${fmtNum(item.reject_count)}`;
+      const basis = `등록 시점 정원 ${fmtNum(item.electorate_count)}명, 과반 ${fmtNum(item.electorate_majority)}표 · 현재 과반 ${fmtNum(item.current_majority)}표`;
+      let close = '';
+      if (item.needs_admin_close) {
+        const disabled = item.can_admin_close ? '' : 'disabled';
+        const title = item.can_admin_close ? '' : 'title="현재 유효 정원 과반 결과가 아직 없습니다."';
+        close = `<button class="ps-admin-close" type="button" ${disabled} ${title} onclick="event.stopPropagation();closeSuggestionVote('${item.suggestion_id}')">투표 종료 처리</button>`;
+      }
+      return `<div class="ps-admin-progress ${extraClass}">${counts}<br>${basis}${close}</div>`;
+    }
+
+    async function castSuggestionVote(suggestionId, vote) {
+      const item = voteItems.get(suggestionId);
+      if (!item) return;
+      const isDetailOpen = !document.getElementById('suggestionDetailModal').classList.contains('hidden');
+      const result = await voteProductSuggestion(suggestionId, vote, item);
+      if (result.error) {
+        alert(tErr(result.error));
+        return;
+      }
+      await loadVoteItems();
+      if (typeof updateNavProductSuggestionVoteBadge === 'function') await updateNavProductSuggestionVoteBadge();
+      if (isDetailOpen) {
+        if (voteItems.has(suggestionId)) openSuggestionDetail(suggestionId);
+        else closeSuggestionDetail();
+      }
+    }
+
+    async function closeSuggestionVote(suggestionId) {
+      const item = voteItems.get(suggestionId);
+      if (!item || !isSuggestionSuperAdmin() || !item.can_admin_close) return;
+      const resultLabel = item.approve_count >= item.current_majority ? '채택' : '불채택';
+      if (!confirm(`현재 유효 투표 정원 기준으로 ${resultLabel} 처리합니다. 계속하시겠습니까?`)) return;
+      const result = await closeProductSuggestionVote(suggestionId, item);
+      if (result.error) {
+        alert(tErr(result.error));
+        return;
+      }
+      await loadVoteItems();
+    }
+
+    function renderAdminDecisionActions(item) {
+      if (!isSuggestionSuperAdmin() || item.actual_status !== 'voting') return '';
+      return `<button class="ps-admin-decision-btn" type="button" onclick="adminResolveSuggestion('${item.suggestion_id}','adopted')">채택 결정</button>
+        <button class="ps-admin-decision-btn reject" type="button" onclick="adminResolveSuggestion('${item.suggestion_id}','rejected')">불채택 결정</button>`;
+    }
+
+    async function adminResolveSuggestion(suggestionId, status) {
+      const item = voteItems.get(suggestionId);
+      if (!item || !isSuggestionSuperAdmin() || item.actual_status !== 'voting') return;
+      const resultLabel = status === 'adopted' ? '채택' : '불채택';
+      if (!confirm(`투표 완료 여부와 관계없이 이 추천 상품을 ${resultLabel} 결정합니다. 계속하시겠습니까?`)) return;
+      const result = await adminResolveProductSuggestion(suggestionId, status, item);
+      if (result.error) {
+        alert(tErr(result.error));
+        return;
+      }
+      await loadVoteItems();
+      if (typeof updateNavProductSuggestionVoteBadge === 'function') await updateNavProductSuggestionVoteBadge();
+      if (voteItems.has(suggestionId)) openSuggestionDetail(suggestionId);
+      else closeSuggestionDetail();
+    }
+
+    function openSuggestionDetail(suggestionId) {
+      const item = voteItems.get(suggestionId);
+      if (!item) return;
+      const image = item.image_url ? `<img class="ps-detail-image" src="${psEscapeHtml(item.image_url)}" alt="${psEscapeHtml(item.name)}" />` : '-';
+      const detailImage = item.detail_image_url ? `<img class="ps-detail-image" src="${psEscapeHtml(item.detail_image_url)}" alt="${psEscapeHtml(item.name)} 상세 설명 이미지" />` : '-';
+      const productUrl = item.product_url ? `<a class="ps-product-view-link" href="${psEscapeHtml(item.product_url)}" target="_blank" rel="noopener">상품 보기</a>` : '-';
+      document.getElementById('suggestionDetailContent').innerHTML = `
+        <dt>상품명</dt><dd>${psEscapeHtml(item.name)}</dd>
+        <dt>상품 URL</dt><dd>${productUrl}</dd>
+        <dt>이미지</dt><dd>${image}</dd>
+        <dt>상세 설명 이미지</dt><dd>${detailImage}</dd>
+        <dt>상품 설명</dt><dd>${psEscapeHtml(item.description || '-')}</dd>
+        <dt>금액</dt><dd>${psEscapeHtml(psFormatKrw(item.price_krw))}</dd>
+        <dt>카테고리</dt><dd>${psEscapeHtml(getProductCategoryLabel(item.category))}</dd>
+        <dt>추천 등록일</dt><dd>${psEscapeHtml(psFormatDate(item.created_at))}</dd>`;
+      document.getElementById('suggestionAdminProgress').innerHTML = isSuggestionSuperAdmin() ? renderAdminProgress(item) : '';
+      document.getElementById('suggestionAdminDecisionActions').innerHTML = renderAdminDecisionActions(item);
+      document.getElementById('suggestionDetailVoteActions').innerHTML = `${renderVoteButton(item, 'approve')}${renderVoteButton(item, 'reject')}`;
+      document.getElementById('suggestionDetailModal').classList.remove('hidden');
+    }
+
+    function closeSuggestionDetail() {
+      document.getElementById('suggestionDetailModal').classList.add('hidden');
+      document.getElementById('suggestionAdminProgress').innerHTML = '';
+      document.getElementById('suggestionAdminDecisionActions').innerHTML = '';
+      document.getElementById('suggestionDetailVoteActions').innerHTML = '';
+    }
+
+    document.getElementById('suggestionDetailModal').addEventListener('click', event => {
+      if (event.target.id === 'suggestionDetailModal') closeSuggestionDetail();
+    });
+  </script>
+</body>
+</html>

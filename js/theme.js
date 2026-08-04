@@ -9,6 +9,16 @@ const THEMES = [
 ];
 
 const THEME_STORAGE_KEY = 'cho_theme';
+const UI_PREFERENCE_RESET_KEY = 'cho_ui_preference_reset_version';
+
+function resetLocalUiPreferencesIfNeeded() {
+  const resetVersion = String(window.CHO_TALENTS_CONFIG?.ui?.preferenceResetVersion || '1');
+  try {
+    if (localStorage.getItem(UI_PREFERENCE_RESET_KEY) === resetVersion) return;
+    localStorage.removeItem(THEME_STORAGE_KEY);
+    localStorage.setItem(UI_PREFERENCE_RESET_KEY, resetVersion);
+  } catch (e) {}
+}
 
 function getCurrentTheme() {
   return document.documentElement.getAttribute('data-theme') || 'default';
@@ -157,5 +167,6 @@ function updateThemePickerUI(themeId) {
 
 // Apply theme immediately on script load (prevents flash)
 (function() {
+  resetLocalUiPreferencesIfNeeded();
   loadThemeFromLocal();
 })();

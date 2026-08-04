@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>상품 추천 - CHO Talents</title>
+  <link rel="stylesheet" href="css/themes.css" />
+  <link rel="stylesheet" href="css/admin.css" />
+  <style>
+    .suggestion-layout { display:grid; grid-template-columns:minmax(0, 0.95fr) minmax(0, 1.25fr); gap:1rem; align-items:start; }
+    .suggestion-panel { background:var(--admin-card); border:1px solid var(--admin-border); border-radius:8px; box-shadow:var(--admin-shadow); padding:1rem; }
+    .suggestion-panel h3 { font-size:1rem; margin-bottom:0.85rem; }
+    .suggestion-form-grid { display:grid; grid-template-columns:1fr 1fr; gap:0.75rem; }
+    .suggestion-field { margin-bottom:0.75rem; }
+    .suggestion-field label { display:block; margin-bottom:0.32rem; font-size:0.84rem; font-weight:700; color:var(--admin-text); }
+    .suggestion-field input, .suggestion-field select, .suggestion-field textarea { width:100%; box-sizing:border-box; padding:0.62rem; border:1px solid var(--admin-border); border-radius:6px; background:var(--t-input-bg,#fff); color:var(--admin-text); font:inherit; }
+    .suggestion-field textarea { min-height:82px; resize:vertical; }
+    .suggestion-help { font-size:0.76rem; color:var(--admin-text-muted); margin-top:0.32rem; line-height:1.45; }
+    .suggestion-drop-zone { min-height:92px; border:1px dashed var(--admin-border); border-radius:6px; display:flex; align-items:center; justify-content:center; padding:0.65rem; cursor:pointer; text-align:center; background:var(--t-hover-bg,#fafafa); }
+    .suggestion-drop-zone.dragging { border-color:var(--admin-primary); background:var(--t-primary-light,#eef); }
+    .suggestion-preview { max-width:100%; max-height:138px; display:block; margin:0 auto; object-fit:contain; }
+    .suggestion-preview-wrap { position:relative; }
+    .suggestion-image-remove { position:absolute; top:0.3rem; right:0.3rem; border:0; border-radius:50%; width:28px; height:28px; cursor:pointer; background:rgba(0,0,0,0.7); color:#fff; font-weight:700; }
+    .suggestion-notice { display:none; margin:0.65rem 0; padding:0.65rem 0.75rem; border-radius:6px; font-size:0.82rem; line-height:1.45; }
+    .suggestion-notice.show { display:block; }
+    .suggestion-notice.success { background:#e6fcf5; color:#087f5b; border:1px solid #96f2d7; }
+    .suggestion-notice.error { background:#fff5f5; color:#c92a2a; border:1px solid #ffc9c9; }
+    [data-theme="dark"] .suggestion-notice.success { background:#12352f; color:#8ce7ca; border-color:#246d5e; }
+    [data-theme="dark"] .suggestion-notice.error { background:#3a1c22; color:#ffa8a8; border-color:#803b48; }
+    .suggestion-link { font-size:0.78rem; color:var(--admin-primary); word-break:break-all; }
+    .suggestion-row { cursor:pointer; }
+    .suggestion-row:hover { background:var(--t-hover-bg,#f8f9fa); }
+    .suggestion-detail-grid { display:grid; grid-template-columns:110px minmax(0,1fr); gap:0.7rem 0.9rem; margin-top:0.8rem; font-size:0.9rem; }
+    .suggestion-detail-grid dt { color:var(--admin-text-muted); font-weight:700; }
+    .suggestion-detail-grid dd { margin:0; color:var(--admin-text); white-space:pre-wrap; word-break:break-word; }
+    .suggestion-detail-image { max-width:100%; max-height:360px; object-fit:contain; border:1px solid var(--admin-border); border-radius:6px; }
+    .suggestion-view-link { display:inline-flex; align-items:center; justify-content:center; padding:0.42rem 0.7rem; border-radius:6px; background:var(--admin-primary); color:#fff; text-decoration:none; font-size:0.82rem; font-weight:700; }
+    .suggestion-view-link:hover { filter:brightness(0.95); }
+    .ps-status { display:inline-flex; align-items:center; justify-content:center; min-width:52px; padding:0.22rem 0.48rem; border-radius:999px; font-size:0.76rem; font-weight:700; white-space:nowrap; }
+    .ps-status-voting { background:#fff3bf; color:#8f5b00; }
+    .ps-status-adopted { background:#d3f9d8; color:#237034; }
+    .ps-status-rejected { background:#ffe3e3; color:#c92a2a; }
+    [data-theme="dark"] .ps-status-voting { background:#5c4705; color:#ffe066; }
+    [data-theme="dark"] .ps-status-adopted { background:#1f5130; color:#b2f2bb; }
+    [data-theme="dark"] .ps-status-rejected { background:#5b2525; color:#ffa8a8; }
+    @media (max-width:900px) { .suggestion-layout { grid-template-columns:1fr; } }
+    @media (max-width:560px) { .suggestion-form-grid { grid-template-columns:1fr; } .admin-table { min-width:460px; } .suggestion-detail-grid { grid-template-columns:1fr; gap:0.25rem; } .suggestion-detail-grid dt { margin-top:0.55rem; } }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <main class="admin-container">
+    <h2 style="margin-bottom:1rem;">상품 추천</h2>
+    <div class="suggestion-layout">
+      <section class="suggestion-panel" aria-labelledby="suggestionFormTitle">
+        <h3 id="suggestionFormTitle">추천 상품 등록</h3>
+        <div class="suggestion-notice" id="formNotice" role="status"></div>
+        <form id="suggestionForm" novalidate>
+          <div class="suggestion-field">
+            <label for="suggestionName">상품명 <span style="color:var(--level-error);">*</span></label>
+            <input id="suggestionName" type="text" maxlength="160" required />
+          </div>
+          <div class="suggestion-field">
+            <label for="suggestionProductUrl">상품 URL</label>
+            <input id="suggestionProductUrl" type="url" placeholder="https://example.com/product" />
+          </div>
+          <div class="suggestion-field">
+            <label for="suggestionImageUrl">이미지 URL</label>
+            <input id="suggestionImageUrl" type="url" placeholder="https://example.com/image.jpg" />
+          </div>
+          <div class="suggestion-field">
+            <label>이미지 파일</label>
+            <div id="suggestionDropZone" class="suggestion-drop-zone" tabindex="0" role="button" aria-label="상품 이미지 파일 선택">
+              <div id="suggestionDropHelp"><strong>이미지 선택</strong><div class="suggestion-help">JPG, PNG, GIF, WebP / 최대 20MB</div></div>
+              <div id="suggestionPreviewWrap" class="suggestion-preview-wrap" style="display:none;">
+                <img id="suggestionPreview" class="suggestion-preview" alt="선택한 추천 상품 이미지 미리보기" />
+                <button type="button" class="suggestion-image-remove" id="suggestionImageRemove" aria-label="선택한 이미지 제거">&times;</button>
+              </div>
+            </div>
+            <input id="suggestionImageFile" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" style="display:none;" />
+            <div class="suggestion-help">상품 URL, 이미지 URL, 이미지 파일 중 하나는 반드시 입력해야 합니다.</div>
+          </div>
+          <div class="suggestion-field">
+            <label for="suggestionDetailImageUrl">상세 설명 이미지 URL <span class="suggestion-help">(선택)</span></label>
+            <input id="suggestionDetailImageUrl" type="url" placeholder="https://example.com/detail-image.jpg" />
+          </div>
+          <div class="suggestion-field">
+            <label>상세 설명 이미지 파일 <span class="suggestion-help">(선택)</span></label>
+            <div id="suggestionDetailDropZone" class="suggestion-drop-zone" tabindex="0" role="button" aria-label="상품 상세 설명 이미지 파일 선택">
+              <div id="suggestionDetailDropHelp"><strong>상세 이미지 선택</strong><div class="suggestion-help">JPG, PNG, GIF, WebP / 최대 20MB</div></div>
+              <div id="suggestionDetailPreviewWrap" class="suggestion-preview-wrap" style="display:none;">
+                <img id="suggestionDetailPreview" class="suggestion-preview" alt="선택한 추천 상품 상세 이미지 미리보기" />
+                <button type="button" class="suggestion-image-remove" id="suggestionDetailImageRemove" aria-label="선택한 상세 이미지 제거">&times;</button>
+              </div>
+            </div>
+            <input id="suggestionDetailImageFile" type="file" accept=".jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp" style="display:none;" />
+          </div>
+          <div class="suggestion-form-grid">
+            <div class="suggestion-field">
+              <label for="suggestionPrice">금액 (원)</label>
+              <input id="suggestionPrice" type="number" min="0" step="1" inputmode="numeric" placeholder="예: 15000" />
+            </div>
+            <div class="suggestion-field">
+              <label for="suggestionCategory">카테고리</label>
+              <select id="suggestionCategory"></select>
+              <div class="suggestion-help">선택하지 않으면 선물로 등록됩니다.</div>
+            </div>
+          </div>
+          <div class="suggestion-field">
+            <label for="suggestionDescription">상품 설명</label>
+            <textarea id="suggestionDescription" maxlength="2000"></textarea>
+          </div>
+          <div style="display:flex;justify-content:flex-end;gap:0.5rem;">
+            <button type="reset" class="btn-cancel">초기화</button>
+            <button id="suggestionSubmit" type="submit" class="btn-confirm">추천 등록</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="suggestion-panel" aria-labelledby="mySuggestionTitle">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:0.75rem;margin-bottom:0.85rem;">
+          <h3 id="mySuggestionTitle" style="margin:0;">내가 등록한 추천 상품</h3>
+          <button class="filter-btn" type="button" onclick="loadMySuggestions()">새로고침</button>
+        </div>
+        <div class="admin-table-wrap" style="box-shadow:none;border:0;padding:0;overflow-x:auto;">
+          <table class="admin-table">
+            <thead><tr><th>채택여부</th><th>상품명</th><th>추천일</th><th>상세</th></tr></thead>
+            <tbody id="mySuggestionBody"><tr><td colspan="4" class="empty-state">로딩 중...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal-overlay hidden" id="mySuggestionDetailModal" role="dialog" aria-modal="true" aria-labelledby="mySuggestionDetailTitle">
+    <div class="modal-box" style="max-width:680px;">
+      <h3 class="modal-title" id="mySuggestionDetailTitle">추천 상품 상세</h3>
+      <dl class="suggestion-detail-grid" id="mySuggestionDetailContent"></dl>
+      <div class="modal-actions"><button type="button" class="btn-confirm" onclick="closeMySuggestionDetail()">닫기</button></div>
+    </div>
+  </div>
+
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+  <script src="config/public-config.js"></script>
+  <script src="js/supabase-config.js"></script>
+  <script src="js/activity-log.js"></script>
+  <script src="js/codes.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/nav.js"></script>
+  <script src="js/image-upload.js"></script>
+  <script src="js/product.js"></script>
+  <script src="js/slack-notify.js"></script>
+  <script src="js/product-suggestion.js"></script>
+  <script src="js/version.js"></script>
+  <script>
+    initSupabase();
+    let session;
+    let selectedSuggestionImage = null;
+    let previewObjectUrl = null;
+    let selectedSuggestionDetailImage = null;
+    let detailPreviewObjectUrl = null;
+    let mySuggestionItems = new Map();
+
+    (async () => {
+      await navInit();
+      session = await initPage(20, 'login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      if (typeof loadCodeItems === 'function') await loadCodeItems(['products.category']);
+      renderSuggestionCategories();
+      bindSuggestionImageInput();
+      bindSuggestionDetailImageInput();
+      document.getElementById('suggestionForm').addEventListener('submit', submitSuggestionForm);
+      document.getElementById('suggestionForm').addEventListener('reset', () => window.setTimeout(() => { resetSuggestionImage(); resetSuggestionDetailImage(); }, 0));
+      loadMySuggestions();
+    })();
+
+    function renderSuggestionCategories() {
+      const select = document.getElementById('suggestionCategory');
+      select.innerHTML = '<option value="">선택 안 함 (선물)</option>' + renderProductCategoryOptions('gift');
+      select.value = '';
+    }
+
+    function bindSuggestionImageInput() {
+      const dropZone = document.getElementById('suggestionDropZone');
+      const input = document.getElementById('suggestionImageFile');
+      dropZone.addEventListener('click', event => {
+        if (!event.target.closest('#suggestionImageRemove')) input.click();
+      });
+      dropZone.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); }
+      });
+      input.addEventListener('change', () => setSuggestionImage(input.files && input.files[0]));
+      ['dragenter', 'dragover'].forEach(type => dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        dropZone.classList.add('dragging');
+      }));
+      ['dragleave', 'drop'].forEach(type => dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        dropZone.classList.remove('dragging');
+      }));
+      dropZone.addEventListener('drop', event => setSuggestionImage(event.dataTransfer.files && event.dataTransfer.files[0]));
+      document.getElementById('suggestionImageRemove').addEventListener('click', resetSuggestionImage);
+    }
+
+    function setSuggestionImage(file) {
+      if (!file) return;
+      const validationError = typeof getImageUploadValidationError === 'function'
+        ? getImageUploadValidationError(file)
+        : (!file.type || !file.type.startsWith('image/') ? '이미지 파일만 선택할 수 있습니다.' : null);
+      if (validationError) {
+        showFormNotice(validationError, 'error');
+        return;
+      }
+      selectedSuggestionImage = file;
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = URL.createObjectURL(file);
+      const preview = document.getElementById('suggestionPreview');
+      preview.onerror = () => {
+        if (selectedSuggestionImage !== file) return;
+        resetSuggestionImage();
+        showFormNotice('이미지 파일을 읽을 수 없습니다. JPG, PNG, GIF 또는 WebP 파일인지 확인해주세요.', 'error');
+      };
+      preview.src = previewObjectUrl;
+      document.getElementById('suggestionDropHelp').style.display = 'none';
+      document.getElementById('suggestionPreviewWrap').style.display = 'block';
+    }
+
+    function resetSuggestionImage() {
+      selectedSuggestionImage = null;
+      const input = document.getElementById('suggestionImageFile');
+      input.value = '';
+      if (previewObjectUrl) URL.revokeObjectURL(previewObjectUrl);
+      previewObjectUrl = null;
+      const preview = document.getElementById('suggestionPreview');
+      preview.onerror = null;
+      preview.removeAttribute('src');
+      document.getElementById('suggestionDropHelp').style.display = '';
+      document.getElementById('suggestionPreviewWrap').style.display = 'none';
+    }
+
+    function bindSuggestionDetailImageInput() {
+      const dropZone = document.getElementById('suggestionDetailDropZone');
+      const input = document.getElementById('suggestionDetailImageFile');
+      dropZone.addEventListener('click', event => {
+        if (!event.target.closest('#suggestionDetailImageRemove')) input.click();
+      });
+      dropZone.addEventListener('keydown', event => {
+        if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); input.click(); }
+      });
+      input.addEventListener('change', () => setSuggestionDetailImage(input.files && input.files[0]));
+      ['dragenter', 'dragover'].forEach(type => dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        dropZone.classList.add('dragging');
+      }));
+      ['dragleave', 'drop'].forEach(type => dropZone.addEventListener(type, event => {
+        event.preventDefault();
+        dropZone.classList.remove('dragging');
+      }));
+      dropZone.addEventListener('drop', event => setSuggestionDetailImage(event.dataTransfer.files && event.dataTransfer.files[0]));
+      document.getElementById('suggestionDetailImageRemove').addEventListener('click', resetSuggestionDetailImage);
+    }
+
+    function setSuggestionDetailImage(file) {
+      if (!file) return;
+      const validationError = typeof getImageUploadValidationError === 'function'
+        ? getImageUploadValidationError(file)
+        : (!file.type || !file.type.startsWith('image/') ? '상세 설명 이미지 파일만 선택할 수 있습니다.' : null);
+      if (validationError) {
+        showFormNotice(validationError, 'error');
+        return;
+      }
+      selectedSuggestionDetailImage = file;
+      if (detailPreviewObjectUrl) URL.revokeObjectURL(detailPreviewObjectUrl);
+      detailPreviewObjectUrl = URL.createObjectURL(file);
+      const preview = document.getElementById('suggestionDetailPreview');
+      preview.onerror = () => {
+        if (selectedSuggestionDetailImage !== file) return;
+        resetSuggestionDetailImage();
+        showFormNotice('상세 설명 이미지 파일을 읽을 수 없습니다. JPG, PNG, GIF 또는 WebP 파일인지 확인해주세요.', 'error');
+      };
+      preview.src = detailPreviewObjectUrl;
+      document.getElementById('suggestionDetailDropHelp').style.display = 'none';
+      document.getElementById('suggestionDetailPreviewWrap').style.display = 'block';
+    }
+
+    function resetSuggestionDetailImage() {
+      selectedSuggestionDetailImage = null;
+      document.getElementById('suggestionDetailImageFile').value = '';
+      if (detailPreviewObjectUrl) URL.revokeObjectURL(detailPreviewObjectUrl);
+      detailPreviewObjectUrl = null;
+      const preview = document.getElementById('suggestionDetailPreview');
+      preview.onerror = null;
+      preview.removeAttribute('src');
+      document.getElementById('suggestionDetailDropHelp').style.display = '';
+      document.getElementById('suggestionDetailPreviewWrap').style.display = 'none';
+    }
+
+    function showFormNotice(message, type) {
+      const el = document.getElementById('formNotice');
+      el.textContent = message;
+      el.className = `suggestion-notice show ${type}`;
+    }
+
+    function clearFormNotice() {
+      const el = document.getElementById('formNotice');
+      el.textContent = '';
+      el.className = 'suggestion-notice';
+    }
+
+    async function submitSuggestionForm(event) {
+      event.preventDefault();
+      clearFormNotice();
+      const name = document.getElementById('suggestionName').value.trim();
+      const productUrl = document.getElementById('suggestionProductUrl').value.trim();
+      const imageUrlInput = document.getElementById('suggestionImageUrl').value.trim();
+      const detailImageUrlInput = document.getElementById('suggestionDetailImageUrl').value.trim();
+      const priceText = document.getElementById('suggestionPrice').value.trim();
+      const priceKrw = priceText === '' ? null : Number(priceText);
+      const submitButton = document.getElementById('suggestionSubmit');
+
+      if (!name) return showFormNotice('상품명을 입력해주세요.', 'error');
+      if (productUrl && !psIsHttpUrl(productUrl)) return showFormNotice('상품 URL은 http 또는 https 주소로 입력해주세요.', 'error');
+      if (imageUrlInput && !psIsHttpUrl(imageUrlInput)) return showFormNotice('이미지 URL은 http 또는 https 주소로 입력해주세요.', 'error');
+      if (detailImageUrlInput && !psIsHttpUrl(detailImageUrlInput)) return showFormNotice('상세 설명 이미지 URL은 http 또는 https 주소로 입력해주세요.', 'error');
+      if (!productUrl && !imageUrlInput && !selectedSuggestionImage) return showFormNotice('상품 URL 또는 이미지를 하나 이상 입력해주세요.', 'error');
+      if (priceKrw != null && (!Number.isInteger(priceKrw) || priceKrw < 0)) return showFormNotice('금액은 0원 이상의 정수로 입력해주세요.', 'error');
+
+      submitButton.disabled = true;
+      submitButton.textContent = '등록 중...';
+      try {
+        const checkedImageUrl = await validateExternalImageUrl(imageUrlInput);
+        if (checkedImageUrl.error) return showFormNotice(checkedImageUrl.error, 'error');
+        const checkedDetailImageUrl = await validateExternalImageUrl(detailImageUrlInput);
+        if (checkedDetailImageUrl.error) return showFormNotice(`상세 설명 ${checkedDetailImageUrl.error}`, 'error');
+
+        const suggestionId = psCreateId();
+        let imageUrl = checkedImageUrl.url;
+        if (selectedSuggestionImage) {
+          const upload = await uploadManagedImage(selectedSuggestionImage, {
+            folder: 'product-suggestions',
+            prefix: 'product_suggestion',
+            entityId: suggestionId,
+            context: '상품 추천 이미지'
+          });
+          if (upload.error) return showFormNotice(tErr(upload.error), 'error');
+          imageUrl = upload.url;
+        }
+        let detailImageUrl = checkedDetailImageUrl.url;
+        if (selectedSuggestionDetailImage) {
+          const upload = await uploadManagedImage(selectedSuggestionDetailImage, {
+            folder: 'product-suggestions',
+            prefix: 'product_suggestion_detail',
+            entityId: suggestionId,
+            context: '상품 추천 상세 이미지'
+          });
+          if (upload.error) return showFormNotice(tErr(upload.error), 'error');
+          detailImageUrl = upload.url;
+        }
+
+        const result = await submitProductSuggestion({
+          id: suggestionId,
+          name,
+          productUrl,
+          imageUrl,
+          detailImageUrl,
+          description: document.getElementById('suggestionDescription').value.trim(),
+          priceKrw,
+          category: document.getElementById('suggestionCategory').value || 'gift'
+        });
+        if (result.error) return showFormNotice(tErr(result.error), 'error');
+        const immediate = result.data.status === 'adopted';
+        showFormNotice(
+          immediate
+            ? '관리자 권한으로 상품이 바로 등록되었습니다. 달란트 0, 순번 999, 학생 대상, 비활성 상태로 등록되었습니다.'
+            : `추천이 등록되었습니다. 등록 시점 투표 정원 ${fmtNum(result.data.electorate_count)}명, 과반 ${fmtNum(result.data.electorate_majority)}표입니다.`,
+          'success'
+        );
+        document.getElementById('suggestionForm').reset();
+        renderSuggestionCategories();
+        resetSuggestionImage();
+        resetSuggestionDetailImage();
+        await loadMySuggestions();
+      } finally {
+        submitButton.disabled = false;
+        submitButton.textContent = '추천 등록';
+      }
+    }
+
+    async function loadMySuggestions() {
+      const body = document.getElementById('mySuggestionBody');
+      body.innerHTML = '<tr><td colspan="4" class="empty-state">로딩 중...</td></tr>';
+      const { data, error } = await fetchMyProductSuggestions();
+      if (error) {
+        body.innerHTML = `<tr><td colspan="4" class="empty-state">${psEscapeHtml(tErr(error))}</td></tr>`;
+        return;
+      }
+      if (!data.length) {
+        body.innerHTML = '<tr><td colspan="4" class="empty-state">아직 등록한 추천 상품이 없습니다.</td></tr>';
+        return;
+      }
+      mySuggestionItems = new Map(data.map(item => [item.suggestion_id, item]));
+      body.innerHTML = data.map(item => {
+        return `<tr class="suggestion-row" onclick="openMySuggestionDetail('${item.suggestion_id}')">
+          <td>${psStatusBadge(item.status)}</td>
+          <td><strong>${psEscapeHtml(item.name)}</strong></td>
+          <td>${psEscapeHtml(formatSuggestionDateOnly(item.created_at))}</td>
+          <td><button class="filter-btn" type="button" onclick="event.stopPropagation();openMySuggestionDetail('${item.suggestion_id}')">상세</button></td>
+        </tr>`;
+      }).join('');
+    }
+
+    function formatSuggestionDateOnly(value) {
+      if (!value) return '-';
+      const parts = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(new Date(value));
+      const part = type => parts.find(item => item.type === type)?.value || '';
+      return `${part('year')}-${part('month')}-${part('day')}`;
+    }
+
+    function openMySuggestionDetail(suggestionId) {
+      const item = mySuggestionItems.get(suggestionId);
+      if (!item) return;
+      const image = item.image_url
+        ? `<img class="suggestion-detail-image" src="${psEscapeHtml(item.image_url)}" alt="${psEscapeHtml(item.name)}" />`
+        : '-';
+      const detailImage = item.detail_image_url
+        ? `<img class="suggestion-detail-image" src="${psEscapeHtml(item.detail_image_url)}" alt="${psEscapeHtml(item.name)} 상세 설명 이미지" />`
+        : '-';
+      const productUrl = item.product_url
+        ? `<a class="suggestion-view-link" href="${psEscapeHtml(item.product_url)}" target="_blank" rel="noopener">상품 보기</a>`
+        : '-';
+      document.getElementById('mySuggestionDetailContent').innerHTML = `
+        <dt>채택여부</dt><dd>${psStatusBadge(item.status)}</dd>
+        <dt>상품명</dt><dd>${psEscapeHtml(item.name)}</dd>
+        <dt>상품 URL</dt><dd>${productUrl}</dd>
+        <dt>이미지</dt><dd>${image}</dd>
+        <dt>상세 설명 이미지</dt><dd>${detailImage}</dd>
+        <dt>상품 설명</dt><dd>${psEscapeHtml(item.description || '-')}</dd>
+        <dt>금액</dt><dd>${psEscapeHtml(psFormatKrw(item.price_krw))}</dd>
+        <dt>카테고리</dt><dd>${psEscapeHtml(getProductCategoryLabel(item.category))}</dd>
+        <dt>추천 등록일</dt><dd>${psEscapeHtml(psFormatDate(item.created_at))}</dd>`;
+      document.getElementById('mySuggestionDetailModal').classList.remove('hidden');
+    }
+
+    function closeMySuggestionDetail() {
+      document.getElementById('mySuggestionDetailModal').classList.add('hidden');
+    }
+
+    document.getElementById('mySuggestionDetailModal').addEventListener('click', event => {
+      if (event.target.id === 'mySuggestionDetailModal') closeMySuggestionDetail();
+    });
+  </script>
+</body>
+</html>

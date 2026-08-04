@@ -331,6 +331,29 @@ function formatKSTShort(date) {
   });
 }
 
+function formatKSTDateInput(date) {
+  const d = date ? new Date(date) : new Date();
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Seoul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(d).reduce((acc, part) => {
+    if (part.type !== 'literal') acc[part.type] = part.value;
+    return acc;
+  }, {});
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+function addDateInputDays(dateStr, days) {
+  const [year, month, day] = String(dateStr || '').split('-').map(Number);
+  if (!year || !month || !day || !Number.isFinite(Number(days))) {
+    return formatKSTDateInput();
+  }
+  const d = new Date(Date.UTC(year, month - 1, day + Number(days)));
+  return d.toISOString().slice(0, 10);
+}
+
 /* ===== CRUD Helper Functions ===== */
 
 async function dbSelect(table, options = {}) {

@@ -1,0 +1,4 @@
+# Local environment files may contain service keys and database credentials.
+.env
+.env.local
+.env.*.local

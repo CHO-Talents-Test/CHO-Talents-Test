@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="css/common.css" />
   <style>
     .product-card { cursor: pointer; }
-    .product-card img.product-img { cursor: zoom-in; }
+    .product-card img.product-img { cursor: pointer; }
     .product-card .product-buy-btn { cursor: pointer; }
     .product-detail-overlay, .image-zoom-overlay {
       position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000;
@@ -30,11 +30,16 @@
       border: 1px solid var(--t-border, #dee2e6); background: var(--t-bg, #f8f9fa); color: var(--t-text, #222);
       width: 34px; height: 34px; border-radius: 8px; cursor: pointer; font-size: 1.1rem; flex: 0 0 auto;
     }
-    .product-detail-body { padding: 1rem 1.1rem 1.1rem; overflow-y: auto; }
+    .product-detail-body { padding: 1rem 1.1rem 1.1rem; overflow-y: auto; flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
     .product-detail-layout { display: block; }
+    .product-detail-thumbnail { margin: 0 0 1rem; display: none; }
+    .product-detail-thumbnail img {
+      width: 100%; max-height: 320px; object-fit: contain; display: block; border: 1px solid var(--t-border, #e9ecef);
+      border-radius: 10px; background: var(--t-bg, #f8f9fa);
+    }
     .product-detail-detail-image { margin-top: 1rem; display: none; }
     .product-detail-detail-image img {
-      width: 100%; max-height: 360px; object-fit: contain; display: block; border: 1px solid var(--t-border, #e9ecef);
+      width: 100%; height: auto; max-height: none; display: block; border: 1px solid var(--t-border, #e9ecef);
       border-radius: 10px; background: var(--t-bg, #f8f9fa); cursor: zoom-in;
     }
     .product-detail-emoji {
@@ -43,11 +48,13 @@
     }
     .product-detail-meta { display: flex; flex-wrap: wrap; gap: 0.45rem; margin-bottom: 0.8rem; font-size: 0.78rem; color: var(--t-text-muted, #868e96); }
     .product-detail-price { font-size: 1.25rem; font-weight: 800; margin: 0.25rem 0 0.8rem; }
+    .delivery-delay-notice { margin: 0.55rem 0; padding: 0.5rem 0.65rem; border-radius: 8px; background: #fff4e6; color: #c05621; font-size: 0.8rem; font-weight: 700; line-height: 1.45; }
+    [data-theme="dark"] .delivery-delay-notice { background: #4a2f12; color: #ffd8a8; }
     .product-detail-desc { line-height: 1.65; white-space: pre-wrap; }
     .product-detail-actions { display: flex; gap: 0.5rem; margin-top: 1rem; flex-wrap: wrap; justify-content: flex-end; }
     .image-zoom-modal { width: min(92vw, 1000px); max-height: 92vh; display: flex; flex-direction: column; }
-    .image-zoom-body { padding: 1rem 1.1rem 1.1rem; overflow: auto; }
-    .image-zoom-body img { display: block; max-width: 100%; max-height: 74vh; margin: 0 auto; object-fit: contain; }
+    .image-zoom-body { padding: 1rem 1.1rem 1.1rem; overflow-y: auto; flex: 1 1 auto; min-height: 0; overscroll-behavior: contain; }
+    .image-zoom-body img { display: block; width: 100%; height: auto; max-width: none; max-height: none; margin: 0 auto; }
     .shop-sort-buttons { display: inline-flex; gap: 0.35rem; flex-wrap: wrap; }
     .shop-sort-buttons .filter-btn { padding: 0.4rem 0.7rem; font-size: 0.82rem; }
     .shop-sort-buttons .filter-btn.active { background: #228be6; color: #fff; border-color: #228be6; }
@@ -65,6 +72,7 @@
 
   <div class="page-container">
     <h1 class="page-title">🛒 달란트 상점</h1>
+    <div id="shopProductCount" role="status" style="margin:0 0 0.35rem;font-size:1.02rem;font-weight:800;color:var(--t-text,#212529);">전체 상품 0건</div>
     <p class="page-sub" id="shopSub">달란트로 교환할 수 있는 상품들이에요!</p>
 
     <div id="tabArea" style="display:none;margin-bottom:1.5rem;gap:0.5rem;">
@@ -129,6 +137,8 @@
         <div class="product-detail-layout">
           <div class="product-detail-meta" id="productDetailMeta"></div>
           <div class="product-detail-price" id="productDetailPrice"></div>
+          <div class="product-detail-thumbnail" id="productDetailThumbnail"></div>
+          <p class="delivery-delay-notice" id="productDetailDeliveryDelayNotice" style="display:none;"></p>
           <div class="product-detail-desc" id="productDetailDesc"></div>
           <div class="product-detail-detail-image" id="productDetailDetailImage"></div>
           <div class="product-detail-actions" id="productDetailActions"></div>
@@ -153,7 +163,7 @@
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -216,11 +226,19 @@
     })();
 
     async function loadAllProducts() {
-      let query = _sb.from('products').select('*').eq('is_active', true);
+      const publicProductColumns = 'id,name,target_role,category,price,sort_order,image_emoji,image_url,detail_image_url,description,is_active,show_delivery_delay_notice,created_at';
+      const legacyPublicProductColumns = 'id,name,target_role,category,price,sort_order,image_emoji,image_url,detail_image_url,description,is_active,created_at';
+      let query = _sb.from('products').select(publicProductColumns).eq('is_active', true);
       if (!_canViewTeacher) {
         query = query.eq('target_role', 'student');
       }
-      const { data, error } = await query.order('created_at', { ascending: false });
+      let { data, error } = await query.order('created_at', { ascending: false });
+      // 배송 지연 안내 컬럼을 추가하기 전의 DB에서도 상품 구매 화면은 계속 표시한다.
+      if (error) {
+        let legacyQuery = _sb.from('products').select(legacyPublicProductColumns).eq('is_active', true);
+        if (!_canViewTeacher) legacyQuery = legacyQuery.eq('target_role', 'student');
+        ({ data, error } = await legacyQuery.order('created_at', { ascending: false }));
+      }
       allShopProducts = data || [];
       renderShopProducts();
     }
@@ -305,6 +323,8 @@
       );
       filtered = filtered.slice().sort(compareShopProducts);
       const area = document.getElementById('productArea');
+      const productCount = document.getElementById('shopProductCount');
+      if (productCount) productCount.textContent = `전체 상품 ${fmtNum(filtered.length)}건`;
       const label = currentShopTab === 'student' ? '학생' : '교사';
       document.getElementById('shopSub').textContent = `${label} 달란트 교환 상품입니다`;
 
@@ -342,12 +362,15 @@
           ? ''
           : `<button class="product-buy-btn" onclick="event.stopPropagation(); requestOrder('${p.id}','${p.name.replace(/'/g,"\\'")}',${p.price})" ${!canBuy?'disabled':''} style="margin-top:0.5rem;width:100%;padding:0.5rem;border:none;border-radius:8px;background:${canBuy?'#228be6':'var(--t-border, #dee2e6)'};color:${canBuy?'#fff':'var(--t-text-muted, #868e96)'};font-weight:700;cursor:${canBuy?'pointer':'default'};">🛒 구매 신청</button>`)
         : '';
+      const deliveryNoticeHtml = p.show_delivery_delay_notice
+        ? '<p class="delivery-delay-notice">배송 상황에 따라 상품 지급이 늦어질 수 있습니다.</p>'
+        : '';
       return `<div class="product-card" onclick="openProductDetail('${p.id}')">
-        ${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" class="product-img" onclick="event.stopPropagation(); openImageZoom('${escapeAttr(p.image_url)}','${escapeAttr(p.name)}')" />` : `<span class="product-emoji">${p.image_emoji || '🎁'}</span>`}
+        ${p.image_url ? `<img src="${escapeAttr(p.image_url)}" alt="${escapeAttr(p.name)}" class="product-img" onclick="event.stopPropagation(); openProductDetail('${p.id}')" />` : `<span class="product-emoji">${p.image_emoji || '🎁'}</span>`}
+        ${deliveryNoticeHtml}
         <div class="product-name">${escapeHtml(p.name)}</div>
         <div class="product-price">${fmtNum(p.price)} <span class="unit">달란트</span></div>
         <div class="product-desc">${escapeHtml(p.description || '')}</div>
-        
         ${buyBtnHtml}
       </div>`;
     }
@@ -361,6 +384,17 @@
         `<span>카테고리: ${escapeHtml(getProductCategoryLabel(product.category || 'etc'))}</span>` +
         `<span>대상: ${escapeHtml(getProductTargetLabel(product.target_role || 'student'))}</span>`;
       document.getElementById('productDetailPrice').textContent = `${fmtNum(product.price)} 달란트`;
+      const thumbnail = document.getElementById('productDetailThumbnail');
+      if (product.image_url) {
+        thumbnail.style.display = 'block';
+        thumbnail.innerHTML = `<img src="${escapeAttr(product.image_url)}" alt="${escapeAttr(product.name)} 썸네일" />`;
+      } else {
+        thumbnail.style.display = 'block';
+        thumbnail.innerHTML = `<div class="product-detail-emoji" aria-label="${escapeAttr(product.name)} 썸네일">${escapeHtml(product.image_emoji || '🎁')}</div>`;
+      }
+      const deliveryNotice = document.getElementById('productDetailDeliveryDelayNotice');
+      deliveryNotice.style.display = product.show_delivery_delay_notice ? 'block' : 'none';
+      deliveryNotice.textContent = product.show_delivery_delay_notice ? '배송 상황에 따라 상품 지급이 늦어질 수 있습니다.' : '';
       document.getElementById('productDetailDesc').textContent = product.description || '설명이 없습니다.';
       const detailImage = document.getElementById('productDetailDetailImage');
       const detailImageUrl = product.detail_image_url || '';
@@ -403,7 +437,16 @@
       if (!_shopSession) { alert('로그인이 필요합니다.'); return; }
       const available = _userBalance - _userPending;
       if (available < price) {
-        logWarn('ORDER_INSUFFICIENT_BALANCE', { 상품명: productName, 금액: price, balance: _userBalance, pending: _userPending, available });
+        logWarn('ORDER_INSUFFICIENT_BALANCE', {
+          targetUserId: _shopSession.id,
+          targetAccount: _shopSession.username,
+          targetName: _shopSession.displayName || _shopSession.username,
+          상품명: productName,
+          금액: price,
+          balance: _userBalance,
+          pending: _userPending,
+          available
+        });
         alert(`사용 가능한 달란트가 부족합니다.\n잔여: ${fmtNum(_userBalance)} / 사용 대기: ${fmtNum(_userPending)} / 사용 가능: ${fmtNum(available)}`);
         return;
       }
@@ -417,22 +460,56 @@
           p_price: price
         });
         if (error) {
-          await logError('ORDER_REQUEST_FAIL', { productId, 상품명: productName, 금액: price, 오류: error.message });
+          await logError('ORDER_REQUEST_FAIL', {
+            productId,
+            상품명: productName,
+            금액: price,
+            targetUserId: _shopSession.id,
+            targetAccount: _shopSession.username,
+            targetName: _shopSession.displayName || _shopSession.username,
+            오류: error.message
+          });
           alert('구매 신청 실패: ' + tErr(error.message));
           return;
         }
         if (data && data.success === false) {
-          await logWarn('ORDER_REQUEST_DENIED', { 상품명: productName, 금액: price, 사유: data.error });
+          await logWarn('ORDER_REQUEST_DENIED', {
+            productId,
+            상품명: productName,
+            금액: price,
+            targetUserId: _shopSession.id,
+            targetAccount: _shopSession.username,
+            targetName: _shopSession.displayName || _shopSession.username,
+            사유: data.error
+          });
           alert(tErr(data.error));
           return;
         }
         _userPending += price;
-        await logInfo('ORDER_REQUEST_SUCCESS', { 상품명: productName, 금액: price, orderId: data?.order_id });
+        await logInfo('ORDER_REQUEST_SUCCESS', {
+          orderId: data?.order_id,
+          productId,
+          상품명: productName,
+          금액: price,
+          targetUserId: _shopSession.id,
+          targetAccount: _shopSession.username,
+          targetName: _shopSession.displayName || _shopSession.username,
+          부서: _shopSession.departmentName || '',
+          변경내역: `상품 구매 신청: ${_shopSession.displayName || _shopSession.username} (${_shopSession.username}) / 상품: ${productName} / 금액: ${fmtNum(price)} 달란트`
+        });
         sendSlackNotify('purchase_new', { 신청자: _shopSession.displayName || _shopSession.username, 상품명: productName, 금액: price, 유형: '일반 구매', 부서: _shopSession.departmentName || '' });
         alert('✅ 구매 신청이 완료되었습니다!');
         renderShopProducts();
       } catch (err) {
-        await logError('ORDER_REQUEST_ERROR', { 상품명: productName, 금액: price, 오류: String(err) });
+        await logError('ORDER_REQUEST_ERROR', {
+          productId,
+          상품명: productName,
+          금액: price,
+          targetUserId: _shopSession.id,
+          targetAccount: _shopSession.username,
+          targetName: _shopSession.displayName || _shopSession.username,
+          오류: String(err)
+        });
         alert('구매 신청 중 오류가 발생했습니다: ' + tErr(err.message));
       }
     }
@@ -603,21 +680,63 @@
           p_price: price
         });
         if (error) {
-          await logError('PROXY_ORDER_FAIL', { targetUser: _proxyTarget.id, 상품명: product.name, 오류: error.message });
+          await logError('PROXY_ORDER_FAIL', {
+            targetUserId: _proxyTarget.id,
+            targetAccount: _proxyTarget.username,
+            targetName: _proxyTarget.display_name || _proxyTarget.username,
+            대리구매자: _shopSession.displayName || _shopSession.username,
+            대리구매자계정: _shopSession.username,
+            productId,
+            상품명: product.name,
+            금액: price,
+            오류: error.message
+          });
           alert('대리 구매 실패: ' + tErr(error.message));
           return;
         }
         if (data && data.success === false) {
-          await logWarn('PROXY_ORDER_DENIED', { targetUser: _proxyTarget.id, 상품명: product.name, 사유: data.error });
+          await logWarn('PROXY_ORDER_DENIED', {
+            targetUserId: _proxyTarget.id,
+            targetAccount: _proxyTarget.username,
+            targetName: _proxyTarget.display_name || _proxyTarget.username,
+            대리구매자: _shopSession.displayName || _shopSession.username,
+            대리구매자계정: _shopSession.username,
+            productId,
+            상품명: product.name,
+            금액: price,
+            사유: data.error
+          });
           alert(tErr(data.error));
           return;
         }
-        await logInfo('PROXY_ORDER_SUCCESS', { targetUser: _proxyTarget.id, 대상: _proxyTarget.display_name, 상품명: product.name, 금액: price });
+        await logInfo('PROXY_ORDER_SUCCESS', {
+          orderId: data?.order_id,
+          targetUserId: _proxyTarget.id,
+          targetAccount: _proxyTarget.username,
+          targetName: _proxyTarget.display_name || _proxyTarget.username,
+          대리구매자: _shopSession.displayName || _shopSession.username,
+          대리구매자계정: _shopSession.username,
+          productId,
+          상품명: product.name,
+          금액: price,
+          부서: _proxyDeptMap[_proxyTarget.department_id] || '',
+          변경내역: `대리 구매 신청: ${_shopSession.displayName || _shopSession.username} (${_shopSession.username}) → ${_proxyTarget.display_name || _proxyTarget.username} (${_proxyTarget.username}) / 상품: ${product.name} / 금액: ${fmtNum(price)} 달란트`
+        });
         sendSlackNotify('purchase_new', { 신청자: _proxyTarget.display_name || _proxyTarget.username, 상품명: product.name, 금액: price, 유형: '대리 구매 (' + (_shopSession.displayName || _shopSession.username) + ')', 부서: _proxyDeptMap[_proxyTarget.department_id] || '' });
         alert(`✅ ${_proxyTarget.display_name || _proxyTarget.username}님 명의로 대리 구매 신청 완료!`);
         closeProxyModal();
       } catch (err) {
-        await logError('PROXY_ORDER_ERROR', { 오류: String(err) });
+        await logError('PROXY_ORDER_ERROR', {
+          targetUserId: _proxyTarget.id,
+          targetAccount: _proxyTarget.username,
+          targetName: _proxyTarget.display_name || _proxyTarget.username,
+          대리구매자: _shopSession.displayName || _shopSession.username,
+          대리구매자계정: _shopSession.username,
+          productId,
+          상품명: product.name,
+          금액: price,
+          오류: String(err)
+        });
         alert('대리 구매 중 오류: ' + tErr(err.message));
       }
     }

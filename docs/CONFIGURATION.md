@@ -27,6 +27,11 @@
 | `docs/TASK-057_code_master.sql` | 추적 | `code_groups`/`code_items` 코드 마스터와 코드 컬럼 검증 트리거 |
 | `docs/TASK-058_product_category_policy.sql` | 추적 | 구매 담당 교사(70+) 이상 상품 카테고리 관리자의 `products.category` 코드 항목 추가 RLS 정책 |
 | `docs/TASK-068_product_category_page_and_sort_order.sql` | 추적 | 상품 정렬 순번 컬럼/인덱스와 상품 카테고리 관리 70+ 정책 |
+| `docs/TASK-072_data_retention_180d.sql` | 추적 | 서비스 통계 스냅샷/수집 이력과 확인 완료 활동 로그 180일 보존 정책 |
+| `docs/TASK-073_manual_retention_cleanup.sql` | 추적 | 관리자용 180일 초과 서비스 통계/확인 완료 활동 로그 수동 삭제 RPC와 로그 액션 |
+| `docs/TASK-074_plan.md`, `docs/TASK-074_test_scenario.md`, `docs/TASK-074_test_result.md`, `docs/TASK-074_change_report.md` | 추적 | 활동 로그 영어 저장/한글 표시 분리 작업 계획, 검증, 변경 보고 |
+| `docs/TASK-074_activity_logs_english_details.sql` | 추적 | 기존 활동 로그 details의 한글 별칭/중복/client 항목을 영어 key 중심으로 정리 |
+| `docs/TASK-083_talent_item_emoji.sql` | 추적 | 기존 운영 DB의 `talent_items.emoji` 카드 이모지 컬럼과 기본 이모지 보정 |
 | `docs/TASK-041_app_config.sql` | 추적 | Supabase `app_config` 테이블, RLS, 공개 설정 RPC, 초기 데이터 |
 | `docs/edge-function-slack-notify.ts` | 추적 | Slack 알림 Edge Function 배포용 소스 |
 | `docs/SLACK_NOTIFICATION_RULES.md` | 추적 | Slack 알림 type, 라우팅, Secret 기준 |
@@ -66,9 +71,12 @@ Supabase 접속 이후에는 `app_config` 테이블의 공개 설정을 `get_pub
 GITHUB_PAT=...
 GITHUB_TOKEN=...
 SB_MANAGEMENT_ACCESS_TOKEN=...
+SUPABASE_SECRET_KEY=...
 SUPABASE_SERVICE_ROLE_KEY=...
 SUPABASE_DB_CONNECTION_STRING=...
 ```
+
+반복적인 운영 로그 한글 번역 점검/보완은 [로그 번역 운영 런북](LOG_TRANSLATION_RUNBOOK.md)을 따른다. 이 작업에는 대상 환경과 프로젝트 ref, 그리고 로컬의 `SUPABASE_SECRET_KEY`(권장) 또는 `SUPABASE_SERVICE_ROLE_KEY`(레거시)가 필요하다. 두 키 모두 프로젝트 전체 데이터 권한을 가지므로 채팅, 정적 파일, `app_config`, Git에 입력하지 않는다.
 
 로컬 PowerShell 자동화에서는 아래처럼 설정을 읽는다.
 
@@ -83,6 +91,7 @@ Supabase `app_config` 테이블에는 비밀 원문을 넣지 않는다. 대신 
 | `GITHUB_PAT` | `env:GITHUB_PAT` | 로컬 `.env.local`, CI secret, 서버/Edge Function 환경변수 |
 | `GITHUB_TOKEN` | 미저장 | 서비스 통계용 GitHub fine-grained token. Edge Function Secret |
 | `SB_MANAGEMENT_ACCESS_TOKEN` | `env:SB_MANAGEMENT_ACCESS_TOKEN` | 로컬 `.env.local`, CI secret |
+| `SUPABASE_SECRET_KEY` | `env:SUPABASE_SECRET_KEY` | 서버/로컬 자동화용 권장 Secret key. 로컬 `.env.local`, CI secret |
 | `SUPABASE_SERVICE_ROLE_KEY` | `env:SUPABASE_SERVICE_ROLE_KEY` | 서버/Edge Function 환경변수 또는 Supabase Vault |
 | `SUPABASE_DB_CONNECTION_STRING` | `env:SUPABASE_DB_CONNECTION_STRING` | 로컬/CI 비밀 저장소 |
 | `SLACK_WEBHOOK_PART1` ~ `SLACK_WEBHOOK_PART5` | `env:SLACK_WEBHOOK_PART1` 등 | Supabase Edge Function Secret |
@@ -95,11 +104,15 @@ Supabase `app_config` 테이블에는 비밀 원문을 넣지 않는다. 대신 
 
 ## 5. Supabase app_config 적용
 
-새 Supabase Database를 완전히 비어 있는 상태에서 구성할 때는 먼저 `docs/INITIAL_DATABASE_SETUP.sql`을 Supabase SQL Editor에서 실행한 뒤 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-067_korean_activity_logs.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`을 이어서 실행한다. 기본 설치 SQL은 테이블, 함수/RPC, RLS 정책, Storage 버킷, 기본 권한 데이터를 포함하고, `TASK-057`은 권한/유형/상태/카테고리/로그 액션 코드 마스터를 추가하며 `TASK-058`/`TASK-066`/`TASK-068`은 상품 카테고리 추가·수정·삭제 권한과 상품 정렬 순번, 공지 열람 현황 조회 권한을 보강한다. `TASK-065`는 승인 대기 로그인 안내 담당자 조회 RPC, `TASK-067`은 기존 로그 상세 한글 별칭 백필과 실제 발생 액션 라벨을 보강한다.
+> v3.89.0 사용자 통계의 학생/교사 필터를 사용하려면 `docs/TASK-091_user_stats_filters.sql`을 적용합니다. 이 SQL은 `get_user_login_statistics`와 `get_user_login_stat_detail` RPC에 동일한 `p_user_type` 조건을 추가하므로 집계와 상세 모달의 결과가 일치합니다.
+
+> v3.88.0 상품 추천 투표 권한 정책을 사용하려면 `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql`을 `TASK-089` 다음에 적용합니다. 진행 중 익명 집계, 직접 채택/불채택 결정, 현재 유효 정원 기준 종료는 `profiles.is_super_admin=true`인 최고관리자만 허용됩니다. 기존 `SLACK_WEBHOOK_OPERATIONS` Secret과 Slack Edge Function 설정은 그대로 사용합니다.
+
+새 Supabase Database를 완전히 비어 있는 상태에서 구성할 때는 먼저 `docs/INITIAL_DATABASE_SETUP.sql`을 Supabase SQL Editor에서 실행한 뒤 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-065_registration_approval_contact.sql`, `docs/TASK-066_notice_reads_and_category_manage.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-072_data_retention_180d.sql`, `docs/TASK-073_manual_retention_cleanup.sql`, `docs/TASK-078_product_purchase_url.sql`, `docs/TASK-079_log_actor_identity.sql`, `docs/TASK-081_user_login_statistics.sql`, `docs/TASK-082_exclude_super_admin_login_history.sql`, `docs/TASK-083_talent_item_emoji.sql`, `docs/TASK-084_user_login_statistics_detail.sql`, `docs/TASK-085_product_suggestions.sql`, `docs/TASK-086_product_suggestion_admin_decision.sql`, `docs/TASK-087_product_suggestion_detail_image.sql`, `docs/TASK-088_product_suggestion_adoption_talent.sql`을 이어서 실행한다. 기본 설치 SQL은 테이블, 함수/RPC, RLS 정책, Storage 버킷, 기본 권한 데이터를 포함하고, `TASK-057`은 권한/유형/상태/카테고리/로그 액션 코드 마스터를 추가하며 `TASK-058`/`TASK-066`/`TASK-068`은 상품 카테고리 추가·수정·삭제 권한과 상품 정렬 순번, 공지 열람 현황 조회 권한을 보강한다. `TASK-065`는 승인 대기 로그인 안내 담당자 조회 RPC다. `TASK-072`는 서비스 통계 스냅샷/수집 이력과 확인 완료 활동 로그의 180일 보존 정책을 적용하고, `TASK-073`은 운영 화면의 180일 초과 수동 삭제 버튼이 호출하는 관리자용 RPC와 로그 액션을 보강한다. `TASK-078`은 상품별 구매 URL 컬럼을 추가하고, `TASK-079`는 활동 로그를 프로필의 표시 이름과 계정으로 정규화하며 기존 로그도 보정한다. `TASK-081`은 성공 로그인 이력 테이블과 관리자용 KST 통계 RPC를 추가하며, `TASK-082`는 최고관리자 이력 정리와 기록·통계 제외를 보강한다. `TASK-083`은 기존 운영 DB의 달란트 안내 카드 이모지를 보정한다. `TASK-085`는 상품 추천, 등록 시점 투표 정원, 비밀 투표 결과 노출 제어, 관리자 현재 유효 정원 종료 RPC와 추천 이미지 Storage 정책을 추가한다. `TASK-086`은 투표중 추천을 관리자(100+)가 채택/불채택으로 직접 결정하는 전용 RPC를 추가하고, `TASK-087`은 추천 상세 이미지·득표 비공개·종료 투표 잠금을, `TASK-088`은 채택 보상 항목·중복 방지 보상 원장·순번 999를 추가한다. 기존 운영 DB에 v3.66 한글 별칭 로그가 남아 있으면 `docs/TASK-074_activity_logs_english_details.sql`로 중복 details와 client 항목을 영어 key 중심으로 정리한다.
 
 공개 설정만 기존 DB에 보강하거나 점검할 때는 Supabase SQL Editor 또는 Management API에서 `docs/TASK-041_app_config.sql`을 실행한다.
 
-로컬에서 DB 접속 문자열을 사용할 수 있으면 `scripts/install-supabase-database.ps1` 또는 `scripts/install-supabase-database.sh`로 설치 SQL 생성 또는 실행을 자동화할 수 있다. 이 스크립트들은 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 검증한다. v3.65.0~v3.66.0 보강 SQL은 생성된 합본 뒤에 수동 적용하거나 스크립트의 추가 SQL 옵션으로 함께 넘긴다. 새 프로젝트 전체 설치 절차는 `docs/SUPABASE_NEW_PROJECT_SETUP.md`를 함께 확인한다.
+로컬에서 DB 접속 문자열을 사용할 수 있으면 `scripts/install-supabase-database.ps1` 또는 `scripts/install-supabase-database.sh`로 설치 SQL 생성 또는 실행을 자동화할 수 있다. 이 스크립트들은 기본으로 `docs/TASK-057_code_master.sql`, `docs/TASK-058_product_category_policy.sql`, `docs/TASK-068_product_category_page_and_sort_order.sql`, `docs/TASK-081_user_login_statistics.sql`, `docs/TASK-082_exclude_super_admin_login_history.sql`, `docs/TASK-084_user_login_statistics_detail.sql`, `docs/TASK-085_product_suggestions.sql`, `docs/TASK-086_product_suggestion_admin_decision.sql`, `docs/TASK-087_product_suggestion_detail_image.sql`, `docs/TASK-088_product_suggestion_adoption_talent.sql`, `docs/TASK-089_product_suggestion_slack_notifications.sql`을 합본에 포함하고, 적용 후 `scripts/verify-task-057-code-master.sql`로 검증한다. v3.65.0~v3.66.0 보강 SQL은 생성된 합본 뒤에 수동 적용하거나 스크립트의 추가 SQL 옵션으로 함께 넘긴다. 새 프로젝트 전체 설치 절차는 `docs/SUPABASE_NEW_PROJECT_SETUP.md`를 함께 확인한다.
 
 적용 후 브라우저에서는 아래 흐름으로 설정을 읽는다.
 
@@ -135,7 +148,7 @@ Slack 알림은 브라우저에서 Webhook URL을 직접 호출하지 않는다.
 
 | 목적 | 필요한 값 |
 |---|---|
-| RLS를 무시하는 서버/로컬 CRUD | `SUPABASE_SERVICE_ROLE_KEY` |
+| RLS를 무시하는 서버/로컬 CRUD | `SUPABASE_SECRET_KEY`(권장) 또는 `SUPABASE_SERVICE_ROLE_KEY`(레거시) |
 | SQL 실행, 마이그레이션, 백업 | `SUPABASE_DB_CONNECTION_STRING` 또는 DB password |
 | 서비스 통계 Supabase Management API 연결 | `SB_MANAGEMENT_ACCESS_TOKEN` + `SB_PROJECT_REF` |
 

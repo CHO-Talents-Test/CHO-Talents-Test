@@ -5,7 +5,16 @@
  * Supabase access tokens, service-role keys, or database passwords here.
  */
 (() => {
-  const TARGET_ENV = 'DEV'; // 'PROD' 또는 'DEV'
+  // The same source is deployed to both repositories. Pick the environment
+  // from the deployed origin so copying verified DEV source to PROD cannot
+  // accidentally point production browsers at the DEV database.
+  const ENV_BY_HOST = Object.freeze({
+    'cho-talents.github.io': 'PROD',
+    'cho-talents-test.github.io': 'DEV',
+    'localhost': 'DEV',
+    '127.0.0.1': 'DEV'
+  });
+  const TARGET_ENV = ENV_BY_HOST[window.location.hostname];
 
   let supabaseConfig;
   let kakaoConfig;
@@ -50,10 +59,26 @@
 
     kakao: kakaoConfig,
 
-    github: {
-      owner: 'CHO-Talents',
-      repo: 'CHO-Talents',
-      defaultBranch: 'develop'
+    github: TARGET_ENV === 'DEV'
+      ? {
+          owner: 'CHO-Talents-Test',
+          repo: 'CHO-Talents-Test',
+          defaultBranch: 'develop'
+        }
+      : {
+          owner: 'CHO-Talents',
+          repo: 'CHO-Talents',
+          defaultBranch: 'develop'
+        },
+
+    // DEV에서는 외부 알림을 호출하지 않습니다. 이 플래그는 UI와 로그 알림의
+    // Edge Function 호출을 모두 차단하므로 Slack 미설정 오류 로그도 남기지 않습니다.
+    notifications: {
+      slackEnabled: TARGET_ENV === 'PROD'
+    },
+
+    ui: {
+      preferenceResetVersion: TARGET_ENV === 'DEV' ? '2026-08-04' : '1'
     }
   });
 })();

@@ -98,12 +98,28 @@ BEGIN
     v_actual_desc := v_item.name;
 
     SELECT count(*) INTO v_week_count
-    FROM public.talent_transactions
-    WHERE user_id = p_user_id
-      AND talent_item_id = p_talent_item_id
-      AND type = 'earn'
-      AND created_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul')
-      AND created_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') + interval '7 days';
+    FROM public.talent_transactions AS earned
+    WHERE earned.user_id = p_user_id
+      AND earned.talent_item_id = p_talent_item_id
+      AND earned.type = 'earn'
+      AND earned.created_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul')
+      AND earned.created_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') + interval '7 days'
+      -- A cancellation is stored as a use transaction referencing the original earn ID.
+      -- Cancelled grants must not consume this week's item allowance.
+      AND NOT EXISTS (
+        SELECT 1
+        FROM public.talent_transactions AS returned
+        WHERE returned.user_id = earned.user_id
+          AND returned.type = 'use'
+          AND (
+            returned.description LIKE ('반환: [' || earned.id::text || ']%')
+            -- Compatibility for old attendance cancellations created with an empty ID ([]).
+            OR (
+              returned.amount = earned.amount
+              AND returned.description = '반환: [] ' || COALESCE(earned.description, '')
+            )
+          )
+      );
 
     IF v_week_count > 0 AND NOT v_override_week_limit THEN
       RETURN json_build_object('success', false, 'error', 'Already given this item this week: ' || v_item.name);

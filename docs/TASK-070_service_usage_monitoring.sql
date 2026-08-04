@@ -558,7 +558,7 @@ INSERT INTO public.service_usage_metrics
   (service, metric_key, label, category, unit, quota_value, reset_cycle, source_type, source_label, is_estimated, alert_enabled, official_url, notes, sort_order, metadata)
 VALUES
   ('github','actions_minutes','Actions 실행 시간','빌링','minutes',2000,'monthly','api','GitHub Billing API',false,true,'https://docs.github.com/en/billing/reference/product-usage-included','GitHub Free for organizations 월 제공량',10,'{}'),
-  ('github','actions_storage_bytes','Actions 아티팩트·캐시 저장공간','저장공간','bytes',524288000,'monthly','api','GitHub Actions API',true,true,'https://docs.github.com/en/billing/reference/product-usage-included','현재 아티팩트와 캐시 크기 합계로 추정',20,'{}'),
+  ('github','actions_storage_bytes','Actions 아티팩트·캐시 저장공간','저장공간','bytes',524288000,'monthly','api','GitHub Actions API',true,true,'https://docs.github.com/en/billing/reference/product-usage-included','만료되지 않은 활성 아티팩트와 active cache 크기 합계로 추정',20,'{}'),
   ('github','packages_storage_bytes','Packages 저장공간','저장공간','bytes',524288000,'monthly','api','GitHub Billing API',true,true,'https://docs.github.com/en/billing/reference/product-usage-included','Billing API 단위를 현재 월 기준으로 정규화',30,'{}'),
   ('github','packages_transfer_bytes','Packages 데이터 전송','트래픽','bytes',1073741824,'monthly','api','GitHub Billing API',true,true,'https://docs.github.com/en/billing/reference/product-usage-included','GitHub Free organization 월 제공량',40,'{}'),
   ('github','lfs_storage_bytes','Git LFS 저장공간','저장공간','bytes',10737418240,'monthly','api','GitHub Billing API',true,true,'https://docs.github.com/en/billing/reference/product-usage-included','Git LFS 월 저장공간 기준',50,'{}'),
@@ -591,7 +591,7 @@ VALUES
   ('slack','notifications_month','프로젝트 알림(이번 달)','메시지','count',NULL,'monthly','event','Slack Webhook 성공 계측',false,false,'https://slack.com/help/articles/115002422943-Usage-limits-for-free-workspaces','해당 프로젝트에서 보낸 Slack 알림',10,'{}'),
   ('slack','notifications_90d','최근 90일 프로젝트 알림','메시지','count',NULL,'rolling_90d','event','Slack Webhook 성공 계측',false,false,'https://slack.com/help/articles/115002422943-Usage-limits-for-free-workspaces','무료 플랜에서 검색 가능한 기간의 프로젝트 알림 수',20,'{}'),
   ('slack','notifications_total','프로젝트 알림 누적','메시지','count',NULL,'cumulative','event','Slack Webhook 성공 누적',false,false,'https://slack.com/help/articles/115002422943-Usage-limits-for-free-workspaces','모니터링 적용 이후 누적',30,'{}'),
-  ('slack','webhook_failures_month','Webhook 실패(이번 달)','오류','count',NULL,'monthly','event','Slack Webhook 실패 계측',false,false,'https://api.slack.com/messaging/webhooks','전송 실패와 HTTP 오류',40,'{}'),
+  ('slack','webhook_failures_month','Webhook 실패·설정 오류(이번 달)','오류','count',NULL,'monthly','event','Slack Webhook 실패·설정 오류 계측',false,false,'https://api.slack.com/messaging/webhooks','HTTP 오류, 네트워크 오류, Webhook Secret 미설정 건을 프로젝트 내부에서 기록합니다.',40,'{}'),
   ('slack','installed_apps','프로젝트 사용 앱','앱','count',10,'monthly','estimate','프로젝트 설정',true,false,'https://slack.com/help/articles/115002422943-Usage-limits-for-free-workspaces','워크스페이스 전체가 아니라 이 프로젝트가 사용하는 앱 1개만 표시',50,'{}'),
   ('slack','message_retention_days','메시지 내역 보존','정책','days',90,'policy','policy','Slack Free 정책',false,false,'https://slack.com/help/articles/115002422943-Usage-limits-for-free-workspaces','90일 초과 메시지와 파일은 숨겨지고 1년 초과 데이터는 삭제될 수 있음',60,'{}'),
   ('slack','notifications_sent','내부: Slack 성공 이벤트','내부','count',NULL,'cumulative','event','Edge Function 내부',false,false,NULL,'집계 원본 이벤트',900,'{"accepts_client_events":false,"hidden":true}'),

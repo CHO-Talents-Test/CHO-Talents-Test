@@ -112,7 +112,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -220,9 +220,32 @@
       return rows.filter(t => Number(t.amount || 0) > 0);
     }
 
+    async function fetchAllTalentTransactions() {
+      // Supabase REST responses are capped per request.  Fetch every page so
+      // recent grants are not omitted once the transaction ledger grows.
+      const pageSize = 500;
+      const rows = [];
+
+      for (let from = 0; ; from += pageSize) {
+        const { data, error } = await _sb
+          .from('talent_transactions')
+          .select('id, user_id, type, amount, description, talent_item_id, created_at')
+          .in('type', ['earn', 'use'])
+          .order('created_at', { ascending: true })
+          .order('id', { ascending: true })
+          .range(from, from + pageSize - 1);
+
+        if (error) return { data: rows, error };
+
+        const page = data || [];
+        rows.push(...page);
+        if (page.length < pageSize) return { data: rows, error: null };
+      }
+    }
+
     async function loadData() {
       const [txnRes, profRes, deptRes] = await Promise.all([
-        _sb.from('talent_transactions').select('id, user_id, type, amount, description, talent_item_id, created_at').in('type', ['earn', 'use']),
+        fetchAllTalentTransactions(),
         _sb.from('profiles').select('id, display_name, username, user_type, department_id, class_number, is_super_admin'),
         _sb.from('departments').select('id, name')
       ]);

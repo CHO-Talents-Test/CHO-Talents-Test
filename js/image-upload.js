@@ -7,6 +7,15 @@ const MANAGED_IMAGE_BUCKET = 'Talents_Items';
 const MAX_IMAGE_UPLOAD_INPUT_BYTES = 20 * 1024 * 1024;
 const DEFAULT_COMPRESSED_IMAGE_TYPE = 'image/jpeg';
 const DEFAULT_COMPRESSED_IMAGE_EXT = 'jpg';
+const SUPPORTED_IMAGE_UPLOAD_TYPES = Object.freeze([
+  'image/jpeg',
+  'image/png',
+  'image/gif',
+  'image/webp'
+]);
+const SUPPORTED_IMAGE_UPLOAD_ACCEPT = '.jpg,.jpeg,.png,.gif,.webp,image/jpeg,image/png,image/gif,image/webp';
+const EXTERNAL_IMAGE_URL_VALIDATION_TIMEOUT_MS = 10000;
+const SUPPORTED_IMAGE_UPLOAD_LABEL = 'JPG, PNG, GIF 또는 WebP';
 
 function _imageUploadLog(level, action, details) {
   try {
@@ -25,6 +34,82 @@ function _imageUploadFormatBytes(bytes) {
   return (n / 1024).toFixed(1) + 'KB';
 }
 
+function getImageUploadFileInfo(file) {
+  const name = String((file && file.name) || '');
+  const extensionMatch = name.match(/\.([^.]+)$/);
+  const size = Number((file && file.size) || 0);
+  return {
+    imageMimeType: String((file && file.type) || '').toLowerCase() || null,
+    imageExtension: extensionMatch ? extensionMatch[1].toLowerCase() : null,
+    imageSizeBytes: size,
+    imageSizeLabel: _imageUploadFormatBytes(size)
+  };
+}
+
+function getImageUploadValidationError(file, options = {}) {
+  if (!file) return '이미지 파일을 선택해주세요.';
+  const mimeType = String(file.type || '').toLowerCase();
+  if (!SUPPORTED_IMAGE_UPLOAD_TYPES.includes(mimeType)) {
+    return `${SUPPORTED_IMAGE_UPLOAD_LABEL} 형식의 이미지 파일만 업로드할 수 있습니다.`;
+  }
+
+  const maxInputBytes = options.maxInputBytes || MAX_IMAGE_UPLOAD_INPUT_BYTES;
+  if (file.size > maxInputBytes) {
+    return `${_imageUploadFormatBytes(maxInputBytes)} 이하 이미지 파일만 업로드할 수 있습니다.`;
+  }
+  return null;
+}
+
+/**
+ * Checks an externally hosted image without inserting it into the page.
+ * A syntactically valid URL can still point to a product/detail HTML page,
+ * so the browser must be able to decode it as an image before it is stored.
+ */
+async function validateExternalImageUrl(value, options = {}) {
+  const rawUrl = String(value || '').trim();
+  if (!rawUrl) return { url: null, error: null };
+
+  let url;
+  try {
+    url = new URL(rawUrl);
+    if (url.protocol !== 'http:' && url.protocol !== 'https:') throw new Error('invalid protocol');
+  } catch (e) {
+    return { url: null, error: '이미지 URL은 http 또는 https 주소로 입력해주세요.' };
+  }
+
+  if (typeof Image !== 'function') return { url: url.href, error: null };
+
+  const timeoutMs = Number(options.timeoutMs) || EXTERNAL_IMAGE_URL_VALIDATION_TIMEOUT_MS;
+  return new Promise(resolve => {
+    const image = new Image();
+    let settled = false;
+    let timeoutId = null;
+    const finish = error => {
+      if (settled) return;
+      settled = true;
+      if (timeoutId) window.clearTimeout(timeoutId);
+      image.onload = null;
+      image.onerror = null;
+      resolve({ url: error ? null : url.href, error: error || null });
+    };
+
+    image.onload = () => {
+      if (!image.naturalWidth || !image.naturalHeight) {
+        finish('이미지 URL에서 유효한 이미지를 확인하지 못했습니다. 이미지 파일 URL을 입력해주세요.');
+        return;
+      }
+      finish(null);
+    };
+    image.onerror = () => {
+      finish('이미지 URL을 불러올 수 없습니다. 상품 페이지가 아닌 이미지 파일 URL을 입력해주세요.');
+    };
+    timeoutId = window.setTimeout(() => {
+      finish('이미지 URL 확인 시간이 초과되었습니다. 접근 가능한 이미지 파일 URL을 입력해주세요.');
+    }, timeoutMs);
+    image.src = url.href;
+  });
+}
+
 function _imageUploadObjectUrl(file) {
   return new Promise((resolve, reject) => {
     const objectUrl = URL.createObjectURL(file);
@@ -32,7 +117,9 @@ function _imageUploadObjectUrl(file) {
     img.onload = () => resolve({ img, objectUrl });
     img.onerror = () => {
       URL.revokeObjectURL(objectUrl);
-      reject(new Error('이미지 파일을 읽지 못했습니다.'));
+      const error = new Error('이미지 파일을 읽지 못했습니다. 지원 형식인지, 파일이 손상되지 않았는지 확인해주세요.');
+      error.code = 'IMAGE_DECODE_FAILED';
+      reject(error);
     };
     img.src = objectUrl;
   });
@@ -88,12 +175,14 @@ function buildManagedImageFileName(options = {}) {
 }
 
 async function compressImageFile(file, options = {}) {
-  if (!file) return { file: null, error: '이미지 파일을 선택해주세요.' };
-  if (!String(file.type || '').startsWith('image/')) return { file: null, error: '이미지 파일만 업로드할 수 있습니다.' };
-
-  const maxInputBytes = options.maxInputBytes || MAX_IMAGE_UPLOAD_INPUT_BYTES;
-  if (file.size > maxInputBytes) {
-    return { file: null, error: `${_imageUploadFormatBytes(maxInputBytes)} 이하 이미지 파일만 업로드할 수 있습니다.` };
+  const validationError = getImageUploadValidationError(file, options);
+  if (validationError) {
+    return {
+      file: null,
+      error: validationError,
+      errorCode: !file ? 'IMAGE_FILE_MISSING' : 'IMAGE_FILE_VALIDATION_FAILED',
+      ...getImageUploadFileInfo(file)
+    };
   }
 
   let objectUrl = null;
@@ -139,7 +228,12 @@ async function compressImageFile(file, options = {}) {
       mimeType
     };
   } catch (err) {
-    return { file: null, error: err.message || String(err) };
+    return {
+      file: null,
+      error: err.message || String(err),
+      errorCode: err && err.code ? String(err.code) : 'IMAGE_PROCESSING_FAILED',
+      ...getImageUploadFileInfo(file)
+    };
   } finally {
     if (objectUrl) URL.revokeObjectURL(objectUrl);
   }
@@ -151,7 +245,15 @@ async function uploadManagedImage(file, options = {}) {
   const context = options.context || 'image';
   const compressed = await compressImageFile(file, options);
   if (compressed.error) {
-    await _imageUploadLog('error', 'IMAGE_COMPRESS_FAIL', { 구분: context, 오류: compressed.error });
+    await _imageUploadLog('error', 'IMAGE_COMPRESS_FAIL', {
+      구분: context,
+      오류: compressed.error,
+      오류코드: compressed.errorCode || 'IMAGE_PROCESSING_FAILED',
+      원본MIME: compressed.imageMimeType,
+      원본확장자: compressed.imageExtension,
+      원본크기: compressed.imageSizeBytes,
+      원본크기표시: compressed.imageSizeLabel
+    });
     return { url: null, error: compressed.error };
   }
 

@@ -79,11 +79,65 @@ async function giveTalent(userId, amount, description, createdBy) {
   }
 }
 
+function getTalentErrorMessage(value) {
+  if (!value) return '';
+  if (typeof value === 'string') return value;
+  return value.message || value.error || String(value);
+}
+
+function isWeeklyDuplicateTalentError(value) {
+  const message = getTalentErrorMessage(value)
+    .replace(/\s+/g, ' ')
+    .trim();
+  return /already\s+given(?:\s+this)?\s+item\s+this\s+week|이미.*이번\s*주.*지급|이번\s*주.*이미.*지급/i.test(message);
+}
+
+function isDuplicateTalentExceptionRequest(value) {
+  return /이미.*대기 중|already.*pending|duplicate key|unique constraint/i.test(getTalentErrorMessage(value));
+}
+
+function isTransientTalentRequestError(value) {
+  return /(?:load failed|failed to fetch|network(?:error| request)?|network connection was lost|connection.*lost|timeout)/i
+    .test(getTalentErrorMessage(value));
+}
+
+async function findRecentlyGrantedTalentItem(userId, talentItemId, createdBy, attemptedAt) {
+  if (!_sb || !userId || !talentItemId || !createdBy) return null;
+
+  // 응답만 유실된 경우에만 복구합니다. 예외 지급은 같은 항목을 여러 번 지급할 수 있어
+  // 이 조회 결과만으로 성공을 확정할 수 없으므로 호출하지 않습니다.
+  const since = new Date(attemptedAt - (2 * 60 * 1000)).toISOString();
+  try {
+    const { data, error } = await _sb
+      .from('talent_transactions')
+      .select('id,amount,balance_after,description,created_at,override_week_limit')
+      .eq('user_id', userId)
+      .eq('talent_item_id', talentItemId)
+      .eq('created_by', createdBy)
+      .eq('type', 'earn')
+      .gte('created_at', since)
+      .order('created_at', { ascending: false })
+      .limit(1);
+    return error ? null : (data && data[0]) || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 async function giveTalentByItem(userId, talentItemId, createdBy, options = {}) {
   if (!_sb) return { success: false, error: 'Supabase not initialized' };
   try {
     const overrideWeekLimit = options.overrideWeekLimit === true;
     const overrideReason = options.overrideReason || null;
+    const logContext = {
+      targetUserId: userId,
+      targetAccount: options.targetAccount || null,
+      targetName: options.targetName || options.userDisplayName || null,
+      talentItemId,
+      itemName: options.itemName || options.talentItemName || null,
+      사유: overrideReason,
+    };
+    const attemptedAt = Date.now();
     const { data, error } = await _sb.rpc('give_talent', {
       p_user_id: userId,
       p_amount: 0,
@@ -94,22 +148,58 @@ async function giveTalentByItem(userId, talentItemId, createdBy, options = {}) {
       p_override_reason: overrideReason,
     });
     if (error) {
-      await logError('TALENT_GIVE_ITEM_FAIL', { userId, talentItemId, 오류: error.message });
-      return { success: false, error: error.message };
+      if (isWeeklyDuplicateTalentError(error)) {
+        await logInfo('TALENT_GIVE_ITEM_DENIED', { ...logContext, 사유: error.message, 처리: 'weekly_duplicate' });
+        return { success: false, error: error.message, handled: true, reason: 'weekly_duplicate' };
+      }
+      const recoveredGrant = !overrideWeekLimit && isTransientTalentRequestError(error)
+        ? await findRecentlyGrantedTalentItem(userId, talentItemId, createdBy, attemptedAt)
+        : null;
+      if (recoveredGrant) {
+        await logInfo('TALENT_GIVE_ITEM', {
+          ...logContext,
+          금액: recoveredGrant.amount,
+          처리: '서버 처리 확인으로 복구',
+          변경내역: `${logContext.targetName || userId}에게 달란트 항목 지급이 서버 처리 확인으로 복구됨: ${logContext.itemName || talentItemId} / 금액: ${fmtNum(recoveredGrant.amount || 0)} 달란트`,
+        });
+        return {
+          success: true,
+          recovered: true,
+          balance: recoveredGrant.balance_after,
+          txn_id: recoveredGrant.id,
+          amount: recoveredGrant.amount,
+          description: recoveredGrant.description,
+        };
+      }
+      await logError('TALENT_GIVE_ITEM_FAIL', { ...logContext, 오류: error.message });
+      return {
+        success: false,
+        error: isTransientTalentRequestError(error)
+          ? '달란트 지급 서버와 연결하지 못했습니다. 대상 내역을 새로고침해 지급 여부를 확인한 뒤 다시 시도해주세요.'
+          : error.message
+      };
     }
     if (data && data.success === false) {
-      await logWarn('TALENT_GIVE_ITEM_DENIED', { userId, talentItemId, 사유: data.error });
+      const logFn = isWeeklyDuplicateTalentError(data.error) ? logInfo : logWarn;
+      await logFn('TALENT_GIVE_ITEM_DENIED', { ...logContext, 사유: data.error, 처리: isWeeklyDuplicateTalentError(data.error) ? 'weekly_duplicate' : 'denied' });
       return data;
     }
     await logInfo('TALENT_GIVE_ITEM', {
-      userId,
-      talentItemId,
+      ...logContext,
       금액: data?.amount,
       예외지급: overrideWeekLimit,
+      변경내역: `${logContext.targetName || userId}에게 달란트 항목 지급: ${logContext.itemName || talentItemId} / 금액: ${fmtNum(data?.amount || 0)} 달란트${overrideWeekLimit ? ' / 예외 지급' : ''}`,
     });
     return data;
   } catch (err) {
-    await logError('TALENT_GIVE_ITEM_ERROR', { userId, talentItemId, 오류: String(err) });
+    await logError('TALENT_GIVE_ITEM_ERROR', {
+      targetUserId: userId,
+      targetAccount: options.targetAccount || null,
+      targetName: options.targetName || options.userDisplayName || null,
+      talentItemId,
+      itemName: options.itemName || options.talentItemName || null,
+      오류: String(err)
+    });
     return { success: false, error: String(err) };
   }
 }
@@ -127,14 +217,21 @@ async function createTalentExceptionRequest(requestData) {
       .select()
       .single();
     if (error) {
+      if (isDuplicateTalentExceptionRequest(error)) {
+        await logInfo('TALENT_EXCEPTION_REQUEST_FAIL', { userId: row.user_id, talentItemId: row.talent_item_id, 오류: error.message, 처리: 'duplicate_pending' });
+        return { data: null, error: error.message, handled: true, logged: true };
+      }
       await logError('TALENT_EXCEPTION_REQUEST_FAIL', { userId: row.user_id, talentItemId: row.talent_item_id, 오류: error.message });
-      return { data: null, error: error.message };
+      return { data: null, error: error.message, logged: true };
     }
     await logInfo('TALENT_EXCEPTION_REQUEST', {
-      userId: row.user_id,
+      targetUserId: row.user_id,
+      targetName: row.user_display_name || null,
       talentItemId: row.talent_item_id,
+      itemName: row.talent_item_name || row.description || null,
       금액: row.amount,
-      사유: row.override_reason
+      사유: row.override_reason,
+      변경내역: `달란트 예외 지급 요청: ${row.user_display_name || row.user_id} / 항목: ${row.talent_item_name || row.description || row.talent_item_id} / 금액: ${fmtNum(row.amount || 0)} 달란트 / 사유: ${row.override_reason || '-'}`
     });
     return { data, error: null };
   } catch (err) {

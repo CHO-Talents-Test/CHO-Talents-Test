@@ -148,7 +148,7 @@ async function login(username, password) {
     const { data: authData, error: authError } = await _sb.auth.signInWithPassword({ email, password });
 
     if (authError) {
-      await logWarn('LOGIN_FAIL', { 대상: username, 사유: authError.message });
+      await logInfo('LOGIN_FAIL', { 대상: username, 사유: authError.message });
       return { success: false, error: '아이디 또는 비밀번호가 일치하지 않습니다.' };
     }
 
@@ -179,6 +179,7 @@ async function login(username, password) {
 
     await logInfo('LOGIN_SUCCESS', { 대상: username, permissionLevel: perm });
     try { await _sb.rpc('update_last_login'); } catch(e) {}
+    try { await _sb.rpc('record_user_login'); } catch(e) { console.warn('[AUTH] login history record skipped:', e.message); }
     _touchActivity();
     return { success: true, data: profile };
   } catch (err) {
@@ -312,18 +313,24 @@ function _getAuthRedirectBase(loginPath) {
 }
 
 async function _logAuthRedirect(reason, session, target, extra) {
-  if (typeof logWarn !== 'function') return;
+  if (typeof logWarn !== 'function' && typeof logInfo !== 'function') return;
+  const authFailure = (extra && typeof extra.세션실패 === 'object') ? extra.세션실패 : {};
+  const cachedUsername = authFailure.cachedUsername || null;
+  const cachedDisplayName = authFailure.cachedDisplayName || null;
   const details = Object.assign({
     사유: reason,
     요청페이지: window.location.pathname,
     pageId: typeof detectCurrentPageId === 'function' ? detectCurrentPageId() : null,
     이동대상: target,
-    사용자: session ? session.username : null,
+    사용자: session ? session.username : cachedUsername,
+    사용자이름: session ? (session.displayName || session.username) : cachedDisplayName,
     권한: session ? session.permissionLevel : null,
     권한등급: session ? session.permissionRank : null,
     최고관리자: session ? !!session.isSuperAdmin : false
   }, extra || {});
-  await logWarn('AUTH_REDIRECT', details);
+  const routineRedirect = /세션 없음|세션 만료|24시간 비활성|첫 로그인/i.test(reason || '');
+  const logger = routineRedirect && typeof logInfo === 'function' ? logInfo : logWarn;
+  await logger('AUTH_REDIRECT', details);
 }
 
 async function initPage(allowedRolesOrMinRank, loginPath) {
@@ -430,12 +437,15 @@ function detectCurrentPageId() {
   if (path.includes('admin/users.html')) return 'admin-users';
   if (path.includes('admin/bulk-register.html')) return 'admin-bulk-register';
   if (path.includes('admin/departments.html')) return 'admin-departments';
+  if (path.includes('admin/user-stats.html')) return 'admin-user-stats';
   if (path.includes('admin/managers.html')) return 'admin-managers';
   if (path.includes('admin/talents.html')) return 'admin-talents';
   if (path.includes('admin/talent-adjustments.html')) return 'admin-talent-adjustments';
   if (path.includes('admin/talent-stats.html')) return 'admin-talent-stats';
   if (path.includes('admin/talent-qr.html')) return 'admin-talent-qr';
   if (path.includes('admin/product-categories.html')) return 'admin-product-categories';
+  if (path.includes('admin/product-suggestion-votes.html')) return 'admin-product-suggestion-votes';
+  if (path.includes('admin/product-bulk-register.html')) return 'admin-product-bulk-register';
   if (path.includes('admin/shop.html')) return 'admin-shop';
   if (path.includes('admin/purchases.html')) return 'admin-purchases';
   if (path.includes('admin/purchase-stats.html')) return 'admin-purchase-stats';
@@ -456,6 +466,7 @@ function detectCurrentPageId() {
   if (path.includes('talent-receive.html')) return 'talent-receive';
   if (path.includes('my-talents.html')) return 'my-talents';
   if (path.includes('my-orders.html')) return 'my-orders';
+  if (path.includes('product-suggestions.html')) return 'product-suggestions';
   if (path.includes('dept-teacher-guide.html')) return 'dept-teacher-guide';
   if (path.includes('purchase-teacher-guide.html')) return 'purchase-teacher-guide';
   if (path.includes('chief-teacher-guide.html')) return 'chief-teacher-guide';

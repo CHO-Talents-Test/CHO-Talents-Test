@@ -41,6 +41,11 @@
         <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">항목명</label>
         <input type="text" id="mName" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="예: 출석, 성경 읽기" />
       </div>
+      <div style="margin-bottom:0.8rem;">
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">카드 이모지</label>
+        <input type="text" id="mEmoji" maxlength="16" autocomplete="off" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="예: 🏆" value="✨" />
+        <small style="display:block;margin-top:0.25rem;color:var(--admin-text-muted);">달란트 적립 안내 카드에 표시됩니다.</small>
+      </div>
       <div style="display:flex;gap:0.8rem;margin-bottom:0.8rem;">
         <div style="flex:1;">
           <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">지급 달란트</label>
@@ -73,7 +78,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -112,6 +117,16 @@
 
     function toAttrJson(value) {
       return JSON.stringify(value).replace(/&/g, '&amp;').replace(/'/g, '&#39;').replace(/</g, '\\u003c');
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      })[char]);
+    }
+
+    function getTalentItemEmoji(item) {
+      return String(item?.emoji || '').trim() || '✨';
     }
 
     (async () => {
@@ -203,7 +218,7 @@
         }
         return `<tr style="cursor:pointer;${!i.is_active ? 'opacity:0.5;' : ''}" onclick='openEditModal(${itemJson})'>
         <td>${i.sort_order}</td>
-        <td><strong>${i.name}</strong>${isQuick ? ' <span style="font-size:0.7rem;background:#e7f5ff;color:#1971c2;padding:0.1rem 0.4rem;border-radius:4px;">⚡퀵</span>' : ''}</td>
+        <td><strong>${escapeHtml(getTalentItemEmoji(i))} ${escapeHtml(i.name)}</strong>${isQuick ? ' <span style="font-size:0.7rem;background:#e7f5ff;color:#1971c2;padding:0.1rem 0.4rem;border-radius:4px;">⚡퀵</span>' : ''}</td>
         <td style="font-weight:700;color:#2b8a3e;">+${i.talent_amount}</td>
         <td style="font-size:0.82rem;line-height:1.4;">
           <div>총 ${stats.total}회</div>
@@ -240,6 +255,7 @@
       editingId = null;
       document.getElementById('modalTitle').textContent = '항목 추가';
       document.getElementById('mName').value = '';
+      document.getElementById('mEmoji').value = '✨';
       document.getElementById('mAmount').value = '';
       document.getElementById('mSort').value = '0';
       document.getElementById('mTarget').value = currentTab;
@@ -253,6 +269,7 @@
       editingId = item.id;
       document.getElementById('modalTitle').textContent = '항목 수정';
       document.getElementById('mName').value = item.name;
+      document.getElementById('mEmoji').value = getTalentItemEmoji(item);
       document.getElementById('mAmount').value = item.talent_amount;
       document.getElementById('mSort').value = item.sort_order;
       document.getElementById('mTarget').value = item.target_type;
@@ -267,6 +284,7 @@
     async function saveItem() {
       const errEl = document.getElementById('modalError');
       const name = document.getElementById('mName').value.trim();
+      const emoji = document.getElementById('mEmoji').value.trim() || '✨';
       const amount = parseInt(document.getElementById('mAmount').value);
       const sortOrder = parseInt(document.getElementById('mSort').value) || 0;
       const targetType = document.getElementById('mTarget').value;
@@ -275,7 +293,7 @@
       if (!amount || amount <= 0) { errEl.textContent = '유효한 달란트 수를 입력해주세요.'; errEl.classList.add('show'); return; }
       if (amount > 100) { errEl.textContent = '달란트는 최대 100까지만 설정할 수 있습니다.'; errEl.classList.add('show'); return; }
 
-      const row = { name, talent_amount: amount, sort_order: sortOrder, target_type: targetType,
+      const row = { name, emoji, talent_amount: amount, sort_order: sortOrder, target_type: targetType,
         giving_rule: document.getElementById('mGivingRule').value.trim() || null,
         giving_description: document.getElementById('mGivingDesc').value.trim() || null
       };
@@ -285,18 +303,19 @@
         const changes = [];
         if (oldItem) {
           if (oldItem.name !== name) changes.push(`항목명: ${oldItem.name} → ${name}`);
+          if (getTalentItemEmoji(oldItem) !== emoji) changes.push(`이모지: ${getTalentItemEmoji(oldItem)} → ${emoji}`);
           if (oldItem.talent_amount !== amount) changes.push(`달란트: ${oldItem.talent_amount} → ${amount}`);
           if (oldItem.sort_order !== sortOrder) changes.push(`순서: ${oldItem.sort_order} → ${sortOrder}`);
           if (oldItem.target_type !== targetType) changes.push(`대상: ${getCodeLabel('talent_items.target_type', oldItem.target_type, oldItem.target_type)} → ${getCodeLabel('talent_items.target_type', targetType, targetType)}`);
         }
         const { error } = await _sb.from('talent_items').update(row).eq('id', editingId);
-        if (error) { await logError('TALENT_ITEM_UPDATE_FAIL', { 항목ID: editingId, 오류: error.message }); errEl.textContent = tErr(error.message); errEl.classList.add('show'); return; }
-        await logInfo('TALENT_ITEM_UPDATE', { 항목명: name, 변경내역: changes.join(', ') || '변경 없음' });
+        if (error) { await logError('TALENT_ITEM_UPDATE_FAIL', { 항목ID: editingId, 오류: error.message }); errEl.textContent = /emoji.*(does not exist|schema cache)|could not find.*emoji/i.test(error.message || '') ? '이모지를 저장하려면 DB에 emoji 컬럼을 추가해야 합니다. docs/TASK-083_talent_item_emoji.sql을 실행해주세요.' : tErr(error.message); errEl.classList.add('show'); return; }
+        await logInfo('TALENT_ITEM_UPDATE', { 항목명: name, 이모지: emoji, 변경내역: changes.join(', ') || '변경 없음' });
       } else {
         row.created_by = session.id;
         const { error } = await _sb.from('talent_items').insert(row);
-        if (error) { await logError('TALENT_ITEM_CREATE_FAIL', { 항목명: name, 오류: error.message }); errEl.textContent = tErr(error.message); errEl.classList.add('show'); return; }
-        await logInfo('TALENT_ITEM_CREATE', { 항목명: name, 금액: amount });
+        if (error) { await logError('TALENT_ITEM_CREATE_FAIL', { 항목명: name, 오류: error.message }); errEl.textContent = /emoji.*(does not exist|schema cache)|could not find.*emoji/i.test(error.message || '') ? '이모지를 저장하려면 DB에 emoji 컬럼을 추가해야 합니다. docs/TASK-083_talent_item_emoji.sql을 실행해주세요.' : tErr(error.message); errEl.classList.add('show'); return; }
+        await logInfo('TALENT_ITEM_CREATE', { 항목명: name, 이모지: emoji, 금액: amount });
       }
       closeModal();
       await loadItems();

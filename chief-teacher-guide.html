@@ -38,7 +38,7 @@
             <tr><td>학생 일괄 등록</td><td>엑셀 양식으로 학생 계정을 한 번에 등록합니다.</td><td>초기 비밀번호는 1234입니다.</td></tr>
             <tr><td>달란트 반환</td><td>달란트 관리 상세 팝업에서 잘못 지급된 달란트를 사유 입력 후 반환합니다. 예외 지급/반환 관리에서 전체 이력을 분리 조회할 수 있습니다. 반환 건은 <strong>총반환</strong>에 집계되고 <strong>총사용</strong>에서 제외됩니다.</td><td>거래 ID 기준 1회만 처리됩니다.</td></tr>
             <tr><td>관리자 관리 조회</td><td>운영 권한자를 확인하고 담당 부서 범위를 점검합니다.</td><td>부장 교사는 본인보다 낮은 권한만 관리 가능하며, 일부 화면은 조회 중심입니다.</td></tr>
-            <tr><td>보고서/버전</td><td>작업 보고서와 v1.0.0부터의 전체 버전 이력을 확인합니다.</td><td>현재 버전은 v3.69.0 기준이며, 시스템 로그/작업 이력 상세는 관리자 권한입니다.</td></tr>
+            <tr><td>보고서/버전/서비스 통계</td><td>작업 보고서와 v1.0.0부터의 전체 버전 이력, 외부 서비스 무료 할당량 사용 현황을 확인합니다.</td><td>현재 버전은 v3.79.0 기준이며, 서비스 통계는 매시간 정각 자동 수집되고 수집 이력은 180일 보존됩니다. 180일 초과 수동 삭제와 시스템 로그/작업 이력 상세는 관리자 권한입니다.</td></tr>
             <tr><td>운영 룰 문서</td><td>페이지 권한 룰, 로그 작성 룰, Slack 알림 룰, 작업 이력 룰과 코드 마스터 기준을 확인합니다.</td><td>설정 변경은 관리자 권한에서 처리합니다.</td></tr>
           </tbody>
         </table>
@@ -52,7 +52,7 @@
         <li><strong>관리 &gt; 사용자 관리</strong>에서 가입 신청과 부서 이동 요청을 확인합니다.</li>
         <li><strong>달란트 &gt; 달란트 관리</strong> 상세 화면에서 잘못 지급된 달란트를 반환합니다.</li>
         <li><strong>상품 &gt; 구매 통계</strong>에서 부서별 주문 흐름과 지연 상태를 확인합니다.</li>
-        <li><strong>운영 &gt; 보고서</strong>와 <strong>운영 &gt; 버전</strong>에서 최근 변경 사항을 확인합니다.</li>
+        <li><strong>운영 &gt; 보고서</strong>, <strong>운영 &gt; 버전</strong>, <strong>운영 &gt; 서비스 통계</strong>에서 최근 변경 사항과 무료 할당량 사용률을 확인합니다.</li>
       </ol>
     </section>
 
@@ -105,8 +105,20 @@
           <li>구매 담당 교사가 아닌 부장 교사는 구매 처리에서 담당 관리 부서 범위가 적용될 수 있습니다.</li>
           <li>달란트 항목 관리의 퀵 버튼 설정은 가능하지만, 항목 CRUD와 QR 관리는 전도사님 이상 권한 기준을 따릅니다.</li>
           <li>로그/작업 이력 화면 직접 조회와 페이지 접근/기능 설정 변경은 관리자 권한입니다.</li>
-          <li>권한명, 구매 상태, 상품 카테고리, 로그/작업 유형은 공통 코드 기준으로 표시됩니다. 상품 카테고리는 상품 카테고리 관리 페이지에서 관리하며, 그리드에는 내부 코드가 보이지 않고 로우 클릭으로 수정합니다. 상품 이미지는 구매 카드 썸네일과 상세 설명 이미지로 나누어 관리합니다. 명칭 변경은 개별 화면이 아니라 코드 마스터 기준을 확인합니다.</li>
+          <li>서비스 통계는 부장 교사 이상이 조회할 수 있으며 GitHub/Supabase/Kakao/Slack 사용량을 매시간 정각 기준으로 갱신합니다. 70%·85%·95% 도달 알림은 운영 Slack 채널로 전송됩니다. 180일 초과 수동 정리 버튼은 관리자(100+)에게만 표시됩니다.</li>
+          <li>권한명, 구매 상태, 상품 카테고리, 로그/작업 유형은 공통 코드 기준으로 표시됩니다. 로그 상세는 영어 key로 저장하고 화면과 Slack 알림에서는 한글로 변환합니다. 상품 카테고리는 상품 카테고리 관리 페이지에서 관리하며, 그리드에는 내부 코드가 보이지 않고 로우 클릭으로 수정합니다. 상품 이미지는 구매 카드 썸네일과 상세 설명 이미지로 나누어 관리합니다. 명칭 변경은 개별 화면이 아니라 코드 마스터 기준을 확인합니다.</li>
         </ul>
+      </div>
+    </section>
+    <section class="guide-section">
+      <h2>🆕 v3.79.0 업데이트</h2>
+      <p>즐겨찾기 바로가기는 최대 20개까지 저장할 수 있습니다. 성공 로그인 이력 기반 <strong>사용자 통계</strong>는 개인정보 보호를 위해 관리자(100+)에게만 제공됩니다.</p>
+    </section>
+    <section class="guide-section">
+      <h2>🗳️ 추천 상품 비밀 투표</h2>
+      <div class="guide-card">
+        <p>부장 교사는 <strong>상품 &gt; 상품 추천 투표</strong>에서 추천 상품의 입력 정보와 상세 이미지를 보고 찬성 또는 반대를 선택합니다. 진행 중 득표 수는 <code>profiles.is_super_admin=true</code>인 최고관리자만 확인하며, 종료된 투표는 변경할 수 없습니다. 구매 URL은 상세 창의 <strong>상품 보기</strong> 버튼으로 열 수 있습니다.</p>
+        <p style="margin-top:0.65rem;">투표 기준은 추천 등록 시점의 60등급 이상 정원입니다. 본인 투표 전에는 결과가 숨겨지며, 채택 시 추천 등록자에게 <strong>상품 추천 채택</strong> 1달란트가 자동 지급됩니다. 등록과 종료 결과는 운영관리 Slack 채널에 상품명·익명 득표 수만 안내되고 추천자·투표자 이름은 포함하지 않습니다. 현재 유효 정원이 기존 과반보다 감소한 경우의 종료 처리는 최고관리자 전용입니다.</p>
       </div>
     </section>
   </main>
@@ -115,7 +127,7 @@
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -135,9 +147,7 @@
       navUpdateAuth(session);
       await initTheme();
       const rank = session.permissionRank || 0;
-      document.querySelectorAll('.guide-switcher a').forEach(a => {
-        if (a.href.includes('evangelist-guide') && rank < 90) a.style.display = 'none';
-      });
+      applyGuideSwitcherAccess(rank);
       autoLogPageView();
     })();
   </script>

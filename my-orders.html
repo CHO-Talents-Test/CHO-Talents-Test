@@ -20,7 +20,7 @@
     <p>초등부 달란트 관리 &copy; 2026 CHO-Talents</p>
   </footer>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -130,6 +130,9 @@
       if (!confirm(`"${productName}" 구매를 취소하시겠습니까?\n${price} 달란트가 복원됩니다.`)) return;
       try {
         let cancelled = false;
+        let refundHandledByRpc = false;
+        let refundedAmount = 0;
+        let rpcUnavailable = false;
 
         // 1) RPC 기반 취소 시도 (서버 사이드 권한 검증)
         try {
@@ -139,41 +142,61 @@
           });
           if (!rpcErr && rpcResult && rpcResult.success !== false) {
             cancelled = true;
+            refundHandledByRpc = true;
+            refundedAmount = Number(rpcResult.refunded || price || 0);
           } else if (rpcErr && /does not exist|Could not find/i.test(rpcErr.message)) {
-            // RPC 미존재 시 직접 업데이트 시도
+            rpcUnavailable = true;
           } else if (rpcErr) {
             throw new Error(rpcErr.message);
           } else if (rpcResult && rpcResult.success === false) {
             throw new Error(rpcResult.error || '취소 처리에 실패했습니다.');
           }
         } catch (rpcE) {
-          if (!/does not exist|Could not find/i.test(rpcE.message || '')) throw rpcE;
+          if (/does not exist|Could not find/i.test(rpcE.message || '')) rpcUnavailable = true;
+          else throw rpcE;
         }
 
-        // 2) RPC 미존재 시 직접 테이블 업데이트 (select로 결과 검증)
+        if (rpcUnavailable) {
+          throw new Error('주문 취소 DB 함수가 아직 배포되지 않았습니다. 관리자에게 문의해주세요.');
+        }
+
+        // 2) 주문 취소는 환불과 원자적으로 처리하는 RPC 성공이 확인된 경우만 완료한다.
         if (!cancelled) {
-          let query = _sb.from('product_orders').update({ status: 'cancelled' }).eq('id', orderId).eq('user_id', session.id).eq('status', 'requested');
-          if (productId) query = query.eq('product_id', productId);
-          const { data: updated, error: upErr } = await query.select();
-          if (upErr) throw upErr;
-          if (!updated || updated.length === 0) {
-            throw new Error('취소할 수 있는 주문이 없습니다. 권한이 부족하거나 이미 처리된 주문입니다.');
-          }
-          cancelled = true;
+          throw new Error('취소 처리 결과를 확인할 수 없습니다. 잠시 후 다시 시도해주세요.');
         }
 
-        // 3) 취소 확인 후 달란트 반환 처리
-        const { data: prof } = await _sb.from('profiles').select('pending_talent').eq('id', session.id).single();
-        const newPending = Math.max(0, ((prof && prof.pending_talent) || 0) - price);
-        const { error: profErr } = await _sb.from('profiles').update({ pending_talent: newPending }).eq('id', session.id).select();
-        if (profErr) {
-          await logWarn('ORDER_CANCEL_REFUND_FAIL', { orderId, 상품명: productName, 금액: price, 오류: profErr.message });
+        // 3) RPC가 환불을 처리하지 않은 경우는 성공으로 보지 않는다.
+        if (!refundHandledByRpc) {
+          throw new Error('주문 취소 환불 처리가 확인되지 않았습니다. 관리자에게 문의해주세요.');
         }
 
-        await logInfo('ORDER_CANCEL', { orderId, productId, 상품명: productName, 금액: price });
+        await logInfo('ORDER_CANCEL', {
+          orderId,
+          productId,
+          targetUserId: session.id,
+          targetAccount: session.username,
+          targetName: session.displayName || session.username,
+          상품명: productName,
+          금액: refundedAmount || price,
+          변경내역: `주문 취소: ${session.displayName || session.username} (${session.username}) / 상품: ${productName} / 환불: ${fmtNum(refundedAmount || price)} 달란트`
+        });
         alert('구매가 취소되었습니다.');
         await loadOrders();
       } catch (e) {
+        const msg = e.message || String(e);
+        if (/환불|DB 함수|취소 처리 결과|cancel_product_order|permission denied/i.test(msg)) {
+          await logWarn('ORDER_CANCEL_REFUND_FAIL', {
+            orderId,
+            productId,
+            targetUserId: session.id,
+            targetAccount: session.username,
+            targetName: session.displayName || session.username,
+            상품명: productName,
+            금액: price,
+            오류: msg,
+            처리: 'cancel_aborted_before_partial_update'
+          });
+        }
         alert('취소 실패: ' + tErr(e.message || e));
       }
     }

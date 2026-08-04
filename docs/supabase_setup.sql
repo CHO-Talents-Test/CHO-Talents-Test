@@ -107,8 +107,8 @@ BEGIN
 END;
 $$;
 
--- 10. 초기 관리자 계정 (admin_user / 1234)
+-- 10. 초기 관리자 계정 (admin / 1234)
 -- SHA-256('1234') = 03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4
 INSERT INTO admin_users (username, password_hash, display_name, role, is_first_login)
-VALUES ('admin_user', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', '관리자', 'admin', true)
+VALUES ('admin', '03ac674216f3e15c761ee1a5e255f067953623c8b388b4459e13f978d7c846f4', '관리자', 'admin', true)
 ON CONFLICT (username) DO NOTHING;

@@ -84,6 +84,16 @@
 
     <div id="productSummary" style="display:none;margin-bottom:1rem;"></div>
 
+    <div class="modal-overlay hidden" id="productPurchaseDetailModal">
+      <div class="modal-box" style="max-width:640px;max-height:85vh;overflow-y:auto;">
+        <h3 class="modal-title">상품별 구매 상세</h3>
+        <div id="productPurchaseDetailContent"></div>
+        <div class="modal-actions" style="margin-top:1rem;">
+          <button class="btn-cancel" type="button" onclick="closeProductPurchaseDetail()">닫기</button>
+        </div>
+      </div>
+    </div>
+
     <div class="admin-table-wrap">
       <div class="admin-table-header">
         <div class="admin-table-title" id="tableTitle">전체 목록</div>
@@ -118,9 +128,10 @@
     .kanban-card.active .kanban-count{font-size:1.45rem;}
     @media (max-width:768px){.kanban-card{flex:1 1 calc(33% - 0.5rem);min-width:95px;max-width:none;}.kanban-label{font-size:0.72rem;}.kanban-count{font-size:1.15rem;}}
     .mgmt-dropdown{position:relative;display:inline-block;}.mgmt-menu{display:none;position:absolute;right:0;top:100%;background:var(--t-card, #fff);border:1px solid var(--admin-border);border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.15);z-index:9999;min-width:140px;padding:0.3rem 0;}.mgmt-menu.show{display:block;}.mgmt-menu a{display:block;padding:0.45rem 0.8rem;font-size:0.82rem;color:var(--t-text, #333);text-decoration:none;cursor:pointer;white-space:nowrap;}.mgmt-menu a:hover{background:var(--t-hover-bg, #f1f3f5);}
+    .product-summary-row{cursor:pointer;}.product-summary-row:hover{background:var(--t-hover-bg,#f8f9fa);}
   </style>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="../config/public-config.js"></script>
   <script src="../js/supabase-config.js"></script>
   <script src="../js/activity-log.js"></script>
@@ -139,10 +150,20 @@
     let allOrders = [];
     let profileMap = {};
     let processorMap = {};
+    let productMap = {};
     let orderPageSize = null;
+    let productPurchaseDetailPage = 1;
+    let productPurchaseDetailPageSize = null;
+    let productPurchaseDetailKey = null;
     function getOrderPageSize() {
       if (orderPageSize !== null) return orderPageSize;
       return window.innerWidth <= 768 ? 10 : 20;
+    }
+    function getProductPurchaseDetailPageSize() {
+      return productPurchaseDetailPageSize || 10;
+    }
+    function canViewPurchaseAccounts() {
+      return !!session && (session.permissionRank || 0) >= 100;
     }
     let orderPage = 1;
 
@@ -159,6 +180,7 @@
       navUpdateAuth(session);
       autoLogPageView();
       orderPageSize = await loadPageSize('purchases', 20);
+      productPurchaseDetailPageSize = await loadPageSize('purchase_product_detail', 10);
       updatePendingBadge();
       updateNavOrderBadge();
       updateLogBadge();
@@ -199,14 +221,6 @@
       }
       allOrders = data || [];
 
-      if (!session.isSuperAdmin) {
-        const { data: saRows } = await _sb.from('profiles').select('id').eq('is_super_admin', true);
-        if (saRows && saRows.length) {
-          const saIds = new Set(saRows.map(r => r.id));
-          allOrders = allOrders.filter(o => !saIds.has(o.user_id));
-        }
-      }
-
       const myRank = session.permissionRank || 0;
       const isPurchaseTeacher = (session.permissionLevel === 'purchase_teacher');
       const scopedDeptId = (myRank >= 60 && myRank < 80 && !isPurchaseTeacher) ? (session.managedDeptId || session.departmentId) : null;
@@ -223,6 +237,16 @@
         }
       }
 
+      const productIds = [...new Set(allOrders.map(o => o.product_id).filter(Boolean))];
+      productMap = {};
+      if (productIds.length > 0) {
+        let productResult = await _sb.from('products').select('id,name,purchase_url,actual_purchase_price').in('id', productIds);
+        // 선택 컬럼을 추가하기 전의 DB에서도 기존 구매 관리 기능은 계속 동작하게 한다.
+        if (productResult.error) productResult = await _sb.from('products').select('id,name,purchase_url').in('id', productIds);
+        if (productResult.error) productResult = await _sb.from('products').select('id,name').in('id', productIds);
+        (productResult.data || []).forEach(product => { productMap[product.id] = product; });
+      }
+
       const userIds = [...new Set(allOrders.map(o => o.user_id))];
       const procIds = [...new Set(allOrders.flatMap(o => [o.prepared_by, o.purchased_by, o.delivered_by].filter(Boolean)))];
       const allIds = [...new Set([...userIds, ...procIds])];
@@ -234,18 +258,33 @@
           profiles = userIds.map(id => scopedMap.get(id)).filter(Boolean);
           const missingProcIds = procIds.filter(id => !scopedMap.has(id));
           if (missingProcIds.length > 0) {
-            const { data: processors } = await _sb.from('profiles').select('id,display_name,username,department_id').in('id', missingProcIds);
+            const processorColumns = canViewPurchaseAccounts()
+              ? 'id,display_name,username,user_type,department_id'
+              : 'id,display_name,user_type,department_id';
+            const { data: processors } = await _sb.from('profiles').select(processorColumns).in('id', missingProcIds);
             profiles = profiles.concat(processors || []);
           }
         } else {
-          const { data: profileRows } = await _sb.from('profiles').select('id,display_name,username,department_id,class_number').in('id', allIds);
+          const profileColumns = canViewPurchaseAccounts()
+            ? 'id,display_name,username,user_type,department_id,class_number'
+              : 'id,display_name,user_type,department_id,class_number';
+          const { data: profileRows } = await _sb.from('profiles').select(profileColumns).in('id', allIds);
           profiles = profileRows || [];
         }
         profileMap = {};
         processorMap = {};
         profiles.forEach(p => {
-          profileMap[p.id] = p;
-          processorMap[p.id] = p.display_name || p.username || '-';
+          const safeProfile = canViewPurchaseAccounts()
+            ? p
+            : {
+              id: p.id,
+              display_name: p.display_name,
+              user_type: p.user_type,
+              department_id: p.department_id,
+              class_number: p.class_number
+            };
+          profileMap[p.id] = safeProfile;
+          processorMap[p.id] = safeProfile.display_name || safeProfile.username || '-';
         });
       }
 
@@ -299,13 +338,36 @@
       return orders;
     }
 
+    function getAllowedOrderTransitions(order) {
+      if (!session || !order) return [];
+      const permissionLevel = session.permissionLevel;
+      const isGlobalManager = (session.permissionRank || 0) >= 90;
+      const isPurchaseTeacher = permissionLevel === 'purchase_teacher';
+      const isManagedDepartmentTeacher = (permissionLevel === 'dept_teacher' || permissionLevel === 'chief')
+        && session.managedDeptId
+        && order._deptId === session.managedDeptId;
+
+      if (isGlobalManager) {
+        if (order.status === 'requested') return ['preparing', 'cancelled'];
+        if (order.status === 'preparing') return ['purchased', 'requested'];
+        if (order.status === 'purchased') return ['delivered'];
+        return [];
+      }
+      if (isPurchaseTeacher) {
+        if (order.status === 'preparing') return ['purchased'];
+        if (order.status === 'purchased') return ['delivered'];
+        return [];
+      }
+      if (isManagedDepartmentTeacher && order.status === 'requested') return ['preparing', 'cancelled'];
+      return [];
+    }
+
     function canProcessOrder(order) {
-      const myRank = session.permissionRank || 0;
-      if (order.status === 'delivered') return false;
-      if (myRank >= 90) return true;
-      if (session.permissionLevel === 'purchase_teacher') return true;
-      if (myRank >= 60 && session.managedDeptId && order._deptId === session.managedDeptId) return true;
-      return false;
+      return getAllowedOrderTransitions(order).length > 0;
+    }
+
+    function canChangeOrderStatus(order, newStatus) {
+      return getAllowedOrderTransitions(order).includes(newStatus);
     }
 
     function getProcessorInfo(order, stage) {
@@ -323,6 +385,87 @@
       return `<div style="font-size:0.75rem;color:#636e72;">${label}: ${name}<br>${time}</div>`;
     }
 
+    function getOrderStatusLabel(status) {
+      return STATUS_LABEL[status] || status || '-';
+    }
+
+    function getOrderLogContext(orderOrId, extra = {}) {
+      const order = typeof orderOrId === 'object' ? orderOrId : allOrders.find(x => x.id === orderOrId);
+      const prof = order ? (profileMap[order.user_id] || {}) : {};
+      const targetName = order ? (order._userName || prof.display_name || prof.username || '-') : '-';
+      const targetAccount = prof.username || null;
+      return Object.assign({
+        orderId: order ? order.id : orderOrId,
+        productId: order ? order.product_id : null,
+        productName: order ? order.product_name : null,
+        상품명: order ? order.product_name : null,
+        금액: order ? (order.total_price || order.price || 0) : null,
+        targetUserId: order ? order.user_id : null,
+        targetAccount,
+        targetName,
+        부서: order ? (order._deptName || '-') : '-',
+        oldStatus: order ? order.status : null
+      }, extra);
+    }
+
+    function summarizeOrdersForLog(ids) {
+      return ids.map(id => {
+        const order = allOrders.find(o => o.id === id);
+        const ctx = getOrderLogContext(order || id);
+        return {
+          orderId: ctx.orderId,
+          productName: ctx.productName,
+          amount: ctx['금액'],
+          targetAccount: ctx.targetAccount,
+          targetName: ctx.targetName,
+          departmentName: ctx['부서'],
+          status: ctx.oldStatus
+        };
+      });
+    }
+
+    function escapePurchaseHtml(value) {
+      return String(value ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+    }
+
+    function getSafePurchaseUrl(value) {
+      if (!value) return null;
+      try {
+        const url = new URL(value);
+        return /^https?:$/.test(url.protocol) ? url.href : null;
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function formatActualPurchasePrice(value) {
+      const price = Number(value);
+      return Number.isFinite(price) && price > 0 ? `${fmtNum(price)}원` : '-';
+    }
+
+    function getProductSummaryRows(orders) {
+      const map = new Map();
+      orders.forEach(o => {
+        const key = o.product_id ? `id:${o.product_id}` : `name:${o.product_name || '-'}`;
+        const product = o.product_id ? productMap[o.product_id] : null;
+        if (!map.has(key)) {
+          map.set(key, {
+            key,
+            productId: o.product_id || null,
+            name: (product && product.name) || o.product_name || '-',
+            purchaseUrl: product ? product.purchase_url : null,
+            actualPurchasePrice: product ? product.actual_purchase_price : null,
+            qty: 0,
+            amount: 0
+          });
+        }
+        const item = map.get(key);
+        item.qty += Number(o.quantity) || 1;
+        item.amount += Number(o.total_price || o.price || 0);
+      });
+      return [...map.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+    }
+
     function renderProductSummary(orders) {
       const el = document.getElementById('productSummary');
       if (currentPTab === 'all') {
@@ -330,14 +473,7 @@
         el.innerHTML = '';
         return;
       }
-      const map = {};
-      orders.forEach(o => {
-        const name = o.product_name || '-';
-        if (!map[name]) map[name] = { qty: 0, amount: 0 };
-        map[name].qty += (o.quantity || 1);
-        map[name].amount += (o.total_price || o.price || 0);
-      });
-      const rows = Object.entries(map).sort((a, b) => a[0].localeCompare(b[0], 'ko'));
+      const rows = getProductSummaryRows(orders);
       if (rows.length === 0) {
         el.style.display = 'none';
         el.innerHTML = '';
@@ -346,24 +482,119 @@
       el.style.display = '';
       el.innerHTML = `<div style="font-size:0.85rem;font-weight:600;margin-bottom:0.4rem;">상품별 합계</div>
         <table class="admin-table" style="margin-bottom:0;font-size:0.82rem;">
-          <thead><tr><th>상품명</th><th>수량 합계</th><th>금액 합계</th></tr></thead>
-          <tbody>${rows.map(([name, v]) => `<tr><td>${name}</td><td>${v.qty}</td><td>${fmtNum(v.amount)}</td></tr>`).join('')}</tbody>
+          <thead><tr><th>상품명</th><th>실제 상품 가격</th><th>수량 합계</th><th>금액 합계</th><th>관리</th></tr></thead>
+          <tbody>${rows.map(v => `<tr class="product-summary-row" data-summary-key="${escapePurchaseHtml(v.key)}"><td>${escapePurchaseHtml(v.name)}</td><td>${formatActualPurchasePrice(v.actualPurchasePrice)}</td><td>${v.qty}</td><td>${fmtNum(v.amount)}</td><td><button class="filter-btn product-summary-detail" data-summary-key="${escapePurchaseHtml(v.key)}" type="button">상세</button></td></tr>`).join('')}</tbody>
         </table>`;
+      el.querySelectorAll('.product-summary-row').forEach(row => {
+        row.addEventListener('click', () => showProductPurchaseDetail(row.dataset.summaryKey));
+      });
+      el.querySelectorAll('.product-summary-detail').forEach(button => {
+        button.addEventListener('click', event => {
+          event.stopPropagation();
+          showProductPurchaseDetail(button.dataset.summaryKey);
+        });
+      });
+    }
+
+    function showProductPurchaseDetail(summaryKey) {
+      productPurchaseDetailKey = summaryKey;
+      productPurchaseDetailPage = 1;
+      renderProductPurchaseDetail();
+      document.getElementById('productPurchaseDetailModal').classList.remove('hidden');
+    }
+
+    function renderProductPurchaseDetail() {
+      const summaryKey = productPurchaseDetailKey;
+      if (!summaryKey) return;
+      const visibleOrders = getVisibleOrders();
+      const summary = getProductSummaryRows(visibleOrders).find(item => item.key === summaryKey);
+      if (!summary) return;
+
+      const matchingOrders = visibleOrders.filter(order => {
+        const key = order.product_id ? `id:${order.product_id}` : `name:${order.product_name || '-'}`;
+        return key === summaryKey;
+      });
+      const buyers = new Map();
+      matchingOrders.forEach(order => {
+        const profile = profileMap[order.user_id] || {};
+        const key = order.user_id || `${order._userName || '-'}:${order.id}`;
+        if (!buyers.has(key)) buyers.set(key, {
+          name: order._userName || profile.display_name || profile.username || '-',
+          username: profile.username || '-',
+          departmentName: order._deptName || '-',
+          userType: profile.user_type === 'teacher' ? '교사' : '학생',
+          quantity: 0
+        });
+        buyers.get(key).quantity += Number(order.quantity) || 1;
+      });
+      const buyerRows = [...buyers.values()].sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+      const totalQuantity = buyerRows.reduce((sum, buyer) => sum + buyer.quantity, 0);
+      const canViewAccounts = canViewPurchaseAccounts();
+      const pageSize = getProductPurchaseDetailPageSize();
+      const totalPages = Math.max(1, Math.ceil(buyerRows.length / pageSize));
+      if (productPurchaseDetailPage > totalPages) productPurchaseDetailPage = totalPages;
+      const startIndex = (productPurchaseDetailPage - 1) * pageSize;
+      const pageBuyerRows = buyerRows.slice(startIndex, startIndex + pageSize);
+      const accountHeader = canViewAccounts ? '<th>계정</th>' : '';
+      const accountCells = buyer => canViewAccounts ? `<td>${escapePurchaseHtml(buyer.username)}</td>` : '';
+      const colspan = canViewAccounts ? 6 : 5;
+      const purchaseUrl = getSafePurchaseUrl(summary.purchaseUrl);
+      const actualPurchasePrice = formatActualPurchasePrice(summary.actualPurchasePrice);
+      const purchaseUrlHtml = purchaseUrl
+        ? `<a href="${escapePurchaseHtml(purchaseUrl)}" target="_blank" rel="noopener noreferrer" class="filter-btn" style="display:inline-block;text-decoration:none;">구매 링크 열기 ↗</a>`
+        : '<span style="color:var(--admin-text-muted);">등록된 구매 URL이 없습니다.</span>';
+
+      document.getElementById('productPurchaseDetailContent').innerHTML = `
+        <div style="margin-bottom:0.9rem;"><strong style="font-size:1rem;">${escapePurchaseHtml(summary.name)}</strong></div>
+        <div style="font-size:0.84rem;margin-bottom:0.45rem;"><strong>실제 상품 가격:</strong> ${actualPurchasePrice}</div>
+        <div style="font-size:0.84rem;margin-bottom:0.45rem;"><strong>구매 URL:</strong> ${purchaseUrlHtml}</div>
+        <div style="font-size:0.84rem;margin-top:0.9rem;"><strong>총 구매 개수:</strong> ${totalQuantity}개</div>
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;flex-wrap:wrap;margin:0.45rem 0;font-size:0.84rem;font-weight:700;">
+          <span>구매자별 구매 개수 (${buyerRows.length}명)</span>
+          <span style="display:flex;align-items:center;gap:0.35rem;font-size:0.78rem;font-weight:400;">표시 ${renderPageSizeSelector('purchase_product_detail', pageSize, 'onProductPurchaseDetailPageSizeChange(this.value)')}</span>
+        </div>
+        <table class="admin-table" style="margin:0;font-size:0.82rem;">
+          <thead><tr><th>구매자</th><th>사용자 부서</th><th>사용자 유형</th>${accountHeader}<th>구매 개수</th><th>실제 상품 가격</th></tr></thead>
+          <tbody>${pageBuyerRows.map(buyer => `<tr><td>${escapePurchaseHtml(buyer.name)}</td><td>${escapePurchaseHtml(buyer.departmentName)}</td><td>${escapePurchaseHtml(buyer.userType)}</td>${accountCells(buyer)}<td>${buyer.quantity}</td><td>${actualPurchasePrice}</td></tr>`).join('') || `<tr><td colspan="${colspan}" class="empty-state">구매자 정보가 없습니다.</td></tr>`}</tbody>
+        </table>
+        <div style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.7rem;flex-wrap:wrap;">${buildPagingButtons(productPurchaseDetailPage, totalPages, 'goProductPurchaseDetailPage(__PAGE__)')}</div>`;
+    }
+
+    function goProductPurchaseDetailPage(page) {
+      productPurchaseDetailPage = page;
+      renderProductPurchaseDetail();
+    }
+
+    async function onProductPurchaseDetailPageSizeChange(value) {
+      productPurchaseDetailPageSize = parseInt(value, 10) || 10;
+      await savePageSize('purchase_product_detail', productPurchaseDetailPageSize);
+      productPurchaseDetailPage = 1;
+      renderProductPurchaseDetail();
+    }
+
+    function closeProductPurchaseDetail() {
+      document.getElementById('productPurchaseDetailModal').classList.add('hidden');
+      productPurchaseDetailKey = null;
     }
 
     function buildMgmtMenu(o, canProc, isAllTab) {
       const items = [];
+      const transitions = canProc ? getAllowedOrderTransitions(o) : [];
       if (isAllTab) items.push(`<a onclick="showOrderDetail('${o.id}')">📋 상세</a>`);
-      if (o.status === 'requested' && canProc) {
+      if (transitions.includes('preparing')) {
         items.push(`<a onclick="updateStatus('${o.id}','preparing')">📦 상품 준비</a>`);
-      } else if (o.status === 'preparing' && canProc) {
+      }
+      if (transitions.includes('cancelled')) {
+        items.push(`<a style="color:#c92a2a;" onclick="cancelPurchase('${o.id}')">❌ 구매 취소</a>`);
+      }
+      if (transitions.includes('purchased')) {
         items.push(`<a onclick="confirmPurchase('${o.id}')">💳 구매 확정</a>`);
-        items.push(`<a onclick="revertStatus('${o.id}','requested')">↩ 되돌리기</a>`);
-      } else if (o.status === 'purchased' && canProc) {
+      }
+      if (transitions.includes('delivered')) {
         items.push(`<a onclick="updateStatus('${o.id}','delivered')">✅ 지급 완료</a>`);
-        items.push(`<a onclick="revertStatus('${o.id}','preparing')">↩ 되돌리기</a>`);
-      } else if (o.status === 'delivered' && canProc) {
-        items.push(`<a onclick="revertStatus('${o.id}','purchased')">↩ 되돌리기</a>`);
+      }
+      if (transitions.includes('requested')) {
+        items.push(`<a onclick="revertStatus('${o.id}','requested')">↩ 되돌리기</a>`);
       }
       if (items.length === 0) return '-';
       return `<div class="mgmt-dropdown">
@@ -403,8 +634,14 @@
 
       renderProductSummary(orders);
 
-      const myRank = session.permissionRank || 0;
-      const showBulk = !isAllTab && currentPTab !== 'delivered' && myRank >= 60;
+      const bulkTargetStatus = {
+        requested: 'preparing',
+        preparing: 'purchased',
+        purchased: 'delivered'
+      }[currentPTab];
+      const showBulk = !isAllTab
+        && !!bulkTargetStatus
+        && orders.some(order => canChangeOrderStatus(order, bulkTargetStatus));
       const bulkEl = document.getElementById('bulkActions');
       const btnPrepare = document.getElementById('btnBulkPrepare');
       const btnPurchase = document.getElementById('btnBulkPurchase');
@@ -459,7 +696,9 @@
         }
 
         const mgmtMenu = buildMgmtMenu(o, canProc, isAllTab);
-        const chkTd = showBulk && o.status === currentPTab ? `<td><input type="checkbox" class="order-chk" value="${o.id}"></td>` : (showBulk ? '<td></td>' : '');
+        const chkTd = showBulk && canChangeOrderStatus(o, bulkTargetStatus)
+          ? `<td><input type="checkbox" class="order-chk" value="${o.id}"></td>`
+          : (showBulk ? '<td></td>' : '');
         const statusBadge = `<span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.78rem;background:${STATUS_COLOR[o.status] || '#868e96'}22;color:${STATUS_COLOR[o.status] || '#868e96'};font-weight:600;">${STATUS_EMOJI[o.status] || ''} ${STATUS_LABEL[o.status] || o.status}</span>`;
 
         let row = '<tr>';
@@ -501,24 +740,41 @@
 
     async function updateStatus(orderId, newStatus) {
       try {
-        const updateFields = { status: newStatus };
-        if (newStatus === 'preparing') { updateFields.prepared_at = new Date().toISOString(); updateFields.prepared_by = session.id; }
-        if (newStatus === 'delivered') { updateFields.delivered_at = new Date().toISOString(); updateFields.delivered_by = session.id; }
-
-        const { error } = await _sb.from('product_orders').update(updateFields).eq('id', orderId);
+        const o = allOrders.find(x => x.id === orderId);
+        if (!canChangeOrderStatus(o, newStatus)) {
+          alert('현재 권한으로는 이 주문 상태를 변경할 수 없습니다.');
+          return;
+        }
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
+          p_order_id: orderId,
+          p_new_status: newStatus
+        });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '처리 권한이 없습니다.' } : null);
         if (error) {
-          await logError('ORDER_STATUS_CHANGE_FAIL', { orderId, 변경상태: newStatus, 오류: error.message });
+          await logError('ORDER_STATUS_CHANGE_FAIL', {
+            ...getOrderLogContext(o || orderId, { newStatus }),
+            변경상태: getOrderStatusLabel(newStatus),
+            오류: error.message
+          });
           alert('상태 변경 실패: ' + tErr(error.message));
           return;
         }
-        const o = allOrders.find(x => x.id === orderId);
-        await logInfo('ORDER_STATUS_CHANGE', { orderId, 변경상태: newStatus });
+        await logInfo('ORDER_STATUS_CHANGE', {
+          ...getOrderLogContext(o || orderId, { newStatus }),
+          이전상태: getOrderStatusLabel(o?.status),
+          변경상태: getOrderStatusLabel(newStatus),
+          변경내역: `주문 상태 변경: ${o?._userName || '-'} / 상품: ${o?.product_name || '-'} / ${getOrderStatusLabel(o?.status)} → ${getOrderStatusLabel(newStatus)}`
+        });
         if (o && o.status === 'requested' && newStatus === 'preparing') {
           sendSlackNotify('purchase_status', { 상품명: o.product_name || '-', 신청자: o._userName || '-', 이전상태: 'requested', 변경상태: 'preparing', 처리자: session.displayName || session.username });
         }
         await loadOrders();
       } catch (err) {
-        await logError('ORDER_STATUS_CHANGE_ERROR', { orderId, 변경상태: newStatus, 오류: String(err) });
+        await logError('ORDER_STATUS_CHANGE_ERROR', {
+          ...getOrderLogContext(orderId, { newStatus }),
+          변경상태: getOrderStatusLabel(newStatus),
+          오류: String(err)
+        });
         alert('상태 변경 중 오류: ' + tErr(err.message));
       }
     }
@@ -526,26 +782,44 @@
     async function revertStatus(orderId, prevStatus) {
       if (!confirm(`"${STATUS_LABEL[prevStatus] || prevStatus}" 단계로 되돌리시겠습니까?`)) return;
       try {
-        const updateFields = { status: prevStatus };
-        if (prevStatus === 'requested') { updateFields.prepared_at = null; updateFields.prepared_by = null; }
-        if (prevStatus === 'preparing') { updateFields.purchased_at = null; updateFields.purchased_by = null; }
-        if (prevStatus === 'purchased') { updateFields.delivered_at = null; updateFields.delivered_by = null; }
-        const { error } = await _sb.from('product_orders').update(updateFields).eq('id', orderId);
+        const ro = allOrders.find(x => x.id === orderId);
+        if (!canChangeOrderStatus(ro, prevStatus)) {
+          alert('현재 권한으로는 이 주문 상태를 되돌릴 수 없습니다.');
+          return;
+        }
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
+          p_order_id: orderId,
+          p_new_status: prevStatus
+        });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '처리 권한이 없습니다.' } : null);
         if (error) {
-          await logError('ORDER_REVERT_FAIL', { orderId, 변경상태: prevStatus, 오류: error.message });
+          await logError('ORDER_REVERT_FAIL', {
+            ...getOrderLogContext(ro || orderId, { newStatus: prevStatus }),
+            변경상태: getOrderStatusLabel(prevStatus),
+            오류: error.message
+          });
           alert('되돌리기 실패: ' + tErr(error.message));
           return;
         }
-        const ro = allOrders.find(x => x.id === orderId);
-        await logInfo('ORDER_REVERT', { orderId, 변경상태: prevStatus });
+        await logInfo('ORDER_REVERT', {
+          ...getOrderLogContext(ro || orderId, { newStatus: prevStatus }),
+          이전상태: getOrderStatusLabel(ro?.status),
+          변경상태: getOrderStatusLabel(prevStatus),
+          변경내역: `주문 상태 되돌리기: ${ro?._userName || '-'} / 상품: ${ro?.product_name || '-'} / ${getOrderStatusLabel(ro?.status)} → ${getOrderStatusLabel(prevStatus)}`
+        });
         await loadOrders();
       } catch (err) {
-        await logError('ORDER_REVERT_ERROR', { orderId, 변경상태: prevStatus, 오류: String(err) });
+        await logError('ORDER_REVERT_ERROR', {
+          ...getOrderLogContext(orderId, { newStatus: prevStatus }),
+          변경상태: getOrderStatusLabel(prevStatus),
+          오류: String(err)
+        });
         alert('되돌리기 중 오류: ' + tErr(err.message));
       }
     }
 
     function showOrderDetail(orderId) {
+      if (typeof closeOpenActionMenus === 'function') closeOpenActionMenus();
       const o = allOrders.find(x => x.id === orderId);
       if (!o) return;
       const infos = [getProcessorInfo(o, 'preparing'), getProcessorInfo(o, 'purchased'), getProcessorInfo(o, 'delivered')].filter(Boolean).join('<hr style="margin:0.4rem 0;border:none;border-top:1px solid #e9ecef;">');
@@ -564,28 +838,85 @@
       document.body.insertAdjacentHTML('beforeend', html);
     }
 
+    async function cancelPurchase(orderId) {
+      const co = allOrders.find(x => x.id === orderId);
+      if (!canChangeOrderStatus(co, 'cancelled')) {
+        alert('현재 권한으로는 이 주문을 구매 취소할 수 없습니다.');
+        return;
+      }
+      if (!confirm(`"${co?.product_name || '이 상품'}" 구매 신청을 취소하시겠습니까?\n예약된 달란트가 다시 사용 가능해집니다.`)) return;
+
+      try {
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
+          p_order_id: orderId,
+          p_new_status: 'cancelled'
+        });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '구매 취소 처리 권한이 없습니다.' } : null);
+        if (error) {
+          await logError('ORDER_PURCHASE_CANCEL_FAIL', {
+            ...getOrderLogContext(co || orderId, { newStatus: 'cancelled' }),
+            error: error.message
+          });
+          alert('구매 취소 처리에 실패했습니다: ' + tErr(error.message));
+          return;
+        }
+        await logInfo('ORDER_PURCHASE_CANCEL', {
+          ...getOrderLogContext(co || orderId, { newStatus: 'cancelled' }),
+          oldStatus: getOrderStatusLabel(co?.status),
+          newStatus: getOrderStatusLabel('cancelled'),
+          refundedTalent: co?.price || 0,
+          changeSummary: `구매 취소: ${co?._userName || '-'} / 상품: ${co?.product_name || '-'} / 예약 달란트 해제: ${fmtNum(co?.price || 0)}`
+        });
+        await loadOrders();
+      } catch (err) {
+        await logError('ORDER_PURCHASE_CANCEL_ERROR', {
+          ...getOrderLogContext(orderId, { newStatus: 'cancelled' }),
+          error: String(err)
+        });
+        alert('구매 취소 처리 중 오류가 발생했습니다: ' + tErr(err.message));
+      }
+    }
+
     async function confirmPurchase(orderId) {
       if (!confirm('상품 구매를 확정하시겠습니까?\n달란트가 실제 차감됩니다.')) return;
       try {
-        const { data, error } = await _sb.rpc('confirm_product_purchase', {
+        const co = allOrders.find(x => x.id === orderId);
+        if (!canChangeOrderStatus(co, 'purchased')) {
+          alert('현재 권한으로는 이 주문을 구매 확정할 수 없습니다.');
+          return;
+        }
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
           p_order_id: orderId,
-          p_admin_id: session.id
+          p_new_status: 'purchased'
         });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '처리 권한이 없습니다.' } : null);
         if (error) {
-          await logError('ORDER_PURCHASE_CONFIRM_FAIL', { orderId, 오류: error.message });
+          await logError('ORDER_PURCHASE_CONFIRM_FAIL', {
+            ...getOrderLogContext(co || orderId, { newStatus: 'purchased' }),
+            오류: error.message
+          });
           alert('구매 확정 실패: ' + tErr(error.message));
           return;
         }
         if (data && data.success === false) {
-          await logWarn('ORDER_PURCHASE_CONFIRM_DENIED', { orderId, 사유: data.error });
+          await logWarn('ORDER_PURCHASE_CONFIRM_DENIED', {
+            ...getOrderLogContext(co || orderId, { newStatus: 'purchased' }),
+            사유: data.error
+          });
           alert(tErr(data.error));
           return;
         }
-        const co = allOrders.find(x => x.id === orderId);
-        await logInfo('ORDER_PURCHASE_CONFIRM', { orderId });
+        await logInfo('ORDER_PURCHASE_CONFIRM', {
+          ...getOrderLogContext(co || orderId, { newStatus: 'purchased' }),
+          변경상태: getOrderStatusLabel('purchased'),
+          변경내역: `구매 확정: ${co?._userName || '-'} / 상품: ${co?.product_name || '-'} / 금액: ${fmtNum(co?.price || 0)} 달란트`
+        });
         await loadOrders();
       } catch (err) {
-        await logError('ORDER_PURCHASE_CONFIRM_ERROR', { orderId, 오류: String(err) });
+        await logError('ORDER_PURCHASE_CONFIRM_ERROR', {
+          ...getOrderLogContext(orderId, { newStatus: 'purchased' }),
+          오류: String(err)
+        });
         alert('구매 확정 중 오류: ' + tErr(err.message));
       }
     }
@@ -608,15 +939,26 @@
 
       let failCount = 0;
       for (const id of ids) {
-        const { error } = await _sb.from('product_orders').update({
-          status: 'preparing',
-          prepared_at: new Date().toISOString(),
-          prepared_by: session.id
-        }).eq('id', id);
-        if (error) { failCount++; await logError('ORDER_BULK_PREPARE_ITEM_FAIL', { orderId: id, 오류: error.message }); }
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
+          p_order_id: id,
+          p_new_status: 'preparing'
+        });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '처리 권한이 없습니다.' } : null);
+        if (error) {
+          failCount++;
+          await logError('ORDER_BULK_PREPARE_ITEM_FAIL', {
+            ...getOrderLogContext(id, { newStatus: 'preparing' }),
+            오류: error.message
+          });
+        }
       }
       if (failCount > 0) alert(`${failCount}건 처리 실패. 로그를 확인해주세요.`);
-      await logInfo('ORDER_BULK_PREPARE', { 건수: ids.length, 실패건수: failCount });
+      await logInfo('ORDER_BULK_PREPARE', {
+        건수: ids.length,
+        실패건수: failCount,
+        items: summarizeOrdersForLog(ids),
+        변경내역: `일괄 상품 준비: ${ids.length}건 / 실패 ${failCount}건`
+      });
       sendSlackNotify('purchase_status', { 상품명: '일괄 처리', 이전상태: 'requested', 변경상태: 'preparing', 처리자: session.displayName || session.username, 건수: ids.length, 실패건수: failCount });
       await loadOrders();
     }
@@ -628,20 +970,26 @@
 
       let failCount = 0;
       for (const id of ids) {
-        const { data, error } = await _sb.rpc('confirm_product_purchase', {
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
           p_order_id: id,
-          p_admin_id: session.id
+          p_new_status: 'purchased'
         });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '처리 권한이 없습니다.' } : null);
         if (error) {
           failCount++;
-          await logError('ORDER_BULK_PURCHASE_ITEM_FAIL', { orderId: id, 오류: error.message });
-        } else if (data && data.success === false) {
-          failCount++;
-          await logWarn('ORDER_BULK_PURCHASE_DENIED', { orderId: id, 사유: data.error });
+          await logError('ORDER_BULK_PURCHASE_ITEM_FAIL', {
+            ...getOrderLogContext(id, { newStatus: 'purchased' }),
+            오류: error.message
+          });
         }
       }
       if (failCount > 0) alert(`${failCount}건 처리 실패. 잔액 부족 등의 사유일 수 있습니다.`);
-      await logInfo('ORDER_BULK_PURCHASE', { 건수: ids.length, 실패건수: failCount });
+      await logInfo('ORDER_BULK_PURCHASE', {
+        건수: ids.length,
+        실패건수: failCount,
+        items: summarizeOrdersForLog(ids),
+        변경내역: `일괄 구매 확정: ${ids.length}건 / 실패 ${failCount}건`
+      });
       await loadOrders();
     }
 
@@ -652,38 +1000,42 @@
 
       let failCount = 0;
       for (const id of ids) {
-        const { error } = await _sb.from('product_orders').update({
-          status: 'delivered',
-          delivered_at: new Date().toISOString(),
-          delivered_by: session.id
-        }).eq('id', id);
-        if (error) { failCount++; await logError('ORDER_BULK_DELIVER_ITEM_FAIL', { orderId: id, 오류: error.message }); }
+        const { data, error: rpcError } = await _sb.rpc('process_product_order', {
+          p_order_id: id,
+          p_new_status: 'delivered'
+        });
+        const error = rpcError || (data && data.success === false ? { message: data.error || '처리 권한이 없습니다.' } : null);
+        if (error) {
+          failCount++;
+          await logError('ORDER_BULK_DELIVER_ITEM_FAIL', {
+            ...getOrderLogContext(id, { newStatus: 'delivered' }),
+            오류: error.message
+          });
+        }
       }
       if (failCount > 0) alert(`${failCount}건 처리 실패. 로그를 확인해주세요.`);
-      await logInfo('ORDER_BULK_DELIVER', { 건수: ids.length, 실패건수: failCount });
+      await logInfo('ORDER_BULK_DELIVER', {
+        건수: ids.length,
+        실패건수: failCount,
+        items: summarizeOrdersForLog(ids),
+        변경내역: `일괄 상품 지급: ${ids.length}건 / 실패 ${failCount}건`
+      });
       await loadOrders();
     }
 
     async function updateOrderBadge() {
-      const myRank = session.permissionRank || 0;
-      if (myRank < 60) return;
       try {
-        let query = _sb.from('product_orders').select('user_id,status', { count: 'exact' }).neq('status', 'delivered');
-        const { data: orders, count } = await query;
-        let processableCount = 0;
-        if (myRank >= 90) {
-          processableCount = count || 0;
-        } else if (session.managedDeptId) {
-          processableCount = (orders || []).filter(o => {
-            const prof = profileMap[o.user_id];
-            return prof && prof.department_id === session.managedDeptId;
-          }).length;
-        }
+        const processableCount = typeof getPendingOrderCount === 'function'
+          ? await getPendingOrderCount()
+          : 0;
         const badge = document.getElementById('navOrderBadge');
         if (badge && processableCount > 0) {
           badge.textContent = processableCount;
           badge.classList.remove('hidden');
+        } else if (badge) {
+          badge.classList.add('hidden');
         }
+        if (typeof updateNavGroupBadges === 'function') updateNavGroupBadges();
       } catch (e) {}
     }
 
@@ -696,6 +1048,9 @@
       const min = String(d.getMinutes()).padStart(2, '0');
       return `${m}-${day} ${h}:${min}`;
     }
+    document.getElementById('productPurchaseDetailModal').addEventListener('click', event => {
+      if (event.target.classList.contains('modal-overlay')) closeProductPurchaseDetail();
+    });
   </script>
   <div id="version-container"></div>
   <script src="../js/version.js"></script>

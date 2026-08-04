@@ -69,7 +69,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -159,10 +159,24 @@
         btn.disabled = false; btn.textContent = '신청하기'; return;
       }
 
-      await logInfo('REGISTER_REQUEST', { username });
       var deptSel = document.getElementById('rDept');
       var deptName = deptSel.options[deptSel.selectedIndex] ? deptSel.options[deptSel.selectedIndex].text : '-';
-      sendSlackNotify('user_register', { 아이디: username, 이름: displayName, 부서: deptName });
+      await logInfo('REGISTER_REQUEST', {
+        username,
+        displayName,
+        targetAccount: username,
+        targetName: displayName,
+        departmentId: deptId,
+        부서: deptName,
+        신청사유: reason || '없음',
+        변경내역: `가입 신청: ${displayName} (${username}) / 부서: ${deptName}${reason ? ' / 사유: ' + reason : ''}`
+      });
+      sendSlackNotify('user_register', {
+        아이디: username,
+        이름: displayName,
+        부서: deptName,
+        사유: reason || '없음'
+      });
       document.getElementById('formArea').style.display = 'none';
       document.getElementById('resultArea').style.display = 'block';
     }

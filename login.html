@@ -57,7 +57,7 @@
     </div>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
   <script src="config/public-config.js"></script>
   <script src="js/supabase-config.js"></script>
   <script src="js/activity-log.js"></script>
@@ -177,7 +177,7 @@
 
         const regInfo = await fetchRegistrationApprovalInfo(username);
         if (regInfo.status === 'pending') {
-          await logWarn('LOGIN_PENDING_APPROVAL', { username, departmentName: regInfo.departmentName, managers: regInfo.managers });
+          await logInfo('LOGIN_PENDING_APPROVAL', { username, departmentName: regInfo.departmentName, managers: regInfo.managers });
           errEl.innerHTML = renderPendingApprovalMessage(regInfo);
           errEl.classList.add('show');
           btn.disabled = false;
@@ -200,13 +200,11 @@
           } else {
             localStorage.removeItem(SAVED_USERNAME_KEY);
           }
-          logInfo('LOGIN_SUCCESS', { username });
           window.location.href = getPostLoginTarget({
             isFirstLogin: !!result.data.is_first_login,
             permissionLevel: result.data.permission_level || result.data.permissionLevel || 'teacher'
           });
         } else {
-          logWarn('LOGIN_FAIL', { username, error: result.error });
           if (regInfo.status === 'approved') {
             errEl.innerHTML = '<span style="font-size:1.1rem;">&#128274;</span> 비밀번호가 일치하지 않습니다.';
           } else {
