@@ -226,6 +226,12 @@
       document.getElementById('loginPeriodLabel').textContent = `${startDate} ~ ${endDate}`;
 
       const rows = loginStats.filter(row => row.group_type === currentView).sort((a, b) => {
+        if (currentView === 'date') {
+          return Number(b.sort_order) - Number(a.sort_order);
+        }
+        if (currentView === 'weekday' || currentView === 'hour') {
+          return Number(b.login_count) - Number(a.login_count) || Number(a.sort_order) - Number(b.sort_order);
+        }
         if (currentView === 'department' || currentView === 'user') {
           return Number(b.login_count) - Number(a.login_count) || String(a.group_label).localeCompare(String(b.group_label), 'ko');
         }
