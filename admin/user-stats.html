@@ -261,8 +261,10 @@
         return `<tr ${common}>${cells}<td><button type="button" class="filter-btn user-stats-detail-btn" onclick="event.stopPropagation(); ${openDetail}">상세</button></td></tr>`;
       }).join('');
 
+      const chartRows = getLoginStatsChartRows(rows);
+
       content.innerHTML = `<h3 style="margin:0 0 0.8rem;">${VIEW_LABELS[currentView]}</h3>
-        ${renderLoginStatsChart(rows)}
+        ${renderLoginStatsChart(chartRows)}
         <div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;flex-wrap:wrap;margin:0 0 0.6rem;">
           <span class="user-stats-note" style="margin:0;">총 ${formatNumber(rows.length)}건</span>
           <label class="user-stats-note" style="margin:0;display:inline-flex;align-items:center;gap:0.4rem;">표시 행 수 ${renderPageSizeSelector(`user_stats_${currentView}`, pageSize, `onUserStatsPageSizeChange('${currentView}', this.value)`)}</label>
@@ -274,6 +276,28 @@
           </table>
         </div>
         <div style="display:flex;justify-content:center;align-items:center;gap:0.25rem;flex-wrap:wrap;margin-top:0.85rem;">${buildPagingButtons(currentPage, totalPages, `goUserStatsPage('${currentView}', __PAGE__)`)}</div>`;
+    }
+
+    function getLoginStatsChartRows(rows) {
+      const chartRows = [...rows];
+
+      if (currentView === 'date' || currentView === 'weekday' || currentView === 'hour') {
+        return chartRows.sort((a, b) => Number(a.sort_order) - Number(b.sort_order));
+      }
+
+      if (currentView === 'department') {
+        const departmentOrder = ['1부', '2부', '3부', '4부', '5부', '예배부'];
+        const getDepartmentRank = row => {
+          const rank = departmentOrder.indexOf(String(row.group_label || '').trim());
+          return rank === -1 ? Number.MAX_SAFE_INTEGER : rank;
+        };
+        return chartRows.sort((a, b) =>
+          getDepartmentRank(a) - getDepartmentRank(b)
+          || String(a.group_label || '').localeCompare(String(b.group_label || ''), 'ko')
+        );
+      }
+
+      return chartRows;
     }
 
     function renderLoginStatsChart(rows) {
