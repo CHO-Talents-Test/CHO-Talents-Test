@@ -85,11 +85,11 @@ function getTalentErrorMessage(value) {
   return value.message || value.error || String(value);
 }
 
-function isWeeklyDuplicateTalentError(value) {
+function isDuplicateTalentGrantDateError(value) {
   const message = getTalentErrorMessage(value)
     .replace(/\s+/g, ' ')
     .trim();
-  return /already\s+given(?:\s+this)?\s+item\s+this\s+week|이미.*이번\s*주.*지급|이번\s*주.*이미.*지급/i.test(message);
+  return /already\s+given(?:\s+this)?\s+item\s+(?:on|for)\s+(?:this\s+)?(?:payment\s+)?date|이미.*(?:지급일|해당\s*일자).*(?:지급|존재)|(?:지급일|해당\s*일자).*이미.*지급/i.test(message);
 }
 
 function isDuplicateTalentExceptionRequest(value) {
@@ -101,21 +101,23 @@ function isTransientTalentRequestError(value) {
     .test(getTalentErrorMessage(value));
 }
 
-async function findRecentlyGrantedTalentItem(userId, talentItemId, createdBy, attemptedAt) {
+async function findRecentlyGrantedTalentItem(userId, talentItemId, createdBy, attemptedAt, grantDate) {
   if (!_sb || !userId || !talentItemId || !createdBy) return null;
 
   // 응답만 유실된 경우에만 복구합니다. 예외 지급은 같은 항목을 여러 번 지급할 수 있어
   // 이 조회 결과만으로 성공을 확정할 수 없으므로 호출하지 않습니다.
   const since = new Date(attemptedAt - (2 * 60 * 1000)).toISOString();
   try {
-    const { data, error } = await _sb
+    let query = _sb
       .from('talent_transactions')
-      .select('id,amount,balance_after,description,created_at,override_week_limit')
+      .select('id,amount,balance_after,description,created_at,grant_date,override_week_limit')
       .eq('user_id', userId)
       .eq('talent_item_id', talentItemId)
       .eq('created_by', createdBy)
       .eq('type', 'earn')
-      .gte('created_at', since)
+      .gte('created_at', since);
+    if (grantDate) query = query.eq('grant_date', grantDate);
+    const { data, error } = await query
       .order('created_at', { ascending: false })
       .limit(1);
     return error ? null : (data && data[0]) || null;
@@ -129,12 +131,14 @@ async function giveTalentByItem(userId, talentItemId, createdBy, options = {}) {
   try {
     const overrideWeekLimit = options.overrideWeekLimit === true;
     const overrideReason = options.overrideReason || null;
+    const grantDate = options.grantDate || null;
     const logContext = {
       targetUserId: userId,
       targetAccount: options.targetAccount || null,
       targetName: options.targetName || options.userDisplayName || null,
       talentItemId,
       itemName: options.itemName || options.talentItemName || null,
+      지급대상일: grantDate,
       사유: overrideReason,
     };
     const attemptedAt = Date.now();
@@ -146,14 +150,15 @@ async function giveTalentByItem(userId, talentItemId, createdBy, options = {}) {
       p_talent_item_id: talentItemId,
       p_override_week_limit: overrideWeekLimit,
       p_override_reason: overrideReason,
+      p_grant_date: grantDate,
     });
     if (error) {
-      if (isWeeklyDuplicateTalentError(error)) {
-        await logInfo('TALENT_GIVE_ITEM_DENIED', { ...logContext, 사유: error.message, 처리: 'weekly_duplicate' });
-        return { success: false, error: error.message, handled: true, reason: 'weekly_duplicate' };
+      if (isDuplicateTalentGrantDateError(error)) {
+        await logInfo('TALENT_GIVE_ITEM_DENIED', { ...logContext, 사유: error.message, 처리: 'duplicate_grant_date' });
+        return { success: false, error: error.message, handled: true, reason: 'duplicate_grant_date' };
       }
       const recoveredGrant = !overrideWeekLimit && isTransientTalentRequestError(error)
-        ? await findRecentlyGrantedTalentItem(userId, talentItemId, createdBy, attemptedAt)
+        ? await findRecentlyGrantedTalentItem(userId, talentItemId, createdBy, attemptedAt, grantDate)
         : null;
       if (recoveredGrant) {
         await logInfo('TALENT_GIVE_ITEM', {
@@ -180,8 +185,8 @@ async function giveTalentByItem(userId, talentItemId, createdBy, options = {}) {
       };
     }
     if (data && data.success === false) {
-      const logFn = isWeeklyDuplicateTalentError(data.error) ? logInfo : logWarn;
-      await logFn('TALENT_GIVE_ITEM_DENIED', { ...logContext, 사유: data.error, 처리: isWeeklyDuplicateTalentError(data.error) ? 'weekly_duplicate' : 'denied' });
+      const logFn = isDuplicateTalentGrantDateError(data.error) ? logInfo : logWarn;
+      await logFn('TALENT_GIVE_ITEM_DENIED', { ...logContext, 사유: data.error, 처리: isDuplicateTalentGrantDateError(data.error) ? 'duplicate_grant_date' : 'denied' });
       return data;
     }
     await logInfo('TALENT_GIVE_ITEM', {

@@ -276,24 +276,24 @@
         }
 
         if (qr.talent_item_id) {
-          const wkStart = _getWeekStartKST();
+          const paymentDate = getKSTDateString();
           try {
             const { data: adminEarns } = await _sb.from('talent_transactions')
               .select('id').eq('user_id', session.id)
               .eq('talent_item_id', qr.talent_item_id)
               .eq('type', 'earn').eq('source', 'admin')
-              .gte('created_at', wkStart.toISOString());
+              .eq('grant_date', paymentDate);
             if (adminEarns && adminEarns.length > 0) {
-              showResult('fail', '이번 주에 관리자로부터 이미 해당 항목을 지급받았습니다.'); return;
+              showResult('fail', '오늘 지급일에 관리자로부터 이미 해당 항목을 지급받았습니다.'); return;
             }
           } catch (srcErr) {
             const { data: allEarns } = await _sb.from('talent_transactions')
               .select('id, created_by').eq('user_id', session.id)
               .eq('talent_item_id', qr.talent_item_id)
               .eq('type', 'earn')
-              .gte('created_at', wkStart.toISOString());
+              .eq('grant_date', paymentDate);
             if (allEarns && allEarns.some(e => e.created_by !== session.id)) {
-              showResult('fail', '이번 주에 관리자로부터 이미 해당 항목을 지급받았습니다.'); return;
+              showResult('fail', '오늘 지급일에 관리자로부터 이미 해당 항목을 지급받았습니다.'); return;
             }
           }
         }
@@ -352,14 +352,12 @@
       }
     }
 
-    function _getWeekStartKST() {
-      const now = new Date();
-      const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
-      const day = kst.getUTCDay();
-      const diff = day === 0 ? 6 : day - 1;
-      kst.setUTCDate(kst.getUTCDate() - diff);
-      kst.setUTCHours(0, 0, 0, 0);
-      return new Date(kst.getTime() - 9 * 60 * 60 * 1000);
+    function getKSTDateString(date = new Date()) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(date);
+      const value = type => parts.find(part => part.type === type)?.value;
+      return `${value('year')}-${value('month')}-${value('day')}`;
     }
 
     function getTodayStartKST() {
@@ -482,8 +480,7 @@
       const startIdx = (historyPage - 1) * pageSize;
       const pageItems = historyItems.slice(startIdx, startIdx + pageSize);
       list.innerHTML = pageItems.map(t => {
-          const dt = new Date(t.created_at);
-          const dateStr = `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+          const dateStr = t.grant_date || getKSTDateString(new Date(t.created_at));
           const srcLabel = t.source === 'qr'
             ? '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#d0ebff;color:#1971c2;margin-right:0.3rem;">📱 QR</span>'
             : '<span style="font-size:0.7rem;padding:0.1rem 0.35rem;border-radius:4px;background:#fff3bf;color:#e67700;margin-right:0.3rem;">👨‍💼 ' + escapeHtml(historyCreatorMap[t.created_by] || '관리자') + '</span>';

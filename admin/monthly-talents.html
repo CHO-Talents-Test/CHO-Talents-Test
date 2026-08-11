@@ -1,0 +1,726 @@
+<!DOCTYPE html>
+<html lang="ko" data-theme="default">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>월별 달란트 관리 - CHO Talents Admin</title>
+  <link rel="stylesheet" href="../css/themes.css" />
+  <link rel="stylesheet" href="../css/admin.css" />
+  <style>
+    .grant-board { background:var(--admin-card, #fff); border:1px solid var(--admin-border, #dee2e6); border-radius:12px; overflow:hidden; }
+    .grant-board-head { padding:1rem; border-bottom:1px solid var(--admin-border, #dee2e6); display:flex; align-items:flex-start; justify-content:space-between; gap:1rem; flex-wrap:wrap; }
+    .grant-board-title { font-size:1rem; font-weight:800; }
+    .grant-board-help { margin-top:0.25rem; font-size:0.78rem; color:var(--admin-text-muted, #6c757d); }
+    .month-control { display:flex; align-items:center; gap:0.4rem; }
+    .month-label { min-width:105px; text-align:center; font-size:0.95rem; font-weight:800; }
+    .grant-item-area { padding:0.8rem 1rem; border-bottom:1px solid var(--admin-border, #dee2e6); }
+    .grant-item-label { margin-bottom:0.45rem; font-size:0.82rem; font-weight:800; }
+    .grant-item-list { display:flex; flex-wrap:wrap; gap:0.45rem; }
+    .grant-item { display:flex; align-items:center; gap:0.35rem; padding:0.42rem 0.6rem; border:1px solid var(--admin-border, #dee2e6); border-radius:7px; cursor:pointer; font-size:0.82rem; background:var(--t-card, #fff); color:var(--t-text, #212529); }
+    .grant-item:has(input:checked) { border-color:#2b8a3e; background:var(--t-success-surface, #e6fcf5); }
+    .grant-item input { margin:0; }
+    .grant-item strong { color:#2b8a3e; }
+    .grant-actions { padding:0.75rem 1rem; display:flex; align-items:center; justify-content:space-between; gap:0.75rem; flex-wrap:wrap; border-bottom:1px solid var(--admin-border, #dee2e6); }
+    .grant-selection-info { font-size:0.8rem; color:var(--admin-text-muted, #6c757d); }
+    .grant-table-wrap { overflow:auto; }
+    .grant-table { width:100%; min-width:800px; border-collapse:collapse; font-size:0.82rem; }
+    .grant-table th, .grant-table td { border-bottom:1px solid var(--admin-border, #dee2e6); border-right:1px solid var(--admin-border, #dee2e6); vertical-align:middle; }
+    .grant-table th:last-child, .grant-table td:last-child { border-right:0; }
+    .grant-table thead th { background:var(--admin-table-header, #f8f9fa); text-align:center; padding:0.55rem 0.4rem; font-weight:800; white-space:nowrap; }
+    .grant-table .person-col { position:sticky; left:0; z-index:2; min-width:165px; text-align:left; padding:0.6rem 0.75rem; background:var(--admin-card, #fff); }
+    .grant-table thead .person-col { z-index:4; background:var(--admin-table-header, #f8f9fa); }
+    .grant-table .balance-col { min-width:75px; padding:0.6rem; text-align:right; font-weight:800; color:#2b8a3e; }
+    .grant-table .date-col { width:128px; min-width:128px; padding:0.4rem; }
+    .grant-table tbody tr:hover td { background:var(--t-hover-bg, #f8f9fa); }
+    .grant-table tbody tr:hover .person-col { background:var(--t-hover-bg, #f8f9fa); }
+    .date-head { display:flex; flex-direction:column; align-items:center; gap:0.3rem; }
+    .date-head small { font-size:0.68rem; color:var(--admin-text-muted, #6c757d); font-weight:600; }
+    .grant-cell { min-height:58px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.3rem; }
+    .grant-cell label { display:flex; align-items:center; gap:0.25rem; cursor:pointer; white-space:nowrap; }
+    .grant-cell label input { margin:0; }
+    .grant-cell .selected { color:#1971c2; font-size:0.72rem; font-weight:800; }
+    .grant-cell .no-item { color:var(--admin-text-muted, #868e96); font-size:0.72rem; }
+    .grant-chip { display:block; max-width:116px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0.12rem 0.32rem; border-radius:4px; background:var(--t-success-surface, #e6fcf5); color:#2b8a3e; font-size:0.68rem; font-weight:800; }
+    .grant-chip + .grant-chip { margin-top:0.16rem; }
+    .grant-chip.override { background:var(--t-warning-surface, #fff3bf); color:#e67700; }
+    .grant-chip-wrap { width:100%; text-align:center; cursor:pointer; }
+    .grant-empty { padding:2.4rem 1rem; text-align:center; color:var(--admin-text-muted, #6c757d); }
+    .grant-paging { padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; gap:0.6rem; flex-wrap:wrap; }
+    [data-theme="dark"] .grant-board, [data-theme="dark"] .grant-table .person-col { background:#111827; border-color:#374151; }
+    [data-theme="dark"] .grant-board-head, [data-theme="dark"] .grant-item-area, [data-theme="dark"] .grant-actions, [data-theme="dark"] .grant-table th, [data-theme="dark"] .grant-table td { border-color:#374151; }
+    [data-theme="dark"] .grant-table thead th, [data-theme="dark"] .grant-table thead .person-col { background:#1f2937; }
+    [data-theme="dark"] .grant-item { background:#111827; border-color:#475569; color:#e5e7eb; }
+    [data-theme="dark"] .grant-item:has(input:checked) { background:#163b2a; border-color:#40c057; }
+    [data-theme="dark"] .grant-table tbody tr:hover td, [data-theme="dark"] .grant-table tbody tr:hover .person-col { background:#1f2937; }
+    [data-theme="dark"] .grant-chip { background:#163b2a; color:#8ce99a; }
+    [data-theme="dark"] .grant-chip.override { background:#5f3f00; color:#fff3bf; }
+    @media (max-width:768px) { .grant-board-head { padding:0.8rem; } .grant-item-area, .grant-actions { padding-left:0.8rem; padding-right:0.8rem; } .month-control { width:100%; justify-content:space-between; } }
+  </style>
+</head>
+<body class="admin-body">
+  <div id="nav-container"></div>
+
+  <div class="admin-container">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:0.5rem;margin-bottom:1rem;">
+      <h2>💰 월별 달란트 관리</h2>
+      <a href="talent-items.html" class="filter-btn" data-min-perm="60" style="text-decoration:none;">📋 달란트 항목 관리</a>
+    </div>
+
+    <div class="filters" style="margin-bottom:1rem;display:flex;align-items:center;gap:0.5rem;flex-wrap:wrap;">
+      <button class="filter-btn active" id="tabStudent" onclick="switchTab('student')">🎒 학생</button>
+      <button class="filter-btn" id="tabTeacher" onclick="switchTab('teacher')">👩‍🏫 교사</button>
+      <select id="deptFilter" data-min-perm="80" style="display:none;padding:0.35rem 0.6rem;border:1px solid var(--admin-border);border-radius:8px;font-size:0.8rem;background:var(--t-input-bg, #fff);" onchange="onDeptFilterChange()">
+        <option value="">전체 부서</option>
+      </select>
+    </div>
+
+    <section class="grant-board" aria-labelledby="grantBoardTitle">
+      <div class="grant-board-head">
+        <div>
+          <div class="grant-board-title" id="grantBoardTitle">주간 달란트 지급</div>
+          <div class="grant-board-help">달란트 항목을 먼저 고른 뒤, 지급할 대상과 일요일을 선택하세요. 같은 대상·항목·지급일은 한 번만 지급됩니다.</div>
+        </div>
+        <div class="month-control" aria-label="지급 월 선택">
+          <button class="filter-btn" onclick="changeScheduleMonth(-1)" aria-label="이전 달">‹</button>
+          <span class="month-label" id="scheduleMonthLabel"></span>
+          <button class="filter-btn" onclick="changeScheduleMonth(1)" aria-label="다음 달">›</button>
+          <button class="filter-btn" onclick="moveToCurrentScheduleMonth()">이번 달</button>
+        </div>
+      </div>
+      <div class="grant-item-area">
+        <div class="grant-item-label">1. 지급할 달란트 항목 선택 <span id="scheduleItemHint" style="font-weight:500;color:var(--admin-text-muted);"></span></div>
+        <div class="grant-item-list" id="scheduleItemList"></div>
+      </div>
+      <div class="grant-actions">
+        <div class="grant-selection-info" id="scheduleSelectionInfo">항목과 지급 대상을 선택해주세요.</div>
+        <button class="btn-confirm" id="confirmScheduleGive" onclick="confirmScheduleGrants()" disabled>✅ 지급 확정</button>
+      </div>
+      <div class="form-error" id="scheduleError" style="margin:0.75rem 1rem;"></div>
+      <div class="grant-table-wrap">
+        <table class="grant-table" id="scheduleTable">
+          <thead id="scheduleTableHead"></thead>
+          <tbody id="scheduleTableBody"><tr><td class="grant-empty">로딩 중...</td></tr></tbody>
+        </table>
+      </div>
+      <div class="grant-paging">
+        <span id="schedulePageSizeWrap"></span>
+        <div id="schedulePaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;flex-wrap:wrap;"></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="modal-overlay hidden" id="detailModal">
+    <div class="modal-box" style="max-width:680px;">
+      <h3 class="modal-title" id="detailTitle">달란트 상세</h3>
+      <div id="detailSummary" style="display:flex;gap:0.8rem;margin-bottom:1rem;"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:0.5rem;margin-bottom:0.5rem;">
+        <div style="font-weight:700;font-size:0.85rem;">이력</div>
+        <span id="detailHistoryPageSizeWrap"></span>
+      </div>
+      <div class="admin-table-wrap" style="max-height:400px;overflow-y:auto;">
+        <table class="admin-table" style="font-size:0.85rem;">
+          <thead><tr><th>지급일 / 처리일</th><th>유형</th><th>금액</th><th>설명</th><th>지급자</th><th>잔액</th><th></th></tr></thead>
+          <tbody id="detailHistory"></tbody>
+        </table>
+      </div>
+      <div id="detailHistoryPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
+      <div class="modal-actions" style="margin-top:1rem;"><button class="btn-cancel" onclick="closeDetailModal()">닫기</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="returnModal">
+    <div class="modal-box" style="max-width:400px;">
+      <h3 class="modal-title">달란트 반환</h3>
+      <div style="margin-bottom:0.8rem;">
+        <div style="font-size:0.85rem;color:#868e96;margin-bottom:0.3rem;" id="returnInfo"></div>
+        <label style="font-weight:600;font-size:0.85rem;display:block;margin-bottom:0.3rem;">반환 사유 (필수)</label>
+        <input type="text" id="returnReason" style="width:100%;padding:0.6rem;border:1px solid var(--admin-border);border-radius:8px;" placeholder="반환 사유를 입력하세요" />
+      </div>
+      <div class="form-error" id="returnError"></div>
+      <div class="modal-actions"><button class="btn-cancel" onclick="closeReturnModal()">취소</button><button class="btn-confirm" style="background:#e03131;border-color:#e03131;" onclick="submitReturn()">반환 처리</button></div>
+    </div>
+  </div>
+
+  <script crossorigin="anonymous" src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.109.0"></script>
+  <script src="../config/public-config.js"></script>
+  <script src="../js/supabase-config.js"></script>
+  <script src="../js/activity-log.js"></script>
+  <script src="../js/codes.js"></script>
+  <script src="../js/auth.js"></script>
+  <script src="../js/theme.js"></script>
+  <script src="../js/nav.js"></script>
+  <script src="../js/page-size.js"></script>
+  <script src="../js/user-mgmt.js"></script>
+  <script src="../js/talent.js"></script>
+  <script>
+    initSupabase();
+
+    let session = null;
+    let currentTab = 'student';
+    let currentDeptFilter = '';
+    let allDepts = [];
+    let talentItems = [];
+    let talentUserList = [];
+    let talentPage = 1;
+    let talentPageSize = null;
+    let scheduleMonth = getKSTMonthKey();
+    let scheduledGrantMap = {};
+    let selectedItemIds = new Set();
+    let selectedCells = new Set();
+    let scheduleLoading = false;
+    let scheduleLoadError = '';
+    let scheduleLoadToken = 0;
+    let scheduleGivingBusy = false;
+    let detailUserId = null;
+    let detailUserName = '';
+    let detailHistoryItems = [];
+    let detailHistoryPage = 1;
+    let detailHistoryPageSize = null;
+    let detailCreatorMap = {};
+    let detailReturnedTxnIds = new Set();
+    let returnCtx = null;
+
+    function escapeHtml(value) {
+      return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]);
+    }
+
+    function getKSTParts(date = new Date()) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(date);
+      const value = type => parts.find(part => part.type === type)?.value;
+      return { year: Number(value('year')), month: Number(value('month')), day: Number(value('day')) };
+    }
+
+    function getKSTMonthKey() {
+      const { year, month } = getKSTParts();
+      return `${year}-${String(month).padStart(2, '0')}`;
+    }
+
+    function getSundaysForMonth(monthKey = scheduleMonth) {
+      const [year, month] = monthKey.split('-').map(Number);
+      const date = new Date(Date.UTC(year, month - 1, 1));
+      const dates = [];
+      while (date.getUTCMonth() === month - 1) {
+        if (date.getUTCDay() === 0) {
+          dates.push(`${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}-${String(date.getUTCDate()).padStart(2, '0')}`);
+        }
+        date.setUTCDate(date.getUTCDate() + 1);
+      }
+      return dates;
+    }
+
+    function getMonthLabel(monthKey = scheduleMonth) {
+      const [year, month] = monthKey.split('-').map(Number);
+      return `${year}년 ${month}월`;
+    }
+
+    function getDeptName(id) {
+      const dept = allDepts.find(item => item.id === id);
+      return dept ? dept.name : '-';
+    }
+
+    function getTalentPageSize() {
+      return talentPageSize || (window.innerWidth <= 768 ? 10 : 20);
+    }
+
+    function getPageUsers() {
+      const size = getTalentPageSize();
+      return talentUserList.slice((talentPage - 1) * size, talentPage * size);
+    }
+
+    function getCellKey(userId, grantDate) {
+      return `${userId}|${grantDate}`;
+    }
+
+    function getCellGrants(userId, grantDate) {
+      return scheduledGrantMap[getCellKey(userId, grantDate)] || [];
+    }
+
+    function getActiveItems() {
+      return talentItems.filter(item => item.is_active && item.target_type === currentTab);
+    }
+
+    function getSelectedItems() {
+      return getActiveItems().filter(item => selectedItemIds.has(item.id));
+    }
+
+    function getPendingItemsForCell(userId, grantDate) {
+      const paidIds = new Set(getCellGrants(userId, grantDate).map(item => item.talent_item_id));
+      return getSelectedItems().filter(item => !paidIds.has(item.id));
+    }
+
+    function canGiveTalent(user) {
+      if (user.id === session.id) return false;
+      const rank = session.permissionRank || 0;
+      if (rank >= 90) return true;
+      if (rank >= 60 && session.managedDeptId) return user.department_id === session.managedDeptId;
+      if (rank === 40) return !!session.departmentId && !!session.classNumber
+        && user.department_id === session.departmentId && user.class_number === session.classNumber;
+      return false;
+    }
+
+    function getTalentTargetLogContext(user) {
+      return {
+        targetUserId: user.id,
+        targetAccount: user.username || null,
+        targetName: user.display_name || user.username || '',
+        부서: getDeptName(user.department_id),
+        userType: user.user_type || currentTab,
+        ...(user.class_number != null ? { 반: user.class_number } : {})
+      };
+    }
+
+    function populateDeptFilter() {
+      const select = document.getElementById('deptFilter');
+      select.innerHTML = '<option value="">전체 부서</option>' + allDepts.map(dept => `<option value="${dept.id}">${escapeHtml(dept.name)}</option>`).join('');
+    }
+
+    function clearScheduleSelection() {
+      selectedCells.clear();
+      document.getElementById('scheduleError').classList.remove('show');
+    }
+
+    async function switchTab(tab) {
+      currentTab = tab;
+      talentPage = 1;
+      selectedItemIds.clear();
+      clearScheduleSelection();
+      document.getElementById('tabStudent').classList.toggle('active', tab === 'student');
+      document.getElementById('tabTeacher').classList.toggle('active', tab === 'teacher');
+      await loadUsers();
+    }
+
+    async function onDeptFilterChange() {
+      currentDeptFilter = document.getElementById('deptFilter').value;
+      talentPage = 1;
+      clearScheduleSelection();
+      await loadUsers();
+    }
+
+    async function changeScheduleMonth(offset) {
+      const [year, month] = scheduleMonth.split('-').map(Number);
+      const next = new Date(Date.UTC(year, month - 1 + offset, 1));
+      scheduleMonth = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
+      clearScheduleSelection();
+      await refreshScheduleGrants();
+    }
+
+    async function moveToCurrentScheduleMonth() {
+      const currentMonth = getKSTMonthKey();
+      if (scheduleMonth === currentMonth) return;
+      scheduleMonth = currentMonth;
+      clearScheduleSelection();
+      await refreshScheduleGrants();
+    }
+
+    async function loadUsers() {
+      const rank = session.permissionRank || 0;
+      const options = { userType: currentTab };
+      if (rank < 90) {
+        if (rank >= 60 && rank < 80 && session.managedDeptId) options.departmentId = session.managedDeptId;
+        else if (rank === 40 && session.departmentId) options.departmentId = session.departmentId;
+      }
+
+      const { data } = await fetchUsers(options);
+      let users = data || [];
+      if (!session.isSuperAdmin) users = users.filter(user => !user.is_super_admin);
+      if (rank === 40) users = session.classNumber ? users.filter(user => user.class_number === session.classNumber) : [];
+      if (currentDeptFilter) users = users.filter(user => user.department_id === currentDeptFilter);
+      talentUserList = users.sort((a, b) => String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''), 'ko'));
+      const totalPages = Math.max(1, Math.ceil(talentUserList.length / getTalentPageSize()));
+      if (talentPage > totalPages) talentPage = totalPages;
+      await refreshScheduleGrants();
+    }
+
+    async function refreshScheduleGrants() {
+      const token = ++scheduleLoadToken;
+      const users = getPageUsers();
+      scheduleLoading = true;
+      scheduleLoadError = '';
+      renderSchedule();
+      if (users.length === 0) {
+        scheduledGrantMap = {};
+        scheduleLoading = false;
+        renderSchedule();
+        return;
+      }
+
+      const userIds = users.map(user => user.id);
+      const sundays = getSundaysForMonth();
+      const startDate = sundays[0];
+      const endDate = sundays[sundays.length - 1];
+      const [earnRes, returnRes] = await Promise.all([
+        _sb.from('talent_transactions')
+          .select('id,user_id,talent_item_id,amount,description,source,override_week_limit,grant_date,created_at')
+          .in('user_id', userIds)
+          .eq('type', 'earn')
+          .not('talent_item_id', 'is', null)
+          .gte('grant_date', startDate)
+          .lte('grant_date', endDate)
+          .order('grant_date', { ascending: true }),
+        _sb.from('talent_transactions')
+          .select('user_id,description')
+          .in('user_id', userIds)
+          .eq('type', 'use')
+          .like('description', '반환:%')
+      ]);
+      if (token !== scheduleLoadToken) return;
+
+      scheduledGrantMap = {};
+      if (earnRes.error) {
+        scheduleLoadError = /grant_date|schema cache/i.test(earnRes.error.message || '')
+          ? '지급일 기반 관리 기능을 사용하려면 docs/TASK-099_scheduled_talent_grant_dates.sql을 먼저 적용해주세요.'
+          : `지급 내역을 불러오지 못했습니다: ${earnRes.error.message}`;
+      } else {
+        const returnedIds = new Set((returnRes.data || []).map(row => {
+          const match = (row.description || '').match(/반환:\s*\[([a-f0-9-]+)\]/i);
+          return match ? match[1] : null;
+        }).filter(Boolean));
+        (earnRes.data || []).forEach(row => {
+          if (returnedIds.has(row.id)) return;
+          const key = getCellKey(row.user_id, row.grant_date);
+          if (!scheduledGrantMap[key]) scheduledGrantMap[key] = [];
+          scheduledGrantMap[key].push(row);
+        });
+      }
+      scheduleLoading = false;
+      renderSchedule();
+    }
+
+    function renderScheduleItems() {
+      const items = getActiveItems();
+      const list = document.getElementById('scheduleItemList');
+      const hint = document.getElementById('scheduleItemHint');
+      if (!items.length) {
+        list.innerHTML = '<span class="grant-empty" style="padding:0.25rem 0;">활성화된 달란트 항목이 없습니다.</span>';
+        hint.textContent = '';
+        return;
+      }
+      hint.textContent = `(${selectedItemIds.size}개 선택됨)`;
+      list.innerHTML = items.map(item => `<label class="grant-item">
+        <input type="checkbox" value="${item.id}" ${selectedItemIds.has(item.id) ? 'checked' : ''} onchange="toggleScheduleItem('${item.id}', this.checked)" />
+        <span>${escapeHtml(item.emoji || '')} ${escapeHtml(item.name)}</span><strong>+${fmtNum(item.talent_amount)}</strong>
+      </label>`).join('');
+    }
+
+    function toggleScheduleItem(itemId, checked) {
+      if (checked) selectedItemIds.add(itemId);
+      else selectedItemIds.delete(itemId);
+      renderSchedule();
+    }
+
+    function renderScheduleTable() {
+      const head = document.getElementById('scheduleTableHead');
+      const body = document.getElementById('scheduleTableBody');
+      const users = getPageUsers();
+      const sundays = getSundaysForMonth();
+      const selectedItems = getSelectedItems();
+      const roleLabel = currentTab === 'student' ? '학생' : '교사';
+      document.getElementById('grantBoardTitle').textContent = `${getMonthLabel()} ${roleLabel} 달란트 지급 (${talentUserList.length}명)`;
+      document.getElementById('scheduleMonthLabel').textContent = getMonthLabel();
+
+      head.innerHTML = `<tr><th class="person-col">이름 / 소속</th><th class="balance-col">잔액</th>${sundays.map(date => {
+        const selectedCount = users.filter(user => selectedCells.has(getCellKey(user.id, date))).length;
+        const eligibleCount = users.filter(user => canGiveTalent(user) && getPendingItemsForCell(user.id, date).length > 0).length;
+        return `<th class="date-col"><div class="date-head"><span>${date.slice(5).replace('-', '.')} (일)</span><label title="표시된 대상 전체 선택"><input type="checkbox" ${selectedItems.length && eligibleCount && selectedCount === eligibleCount ? 'checked' : ''} ${selectedItems.length && eligibleCount ? '' : 'disabled'} onchange="toggleAllScheduleCells('${date}', this.checked)" /></label><small>선택 ${selectedCount}/${eligibleCount}</small></div></th>`;
+      }).join('')}</tr>`;
+
+      if (scheduleLoading) {
+        body.innerHTML = `<tr><td class="grant-empty" colspan="${sundays.length + 2}">지급 내역을 불러오는 중...</td></tr>`;
+        return;
+      }
+      if (!users.length) {
+        body.innerHTML = `<tr><td class="grant-empty" colspan="${sundays.length + 2}">표시할 ${roleLabel}이(가) 없습니다.</td></tr>`;
+        return;
+      }
+
+      body.innerHTML = users.map(user => {
+        const name = user.display_name || user.username || '-';
+        const sub = [getDeptName(user.department_id), user.class_number ? `${user.class_number}반` : ''].filter(Boolean).join(' · ');
+        return `<tr>
+          <td class="person-col"><button type="button" onclick="openDetailModal('${user.id}')" style="all:unset;cursor:pointer;font-weight:800;display:block;">${escapeHtml(name)}</button><div style="font-size:0.7rem;color:var(--admin-text-muted);margin-top:0.15rem;">${escapeHtml(sub || '-')}</div></td>
+          <td class="balance-col">${fmtNum(user.talent_balance || 0)}</td>
+          ${sundays.map(date => renderScheduleCell(user, date)).join('')}
+        </tr>`;
+      }).join('');
+    }
+
+    function renderScheduleCell(user, grantDate) {
+      const grants = getCellGrants(user.id, grantDate);
+      const pendingItems = getPendingItemsForCell(user.id, grantDate);
+      const key = getCellKey(user.id, grantDate);
+      const isSelected = selectedCells.has(key);
+      const available = canGiveTalent(user) && pendingItems.length > 0;
+      const grantChips = grants.length ? `<div class="grant-chip-wrap" onclick="openDetailModal('${user.id}')">${grants.map(grant => {
+        const item = talentItems.find(candidate => candidate.id === grant.talent_item_id);
+        const label = item?.name || grant.description || '지급 항목';
+        return `<span class="grant-chip${grant.override_week_limit ? ' override' : ''}" title="${escapeHtml(label)}">${escapeHtml(label)} +${fmtNum(grant.amount || 0)}</span>`;
+      }).join('')}</div>` : '';
+      const selectControl = !getSelectedItems().length
+        ? '<span class="no-item">항목 선택 필요</span>'
+        : available
+          ? `<label onclick="event.stopPropagation()"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleScheduleCell('${user.id}', '${grantDate}', this.checked)" /><span>지급 선택</span></label>${isSelected ? `<span class="selected">${pendingItems.length}개 항목 지급</span>` : ''}`
+          : '<span class="no-item">선택 항목 지급 완료</span>';
+      return `<td class="date-col"><div class="grant-cell">${grantChips}${selectControl}</div></td>`;
+    }
+
+    function toggleScheduleCell(userId, grantDate, checked) {
+      const key = getCellKey(userId, grantDate);
+      if (checked) selectedCells.add(key);
+      else selectedCells.delete(key);
+      renderSchedule();
+    }
+
+    function toggleAllScheduleCells(grantDate, checked) {
+      getPageUsers().forEach(user => {
+        const key = getCellKey(user.id, grantDate);
+        if (checked && canGiveTalent(user) && getPendingItemsForCell(user.id, grantDate).length > 0) selectedCells.add(key);
+        else selectedCells.delete(key);
+      });
+      renderSchedule();
+    }
+
+    function getCurrentSelections() {
+      return getPageUsers().flatMap(user => getSundaysForMonth().flatMap(grantDate => {
+        if (!selectedCells.has(getCellKey(user.id, grantDate)) || !canGiveTalent(user)) return [];
+        const items = getPendingItemsForCell(user.id, grantDate);
+        return items.length ? [{ user, grantDate, items }] : [];
+      }));
+    }
+
+    function renderSchedulePaging() {
+      const size = getTalentPageSize();
+      const totalPages = Math.max(1, Math.ceil(talentUserList.length / size));
+      document.getElementById('schedulePaging').innerHTML = buildPagingButtons(talentPage, totalPages, 'goSchedulePage(__PAGE__)');
+      document.getElementById('schedulePageSizeWrap').innerHTML = renderPageSizeSelector('talents_schedule', size, 'onSchedulePageSizeChange(this.value)');
+    }
+
+    function renderSchedule() {
+      renderScheduleItems();
+      renderScheduleTable();
+      renderSchedulePaging();
+      const errorEl = document.getElementById('scheduleError');
+      if (scheduleLoadError) {
+        errorEl.textContent = scheduleLoadError;
+        errorEl.classList.add('show');
+      }
+      const selections = getCurrentSelections();
+      const grantCount = selections.reduce((sum, selection) => sum + selection.items.length, 0);
+      const targetCount = selections.length;
+      const info = document.getElementById('scheduleSelectionInfo');
+      const button = document.getElementById('confirmScheduleGive');
+      if (scheduleGivingBusy) {
+        info.textContent = '지급 처리 중입니다. 잠시만 기다려주세요.';
+        button.disabled = true;
+        button.textContent = '처리 중...';
+      } else if (!getSelectedItems().length) {
+        info.textContent = '1단계에서 지급할 달란트 항목을 선택해주세요.';
+        button.disabled = true;
+        button.textContent = '✅ 지급 확정';
+      } else if (!grantCount) {
+        info.textContent = '2단계에서 지급할 대상과 일요일을 선택해주세요.';
+        button.disabled = true;
+        button.textContent = '✅ 지급 확정';
+      } else {
+        info.textContent = `${targetCount}개 대상 일자에 ${grantCount}건의 달란트를 지급합니다.`;
+        button.disabled = false;
+        button.textContent = `✅ 지급 확정 (${grantCount}건)`;
+      }
+    }
+
+    async function goSchedulePage(page) {
+      talentPage = page;
+      clearScheduleSelection();
+      await refreshScheduleGrants();
+    }
+
+    async function onSchedulePageSizeChange(value) {
+      talentPageSize = parseInt(value, 10) || 10;
+      talentPage = 1;
+      clearScheduleSelection();
+      await savePageSize('talents_schedule', talentPageSize);
+      await refreshScheduleGrants();
+    }
+
+    async function confirmScheduleGrants() {
+      if (scheduleGivingBusy) return;
+      const selections = getCurrentSelections();
+      const operations = selections.flatMap(selection => selection.items.map(item => ({ ...selection, item })));
+      if (!operations.length) return;
+      const itemNames = [...new Set(operations.map(operation => operation.item.name))].join(', ');
+      if (!confirm(`${operations.length}건의 달란트를 지급하시겠습니까?\n지급일: ${getMonthLabel()}의 선택한 일요일\n항목: ${itemNames}`)) return;
+
+      const errorEl = document.getElementById('scheduleError');
+      errorEl.classList.remove('show');
+      scheduleGivingBusy = true;
+      renderSchedule();
+      const failures = [];
+      let successCount = 0;
+      try {
+        for (const operation of operations) {
+          const target = getTalentTargetLogContext(operation.user);
+          const result = await giveTalentByItem(operation.user.id, operation.item.id, session.id, {
+            grantDate: operation.grantDate,
+            itemName: operation.item.name,
+            targetAccount: target.targetAccount,
+            targetName: target.targetName
+          });
+          if (result && result.success === false) {
+            failures.push(`${operation.user.display_name || operation.user.username} · ${operation.grantDate} · ${operation.item.name}: ${tErr(result.error || '지급 실패')}`);
+          } else {
+            successCount += 1;
+          }
+        }
+        if (successCount) {
+          await logInfo('TALENT_SCHEDULE_GIVE', {
+            지급건수: successCount,
+            선택항목: itemNames,
+            지급월: scheduleMonth,
+            지급일자: [...new Set(operations.map(operation => operation.grantDate))]
+          });
+        }
+        if (failures.length) {
+          errorEl.textContent = `${successCount ? `${successCount}건 지급 완료. ` : ''}${failures.slice(0, 3).join(' / ')}${failures.length > 3 ? ` 외 ${failures.length - 3}건` : ''}`;
+          errorEl.classList.add('show');
+        } else {
+          alert(`${successCount}건의 달란트 지급이 완료되었습니다.`);
+        }
+        selectedCells.clear();
+        await loadUsers();
+      } finally {
+        scheduleGivingBusy = false;
+        renderSchedule();
+      }
+    }
+
+    function getTalentHistoryTypeMeta(transaction) {
+      const isReturn = transaction.type === 'use' && String(transaction.description || '').startsWith('반환:');
+      const isException = transaction.type === 'earn' && transaction.override_week_limit === true;
+      if (isReturn) return { label:'반환', bg:'#fff0f6', color:'#c2255c', amountColor:'#c2255c', sign:'-' };
+      if (isException) return { label:'예외', bg:'#fff3bf', color:'#e67700', amountColor:'#e67700', sign:'+' };
+      if (transaction.type === 'earn') return { label:'적립', bg:'#e6fcf5', color:'#2b8a3e', amountColor:'#2b8a3e', sign:'+' };
+      return { label:'사용', bg:'#fff5f5', color:'#e03131', amountColor:'#e03131', sign:'-' };
+    }
+
+    function formatTransactionDate(transaction) {
+      if (transaction.type === 'earn' && transaction.grant_date) return `${transaction.grant_date} (지급일)`;
+      return formatKSTShort(transaction.created_at);
+    }
+
+    function maskTalentDesc(description) {
+      if (!description) return '-';
+      return (session.permissionRank || 0) >= 100 ? description : description.replace(/\[[0-9a-f-]{36}\]\s*/gi, '');
+    }
+
+    async function openDetailModal(userId) {
+      const user = talentUserList.find(item => item.id === userId);
+      if (!user) return;
+      detailUserId = userId;
+      detailUserName = user.display_name || user.username || '';
+      document.getElementById('detailTitle').textContent = `${detailUserName} - 달란트 상세`;
+      document.getElementById('detailModal').classList.remove('hidden');
+      const summary = await fetchTalentSummary(userId);
+      document.getElementById('detailSummary').innerHTML = [
+        ['누적 적립', `+${fmtNum(summary.earned)}`, '#e6fcf5', '#2b8a3e'],
+        ['총 사용', `-${fmtNum(summary.used)}`, '#fff5f5', '#e03131'],
+        ['총 반환', `-${fmtNum(summary.returned)}`, '#fff0f6', '#c2255c'],
+        ['잔여', fmtNum(summary.balance), '#e7f5ff', '#1971c2']
+      ].map(([label, value, bg, color]) => `<div style="flex:1;text-align:center;padding:0.8rem;background:${bg};border-radius:8px;"><div style="font-size:0.8rem;color:#868e96;">${label}</div><div style="font-size:1.35rem;font-weight:800;color:${color};">${value}</div></div>`).join('');
+      detailHistoryPage = 1;
+      detailCreatorMap = {};
+      const { data } = await fetchTalentHistory(userId);
+      detailHistoryItems = data || [];
+      const creatorIds = [...new Set(detailHistoryItems.map(item => item.created_by).filter(Boolean))];
+      if (creatorIds.length) {
+        const { data: creators } = await _sb.from('profiles').select('id,display_name,username').in('id', creatorIds);
+        (creators || []).forEach(creator => { detailCreatorMap[creator.id] = creator.display_name || creator.username || '-'; });
+      }
+      detailReturnedTxnIds = new Set(detailHistoryItems.filter(item => item.type === 'use' && /^반환:/.test(item.description || '')).map(item => {
+        const match = item.description.match(/\[([a-f0-9-]+)\]/i);
+        return match ? match[1] : null;
+      }).filter(Boolean));
+      renderDetailHistory();
+    }
+
+    function renderDetailHistory() {
+      const body = document.getElementById('detailHistory');
+      const pageSize = detailHistoryPageSize || 10;
+      document.getElementById('detailHistoryPageSizeWrap').innerHTML = renderPageSizeSelector('talents_detail_history', pageSize, 'onDetailHistoryPageSizeChange(this.value)');
+      if (!detailHistoryItems.length) {
+        body.innerHTML = '<tr><td colspan="7" class="empty-state">이력이 없습니다.</td></tr>';
+        document.getElementById('detailHistoryPaging').innerHTML = '';
+        return;
+      }
+      const totalPages = Math.max(1, Math.ceil(detailHistoryItems.length / pageSize));
+      if (detailHistoryPage > totalPages) detailHistoryPage = totalPages;
+      const pageItems = detailHistoryItems.slice((detailHistoryPage - 1) * pageSize, detailHistoryPage * pageSize);
+      const canReturn = (session.permissionRank || 0) >= 80;
+      body.innerHTML = pageItems.map(transaction => {
+        const meta = getTalentHistoryTypeMeta(transaction);
+        const returned = detailReturnedTxnIds.has(transaction.id);
+        const returnControl = canReturn && transaction.type === 'earn' && !returned
+          ? `<button class="filter-btn" style="font-size:0.72rem;padding:0.2rem 0.5rem;color:#e03131;border-color:#e03131;" onclick="openReturnModalFromHistory('${transaction.id}')">반환</button>`
+          : (returned && transaction.type === 'earn' ? '<span style="font-size:0.7rem;color:#868e96;">반환됨</span>' : '');
+        return `<tr><td>${escapeHtml(formatTransactionDate(transaction))}</td><td><span style="padding:0.15rem 0.5rem;border-radius:4px;font-size:0.8rem;background:${meta.bg};color:${meta.color};font-weight:700;">${meta.label}</span>${transaction.type === 'earn' && transaction.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : ''}</td><td style="font-weight:700;color:${meta.amountColor};">${meta.sign}${fmtNum(transaction.amount)}</td><td>${escapeHtml(maskTalentDesc(transaction.description))}</td><td style="font-size:0.78rem;">${escapeHtml(detailCreatorMap[transaction.created_by] || '-')}</td><td>${transaction.balance_after == null ? '-' : fmtNum(transaction.balance_after)}</td><td>${returnControl}</td></tr>`;
+      }).join('');
+      document.getElementById('detailHistoryPaging').innerHTML = buildPagingButtons(detailHistoryPage, totalPages, 'goDetailHistoryPage(__PAGE__)');
+    }
+
+    function goDetailHistoryPage(page) { detailHistoryPage = page; renderDetailHistory(); }
+    async function onDetailHistoryPageSizeChange(value) {
+      detailHistoryPageSize = parseInt(value, 10) || 10;
+      detailHistoryPage = 1;
+      await savePageSize('talents_detail_history', detailHistoryPageSize);
+      renderDetailHistory();
+    }
+    function closeDetailModal() { document.getElementById('detailModal').classList.add('hidden'); }
+
+    function openReturnModalFromHistory(transactionId) {
+      const transaction = detailHistoryItems.find(item => item.id === transactionId);
+      if (!transaction) return;
+      returnCtx = { transactionId, amount: Number(transaction.amount), description: transaction.description || '' };
+      document.getElementById('returnInfo').textContent = `항목: ${transaction.description || '-'} / 금액: ${fmtNum(transaction.amount)} 달란트`;
+      document.getElementById('returnReason').value = '';
+      document.getElementById('returnError').classList.remove('show');
+      document.getElementById('returnModal').classList.remove('hidden');
+    }
+    function closeReturnModal() { document.getElementById('returnModal').classList.add('hidden'); }
+    async function submitReturn() {
+      const reason = document.getElementById('returnReason').value.trim();
+      const errorEl = document.getElementById('returnError');
+      if (!reason) { errorEl.textContent = '반환 사유를 입력해주세요.'; errorEl.classList.add('show'); return; }
+      const result = await returnTalent(detailUserId, returnCtx.amount, `[${returnCtx.transactionId}] ${returnCtx.description}`, session.id);
+      if (result && result.success === false) { errorEl.textContent = tErr(result.error || '반환에 실패했습니다.'); errorEl.classList.add('show'); return; }
+      await logInfo('TALENT_RETURN', { targetUserId: detailUserId, targetName: detailUserName, txnId: returnCtx.transactionId, 금액: returnCtx.amount, 사유: reason });
+      closeReturnModal();
+      await openDetailModal(detailUserId);
+      await loadUsers();
+    }
+
+    document.getElementById('detailModal').addEventListener('click', event => { if (event.target.classList.contains('modal-overlay')) closeDetailModal(); });
+    document.getElementById('returnModal').addEventListener('click', event => { if (event.target.classList.contains('modal-overlay')) closeReturnModal(); });
+
+    (async () => {
+      await navInit();
+      session = await initPage(40, '../login.html');
+      if (!session) return;
+      navUpdateAuth(session);
+      autoLogPageView();
+      talentPageSize = await loadPageSize('talents_schedule', 10);
+      detailHistoryPageSize = await loadPageSize('talents_detail_history', 10);
+      updatePendingBadge();
+      updateNavOrderBadge();
+      updateLogBadge();
+      const [deptRes, itemRes] = await Promise.all([fetchDepartments(), fetchAllTalentItems()]);
+      allDepts = deptRes.data || [];
+      talentItems = itemRes.data || [];
+      populateDeptFilter();
+      if ((session.permissionRank || 0) < 60) document.getElementById('tabTeacher').style.display = 'none';
+      await loadUsers();
+    })();
+  </script>
+  <div id="version-container"></div>
+  <script src="../js/version.js"></script>
+</body>
+</html>

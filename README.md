@@ -1001,6 +1001,7 @@ SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실�
 | `docs/TASK-090_plan.md`, `docs/TASK-090_test_scenario.md`, `docs/TASK-090_test_result.md`, `docs/TASK-090_change_report.md` | v3.88.0: 최고관리자 특례 권한 변경 계획, 검증 시나리오·결과, 변경 보고 |
 | `docs/TASK-091_user_stats_filters.sql` | v3.89.0: 사용자 로그인 통계 집계·상세 RPC에 학생/교사 필터를 동일하게 적용 |
 | `docs/TASK-091_plan.md`, `docs/TASK-091_test_scenario.md`, `docs/TASK-091_test_result.md`, `docs/TASK-091_change_report.md` | v3.89.0: 운영 조회·상품 검증·가이드 권한 정비 계획, 시나리오·결과, 변경 보고 |
+| `docs/TASK-099_scheduled_talent_grant_dates.sql` | v4.1.0: 달란트 거래 지급일(`grant_date`) 저장과 일요일 지정일 기반 중복 검증 RPC |
 | `docs/TASK-086_test_scenario.md`, `docs/TASK-086_test_result.md`, `docs/TASK-086_change_report.md` | v3.84.0: 관리자 예외 결정 검증 기준과 변경 보고 |
 
 ## 관련 문서

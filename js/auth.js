@@ -439,6 +439,7 @@ function detectCurrentPageId() {
   if (path.includes('admin/departments.html')) return 'admin-departments';
   if (path.includes('admin/user-stats.html')) return 'admin-user-stats';
   if (path.includes('admin/managers.html')) return 'admin-managers';
+  if (path.includes('admin/monthly-talents.html')) return 'admin-monthly-talents';
   if (path.includes('admin/talents.html')) return 'admin-talents';
   if (path.includes('admin/talent-adjustments.html')) return 'admin-talent-adjustments';
   if (path.includes('admin/talent-stats.html')) return 'admin-talent-stats';
