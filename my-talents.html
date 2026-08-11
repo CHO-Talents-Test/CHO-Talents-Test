@@ -181,7 +181,7 @@
         const srcBadge = t.type === 'earn' && t.source === 'qr' ? ' <span style="font-size:0.65rem;padding:0.1rem 0.3rem;border-radius:3px;background:#d0ebff;color:#1971c2;">QR</span>' : '';
         const desc = (t.description || '-').replace(/\[[0-9a-f-]{36}\]\s*/gi, '').replace(/^반환:\s*/, '');
         return `<tr>
-          <td>${formatKSTShort(t.created_at)}</td>
+          <td>${t.type === 'earn' && t.grant_date ? t.grant_date : formatKSTShort(t.created_at)}</td>
           <td><span class="type-badge ${meta.className}" ${meta.label === '반환' ? 'style="background:#fff0f6;color:#c2255c;"' : meta.label === '예외' ? 'style="background:#fff3bf;color:#e67700;"' : ''}>${meta.label}</span>${srcBadge}</td>
           <td style="font-weight:700;color:${meta.amtColor}">${meta.amtPrefix}${fmtNum(t.amount)}</td>
           <td>${desc}</td>

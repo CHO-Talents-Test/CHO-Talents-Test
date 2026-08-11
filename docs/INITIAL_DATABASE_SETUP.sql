@@ -123,6 +123,7 @@ CREATE TABLE IF NOT EXISTS public.talent_transactions (
   source text DEFAULT 'admin',
   override_week_limit boolean DEFAULT false,
   override_reason text,
+  grant_date date NOT NULL DEFAULT ((now() AT TIME ZONE 'Asia/Seoul')::date),
   created_at timestamptz DEFAULT now()
 );
 
@@ -381,6 +382,9 @@ CREATE INDEX IF NOT EXISTS idx_department_transfer_requests_user_id
   ON public.department_transfer_requests(user_id);
 CREATE INDEX IF NOT EXISTS idx_talent_transactions_user ON public.talent_transactions(user_id, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_talent_transactions_item ON public.talent_transactions(talent_item_id);
+CREATE INDEX IF NOT EXISTS idx_talent_transactions_grant_schedule
+  ON public.talent_transactions(user_id, grant_date, talent_item_id)
+  WHERE type = 'earn' AND talent_item_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_talent_exception_requests_status
   ON public.talent_exception_requests(status, requested_at DESC);
 CREATE INDEX IF NOT EXISTS idx_talent_exception_requests_user
@@ -963,6 +967,9 @@ $$;
 
 DROP FUNCTION IF EXISTS public.give_talent(uuid, uuid, uuid);
 DROP FUNCTION IF EXISTS public.give_talent(uuid, integer, text, uuid);
+DROP FUNCTION IF EXISTS public.give_talent(uuid, integer, text, uuid, uuid);
+DROP FUNCTION IF EXISTS public.give_talent(uuid, integer, text, uuid, uuid, boolean, text);
+DROP FUNCTION IF EXISTS public.give_talent(uuid, integer, text, uuid, uuid, boolean, text, date);
 
 CREATE OR REPLACE FUNCTION public.give_talent(
   p_user_id uuid,
@@ -971,7 +978,8 @@ CREATE OR REPLACE FUNCTION public.give_talent(
   p_created_by uuid DEFAULT NULL,
   p_talent_item_id uuid DEFAULT NULL,
   p_override_week_limit boolean DEFAULT false,
-  p_override_reason text DEFAULT NULL
+  p_override_reason text DEFAULT NULL,
+  p_grant_date date DEFAULT NULL
 )
 RETURNS json
 LANGUAGE plpgsql
@@ -992,7 +1000,8 @@ DECLARE
   v_item record;
   v_actual_amount integer;
   v_actual_desc text;
-  v_week_count integer;
+  v_grant_date date;
+  v_grant_count integer;
   v_override_week_limit boolean;
 BEGIN
   SELECT permission_level, department_id, class_number, managed_dept_id
@@ -1012,7 +1021,8 @@ BEGIN
   SELECT user_type, department_id, class_number
   INTO v_target_type, v_target_dept, v_target_class
   FROM public.profiles
-  WHERE id = p_user_id;
+  WHERE id = p_user_id
+  FOR UPDATE;
 
   IF v_target_type IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'User not found');
@@ -1030,7 +1040,12 @@ BEGIN
     END IF;
   END IF;
 
+  v_grant_date := COALESCE(p_grant_date, (now() AT TIME ZONE 'Asia/Seoul')::date);
+
   IF p_talent_item_id IS NOT NULL THEN
+    IF p_grant_date IS NOT NULL AND EXTRACT(DOW FROM p_grant_date) <> 0 THEN
+      RETURN json_build_object('success', false, 'error', '지급일은 일요일만 선택할 수 있습니다');
+    END IF;
     SELECT * INTO v_item
     FROM public.talent_items
     WHERE id = p_talent_item_id AND is_active = true;
@@ -1049,15 +1064,14 @@ BEGIN
     v_actual_amount := v_item.talent_amount;
     v_actual_desc := v_item.name;
 
-    SELECT count(*) INTO v_week_count
+    SELECT count(*) INTO v_grant_count
     FROM public.talent_transactions AS earned
     WHERE earned.user_id = p_user_id
       AND earned.talent_item_id = p_talent_item_id
       AND earned.type = 'earn'
-      AND earned.created_at >= date_trunc('week', now() AT TIME ZONE 'Asia/Seoul')
-      AND earned.created_at < date_trunc('week', now() AT TIME ZONE 'Asia/Seoul') + interval '7 days'
+      AND COALESCE(earned.grant_date, (earned.created_at AT TIME ZONE 'Asia/Seoul')::date) = v_grant_date
       -- A cancellation is stored as a use transaction referencing the original earn ID.
-      -- Cancelled grants must not consume this week's item allowance.
+      -- Cancelled grants must not consume the same payment-date item allowance.
       AND NOT EXISTS (
         SELECT 1
         FROM public.talent_transactions AS returned
@@ -1073,8 +1087,8 @@ BEGIN
           )
       );
 
-    IF v_week_count > 0 AND NOT v_override_week_limit THEN
-      RETURN json_build_object('success', false, 'error', 'Already given this item this week: ' || v_item.name);
+    IF v_grant_count > 0 AND NOT v_override_week_limit THEN
+      RETURN json_build_object('success', false, 'error', 'Already given this item on this payment date: ' || v_item.name);
     END IF;
   ELSE
     IF p_amount <= 0 THEN
@@ -1097,14 +1111,14 @@ BEGIN
   RETURNING talent_balance INTO v_new_balance;
 
   INSERT INTO public.talent_transactions (
-    user_id, type, amount, balance_after, description, created_by, talent_item_id, override_week_limit, override_reason
+    user_id, type, amount, balance_after, description, created_by, talent_item_id, override_week_limit, override_reason, grant_date
   ) VALUES (
     p_user_id, 'earn', v_actual_amount, v_new_balance, v_actual_desc,
-    COALESCE(p_created_by, auth.uid()), p_talent_item_id, v_override_week_limit, p_override_reason
+    COALESCE(p_created_by, auth.uid()), p_talent_item_id, v_override_week_limit, p_override_reason, v_grant_date
   )
   RETURNING id INTO v_txn_id;
 
-  RETURN json_build_object('success', true, 'balance', v_new_balance, 'txn_id', v_txn_id, 'amount', v_actual_amount);
+  RETURN json_build_object('success', true, 'balance', v_new_balance, 'txn_id', v_txn_id, 'amount', v_actual_amount, 'grant_date', v_grant_date);
 END;
 $$;
 
@@ -2058,9 +2072,9 @@ GRANT EXECUTE ON FUNCTION public.admin_create_user(text, text, text, uuid, uuid,
 GRANT EXECUTE ON FUNCTION public.admin_update_user(uuid, text, uuid, uuid, text, text, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_delete_user(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.admin_reset_password(uuid, text) TO authenticated;
-REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text) FROM PUBLIC;
-REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text) FROM anon;
-GRANT EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text) TO authenticated;
+REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text, date) FROM PUBLIC;
+REVOKE EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text, date) FROM anon;
+GRANT EXECUTE ON FUNCTION public.give_talent(uuid, integer, text, uuid, uuid, boolean, text, date) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.use_talent(uuid, integer, text, uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.request_product_order(uuid, uuid, text, integer) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cancel_product_order(uuid, uuid) TO authenticated;
