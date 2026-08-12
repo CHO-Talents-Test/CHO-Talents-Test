@@ -1,10 +1,10 @@
--- TASK-100: 추천 상품 투표율 공개
--- 찬성/반대 방향별 집계 없이, 더 많은 한쪽 표가 등록 시점 과반에 도달할 때 100%가 되는 진행률만 반환합니다.
+-- TASK-101: 추천 상품 진행률 과반 기준 보정
+-- 적용 전제: TASK-100 적용 완료
+-- 총 투표 수가 아니라 찬성/반대 중 더 많은 한쪽 표가 등록 시점 과반에 도달해야 100%입니다.
 
 BEGIN;
 
-DROP FUNCTION IF EXISTS public.get_my_product_suggestions();
-CREATE FUNCTION public.get_my_product_suggestions()
+CREATE OR REPLACE FUNCTION public.get_my_product_suggestions()
 RETURNS TABLE (
   suggestion_id uuid, name text, product_url text, image_url text, detail_image_url text,
   description text, price_krw integer, category text, status text, adopted_product_id uuid,
@@ -45,8 +45,7 @@ BEGIN
 END;
 $$;
 
-DROP FUNCTION IF EXISTS public.get_product_suggestion_vote_items(text);
-CREATE FUNCTION public.get_product_suggestion_vote_items(
+CREATE OR REPLACE FUNCTION public.get_product_suggestion_vote_items(
   p_filter text DEFAULT 'all'
 )
 RETURNS TABLE (
@@ -143,11 +142,6 @@ BEGIN
   ORDER BY CASE WHEN q.visible_status = 'voting' THEN 0 ELSE 1 END, q.created_at ASC;
 END;
 $$;
-
-REVOKE EXECUTE ON FUNCTION public.get_my_product_suggestions() FROM PUBLIC, anon;
-REVOKE EXECUTE ON FUNCTION public.get_product_suggestion_vote_items(text) FROM PUBLIC, anon;
-GRANT EXECUTE ON FUNCTION public.get_my_product_suggestions() TO authenticated;
-GRANT EXECUTE ON FUNCTION public.get_product_suggestion_vote_items(text) TO authenticated;
 
 NOTIFY pgrst, 'reload schema';
 

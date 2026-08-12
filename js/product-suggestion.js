@@ -55,7 +55,7 @@ function psFormatDate(value) {
   return typeof formatKSTShort === 'function' ? formatKSTShort(value) : new Date(value).toLocaleString('ko-KR');
 }
 
-// 진행률은 찬성/반대 방향과 관계없이 전체 투표 수를 등록 시점 과반 기준으로 계산한다.
+// 진행률은 찬성 또는 반대 중 더 많은 표를 등록 시점 과반 기준으로 계산한다.
 // 서버가 계산한 값을 우선 사용해 방향별 집계나 정원 수를 화면에 노출하지 않는다.
 function psGetVoteProgress(item) {
   const supplied = item && item.vote_progress != null && item.vote_progress !== ''
@@ -63,10 +63,11 @@ function psGetVoteProgress(item) {
     : NaN;
   if (Number.isFinite(supplied)) return Math.max(0, Math.min(100, Math.round(supplied)));
 
-  const voteCount = Number(item && item.vote_count);
+  const approveCount = Number(item && item.approve_count);
+  const rejectCount = Number(item && item.reject_count);
   const majority = Number(item && item.electorate_majority);
-  if (!Number.isFinite(voteCount) || !Number.isFinite(majority) || majority <= 0) return null;
-  return Math.max(0, Math.min(100, Math.round((voteCount / majority) * 100)));
+  if (!Number.isFinite(approveCount) || !Number.isFinite(rejectCount) || !Number.isFinite(majority) || majority <= 0) return null;
+  return Math.max(0, Math.min(100, Math.round((Math.max(approveCount, rejectCount) / majority) * 100)));
 }
 
 function psRenderVoteProgress(item, extraClass = '') {
