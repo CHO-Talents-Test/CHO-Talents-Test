@@ -30,7 +30,13 @@
     .ps-vote-btn.approve.selected { border-color:#2b8a3e; background:#d3f9d8; color:#1b5e2b; font-weight:700; }
     .ps-vote-btn.reject.selected { border-color:#c92a2a; background:#ffe3e3; color:#a61e1e; font-weight:700; }
     .ps-vote-btn:disabled { opacity:0.55; cursor:not-allowed; }
-    .ps-admin-progress { margin-top:0.4rem; padding:0.42rem 0.5rem; border-left:3px solid var(--admin-primary); background:var(--t-hover-bg,#f8f9fa); color:var(--admin-text-muted); font-size:0.73rem; line-height:1.45; }
+    .ps-vote-progress { min-width:108px; }
+    .ps-vote-progress-label { display:flex; align-items:center; justify-content:space-between; gap:0.45rem; margin-bottom:0.28rem; color:var(--admin-text-muted); font-size:0.75rem; white-space:nowrap; }
+    .ps-vote-progress-label strong { color:var(--admin-text); font-size:0.82rem; }
+    .ps-vote-progress-track { height:7px; overflow:hidden; border-radius:999px; background:var(--admin-border); }
+    .ps-vote-progress-track > span { display:block; width:0; height:100%; border-radius:inherit; background:var(--admin-primary); transition:width 0.2s ease; }
+    .ps-vote-progress-empty { color:var(--admin-text-muted); }
+    .ps-admin-progress { margin-top:0.65rem; }
     .ps-admin-close { margin-top:0.42rem; border:1px solid #e67700; border-radius:6px; padding:0.34rem 0.48rem; color:#9c5a00; background:#fff9db; cursor:pointer; font:inherit; font-size:0.75rem; }
     .ps-admin-close:disabled { opacity:0.55; cursor:not-allowed; }
     .ps-admin-decision-actions { display:flex; align-items:center; justify-content:flex-end; gap:0.45rem; flex-wrap:wrap; }
@@ -47,12 +53,13 @@
     #suggestionDetailModal .modal-actions { flex-wrap:wrap; }
     @media (max-width:720px) {
       .admin-table { min-width:0; width:100%; table-layout:fixed; }
-      .ps-mobile-hidden, .ps-product-summary, .ps-grid-admin-progress { display:none; }
+      .ps-mobile-hidden, .ps-product-summary { display:none; }
       .admin-table th, .admin-table td { padding:0.55rem 0.28rem; font-size:0.76rem; }
       .admin-table th:nth-child(1) { width:18%; }
-      .admin-table th:nth-child(2) { width:38%; }
-      .admin-table th:nth-child(4), .admin-table th:nth-child(5) { width:14%; }
-      .admin-table th:nth-child(6) { width:16%; }
+      .admin-table th:nth-child(2) { width:31%; }
+      .admin-table th:nth-child(4) { width:25%; }
+      .admin-table th:nth-child(5), .admin-table th:nth-child(6), .admin-table th:nth-child(7), .admin-table th:nth-child(8) { width:13%; }
+      .ps-admin-tally { display:none; }
       .ps-product-cell { min-width:0; overflow-wrap:anywhere; }
       .ps-vote-actions { justify-content:center; }
       .ps-vote-btn { min-width:0; padding:0.34rem 0.38rem; font-size:0.74rem; }
@@ -84,11 +91,11 @@
       </div>
       <div class="admin-table-wrap" style="box-shadow:none;border:0;padding:0;overflow-x:auto;">
         <table class="admin-table" aria-describedby="votePrivacyNote">
-          <thead><tr><th>채택여부</th><th>상품명</th><th class="ps-mobile-hidden">상품 URL 또는 이미지</th><th>찬성</th><th>반대</th><th>상세</th></tr></thead>
+          <thead><tr><th>채택여부</th><th>상품명</th><th class="ps-mobile-hidden">상품 URL 또는 이미지</th><th>진행률</th><th>투표</th><th>상세</th></tr></thead>
           <tbody id="voteItemBody"><tr><td colspan="6" class="empty-state">로딩 중...</td></tr></tbody>
         </table>
       </div>
-      <p id="votePrivacyNote" class="ps-empty-note" style="margin-top:0.7rem;">추천자와 투표자 정보는 표시하지 않습니다.</p>
+      <p id="votePrivacyNote" class="ps-empty-note" style="margin-top:0.7rem;">찬성·반대 집계는 표시하지 않으며, 과반 기준의 투표 진행률만 표시합니다.</p>
     </section>
   </main>
 
@@ -133,6 +140,7 @@
       if (!session) return;
       navUpdateAuth(session);
       autoLogPageView();
+      configureVoteTableHeader();
       if (typeof loadCodeItems === 'function') await loadCodeItems(['products.category']);
       votePageSize = await loadPageSize('product_suggestion_votes', 10);
       ensureUnvotedFilterButton();
@@ -142,6 +150,20 @@
 
     function isSuggestionSuperAdmin() {
       return !!(session && session.isSuperAdmin === true);
+    }
+
+    function getVoteTableColumnCount() {
+      return isSuggestionSuperAdmin() ? 8 : 6;
+    }
+
+    function configureVoteTableHeader() {
+      const header = document.querySelector('.admin-table[aria-describedby="votePrivacyNote"] thead tr');
+      if (!header) return;
+      const tallyHeaders = isSuggestionSuperAdmin() ? '<th class="ps-admin-tally">찬성</th><th class="ps-admin-tally">반대</th>' : '';
+      header.innerHTML = `<th>채택여부</th><th>상품명</th><th class="ps-mobile-hidden">상품 URL 또는 이미지</th><th>진행률</th>${tallyHeaders}<th>투표</th><th>상세</th>`;
+      document.querySelectorAll('#voteItemBody [colspan]').forEach(cell => {
+        cell.colSpan = getVoteTableColumnCount();
+      });
     }
 
     function changeVoteFilter(filter) {
@@ -291,20 +313,17 @@
         : `<a class="ps-link" href="${psEscapeHtml(item.product_url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">상품 링크 열기</a>`;
       const approveButton = renderVoteButton(item, 'approve');
       const rejectButton = renderVoteButton(item, 'reject');
-      const resultVisible = item.approve_count != null;
-      const approveCell = resultVisible
-        ? `<strong>${fmtNum(item.approve_count)}</strong><div class="ps-vote-actions" style="margin-top:0.4rem;">${approveButton}</div>`
-        : `<div class="ps-vote-actions">${approveButton}</div>`;
-      const rejectCell = resultVisible
-        ? `<strong>${fmtNum(item.reject_count)}</strong><div class="ps-vote-actions" style="margin-top:0.4rem;">${rejectButton}</div>`
-        : `<div class="ps-vote-actions">${rejectButton}</div>`;
-      const adminProgress = isSuperAdmin ? renderAdminProgress(item, 'ps-grid-admin-progress') : '';
+      const voteActions = `<div class="ps-vote-actions">${approveButton}${rejectButton}</div>`;
+      const tallyCells = isSuperAdmin
+        ? `<td class="ps-admin-tally"><strong>${fmtNum(item.approve_count)}</strong></td><td class="ps-admin-tally"><strong>${fmtNum(item.reject_count)}</strong></td>`
+        : '';
       return `<tr class="ps-vote-row" onclick="openSuggestionDetail('${item.suggestion_id}')">
         <td>${psStatusBadge(item.display_status)}</td>
-        <td class="ps-product-cell"><strong>${psEscapeHtml(item.name)}</strong><small class="ps-product-summary">${productDetail}${(item.description || '').length > 95 ? '...' : ''}</small>${adminProgress}</td>
+        <td class="ps-product-cell"><strong>${psEscapeHtml(item.name)}</strong><small class="ps-product-summary">${productDetail}${(item.description || '').length > 95 ? '...' : ''}</small></td>
         <td class="ps-mobile-hidden">${media}</td>
-        <td>${approveCell}</td>
-        <td>${rejectCell}</td>
+        <td>${psRenderVoteProgress(item)}</td>
+        ${tallyCells}
+        <td>${voteActions}</td>
         <td><button class="filter-btn" type="button" onclick="event.stopPropagation();openSuggestionDetail('${item.suggestion_id}')">상세</button></td>
       </tr>`;
     }
@@ -317,15 +336,13 @@
     }
 
     function renderAdminProgress(item, extraClass = '') {
-      const counts = `투표 ${fmtNum(item.vote_count)}명 / 현재 유효 ${fmtNum(item.current_electorate_count)}명 · 찬성 ${fmtNum(item.approve_count)} · 반대 ${fmtNum(item.reject_count)}`;
-      const basis = `등록 시점 정원 ${fmtNum(item.electorate_count)}명, 과반 ${fmtNum(item.electorate_majority)}표 · 현재 과반 ${fmtNum(item.current_majority)}표`;
       let close = '';
       if (item.needs_admin_close) {
         const disabled = item.can_admin_close ? '' : 'disabled';
         const title = item.can_admin_close ? '' : 'title="현재 유효 정원 과반 결과가 아직 없습니다."';
         close = `<button class="ps-admin-close" type="button" ${disabled} ${title} onclick="event.stopPropagation();closeSuggestionVote('${item.suggestion_id}')">투표 종료 처리</button>`;
       }
-      return `<div class="ps-admin-progress ${extraClass}">${counts}<br>${basis}${close}</div>`;
+      return `<div class="ps-admin-progress ${extraClass}">${psRenderVoteProgress(item)}${close}</div>`;
     }
 
     async function castSuggestionVote(suggestionId, vote) {
@@ -395,7 +412,7 @@
         <dt>금액</dt><dd>${psEscapeHtml(psFormatKrw(item.price_krw))}</dd>
         <dt>카테고리</dt><dd>${psEscapeHtml(getProductCategoryLabel(item.category))}</dd>
         <dt>추천 등록일</dt><dd>${psEscapeHtml(psFormatDate(item.created_at))}</dd>`;
-      document.getElementById('suggestionAdminProgress').innerHTML = isSuggestionSuperAdmin() ? renderAdminProgress(item) : '';
+      document.getElementById('suggestionAdminProgress').innerHTML = renderAdminProgress(item);
       document.getElementById('suggestionAdminDecisionActions').innerHTML = renderAdminDecisionActions(item);
       document.getElementById('suggestionDetailVoteActions').innerHTML = `${renderVoteButton(item, 'approve')}${renderVoteButton(item, 'reject')}`;
       document.getElementById('suggestionDetailModal').classList.remove('hidden');

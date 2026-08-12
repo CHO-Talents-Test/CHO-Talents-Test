@@ -43,6 +43,12 @@
     [data-theme="dark"] .ps-status-voting { background:#5c4705; color:#ffe066; }
     [data-theme="dark"] .ps-status-adopted { background:#1f5130; color:#b2f2bb; }
     [data-theme="dark"] .ps-status-rejected { background:#5b2525; color:#ffa8a8; }
+    .ps-vote-progress { min-width:110px; }
+    .ps-vote-progress-label { display:flex; align-items:center; justify-content:space-between; gap:0.45rem; margin-bottom:0.28rem; color:var(--admin-text-muted); font-size:0.75rem; white-space:nowrap; }
+    .ps-vote-progress-label strong { color:var(--admin-text); font-size:0.82rem; }
+    .ps-vote-progress-track { height:7px; overflow:hidden; border-radius:999px; background:var(--admin-border); }
+    .ps-vote-progress-track > span { display:block; width:0; height:100%; border-radius:inherit; background:var(--admin-primary); transition:width 0.2s ease; }
+    .ps-vote-progress-empty { color:var(--admin-text-muted); }
     @media (max-width:900px) { .suggestion-layout { grid-template-columns:1fr; } }
     @media (max-width:560px) { .suggestion-form-grid { grid-template-columns:1fr; } .admin-table { min-width:460px; } .suggestion-detail-grid { grid-template-columns:1fr; gap:0.25rem; } .suggestion-detail-grid dt { margin-top:0.55rem; } }
   </style>
@@ -125,8 +131,8 @@
         </div>
         <div class="admin-table-wrap" style="box-shadow:none;border:0;padding:0;overflow-x:auto;">
           <table class="admin-table">
-            <thead><tr><th>채택여부</th><th>상품명</th><th>추천일</th><th>상세</th></tr></thead>
-            <tbody id="mySuggestionBody"><tr><td colspan="4" class="empty-state">로딩 중...</td></tr></tbody>
+            <thead><tr><th>채택여부</th><th>상품명</th><th>진행률</th><th>추천일</th><th>상세</th></tr></thead>
+            <tbody id="mySuggestionBody"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -392,14 +398,14 @@
 
     async function loadMySuggestions() {
       const body = document.getElementById('mySuggestionBody');
-      body.innerHTML = '<tr><td colspan="4" class="empty-state">로딩 중...</td></tr>';
+      body.innerHTML = '<tr><td colspan="5" class="empty-state">로딩 중...</td></tr>';
       const { data, error } = await fetchMyProductSuggestions();
       if (error) {
-        body.innerHTML = `<tr><td colspan="4" class="empty-state">${psEscapeHtml(tErr(error))}</td></tr>`;
+        body.innerHTML = `<tr><td colspan="5" class="empty-state">${psEscapeHtml(tErr(error))}</td></tr>`;
         return;
       }
       if (!data.length) {
-        body.innerHTML = '<tr><td colspan="4" class="empty-state">아직 등록한 추천 상품이 없습니다.</td></tr>';
+        body.innerHTML = '<tr><td colspan="5" class="empty-state">아직 등록한 추천 상품이 없습니다.</td></tr>';
         return;
       }
       mySuggestionItems = new Map(data.map(item => [item.suggestion_id, item]));
@@ -407,6 +413,7 @@
         return `<tr class="suggestion-row" onclick="openMySuggestionDetail('${item.suggestion_id}')">
           <td>${psStatusBadge(item.status)}</td>
           <td><strong>${psEscapeHtml(item.name)}</strong></td>
+          <td>${psRenderVoteProgress(item)}</td>
           <td>${psEscapeHtml(formatSuggestionDateOnly(item.created_at))}</td>
           <td><button class="filter-btn" type="button" onclick="event.stopPropagation();openMySuggestionDetail('${item.suggestion_id}')">상세</button></td>
         </tr>`;
@@ -443,7 +450,8 @@
         <dt>상품 설명</dt><dd>${psEscapeHtml(item.description || '-')}</dd>
         <dt>금액</dt><dd>${psEscapeHtml(psFormatKrw(item.price_krw))}</dd>
         <dt>카테고리</dt><dd>${psEscapeHtml(getProductCategoryLabel(item.category))}</dd>
-        <dt>추천 등록일</dt><dd>${psEscapeHtml(psFormatDate(item.created_at))}</dd>`;
+        <dt>추천 등록일</dt><dd>${psEscapeHtml(psFormatDate(item.created_at))}</dd>
+        <dt>투표 진행률</dt><dd>${psRenderVoteProgress(item)}</dd>`;
       document.getElementById('mySuggestionDetailModal').classList.remove('hidden');
     }
 

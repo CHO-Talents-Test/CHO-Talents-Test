@@ -55,6 +55,29 @@ function psFormatDate(value) {
   return typeof formatKSTShort === 'function' ? formatKSTShort(value) : new Date(value).toLocaleString('ko-KR');
 }
 
+// 진행률은 찬성/반대 방향과 관계없이 전체 투표 수를 등록 시점 과반 기준으로 계산한다.
+// 서버가 계산한 값을 우선 사용해 방향별 집계나 정원 수를 화면에 노출하지 않는다.
+function psGetVoteProgress(item) {
+  const supplied = item && item.vote_progress != null && item.vote_progress !== ''
+    ? Number(item.vote_progress)
+    : NaN;
+  if (Number.isFinite(supplied)) return Math.max(0, Math.min(100, Math.round(supplied)));
+
+  const voteCount = Number(item && item.vote_count);
+  const majority = Number(item && item.electorate_majority);
+  if (!Number.isFinite(voteCount) || !Number.isFinite(majority) || majority <= 0) return null;
+  return Math.max(0, Math.min(100, Math.round((voteCount / majority) * 100)));
+}
+
+function psRenderVoteProgress(item, extraClass = '') {
+  const progress = psGetVoteProgress(item);
+  if (progress == null) return '<span class="ps-vote-progress-empty">-</span>';
+  return `<div class="ps-vote-progress ${extraClass}" role="progressbar" aria-label="투표 진행률" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${progress}">
+    <div class="ps-vote-progress-label"><span>투표 진행률</span><strong>${progress}%</strong></div>
+    <div class="ps-vote-progress-track"><span style="width:${progress}%"></span></div>
+  </div>`;
+}
+
 function psNotifySuggestionRegistered(payload, data) {
   if (typeof sendSlackNotify !== 'function') return;
   sendSlackNotify('product_suggestion_registered', {
