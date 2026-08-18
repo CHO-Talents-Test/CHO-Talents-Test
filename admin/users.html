@@ -230,7 +230,7 @@
 
     (async () => {
       await navInit();
-      session = await initPage(60, '../login.html');
+      session = await initPage(80, '../login.html');
       if (!session) return;
       navUpdateAuth(session);
       autoLogPageView();
@@ -290,9 +290,14 @@
         users = users.filter(u => !u.is_super_admin);
       }
 
-      if (myRank < 80) {
-        if (myDepts.size > 0) {
-          users = users.filter(u => myDepts.has(u.department_id));
+      // 부장 교사(80)는 담당 부서의 일반 교사·학생 계정만 조회한다.
+      // 전도사님(90) 이상은 관리자와 동일하게 전체 계정을 조회한다.
+      if (myRank < 90) {
+        if (myManagedDept) {
+          users = users.filter(u =>
+            u.department_id === myManagedDept &&
+            ['teacher', 'student'].includes(u.permission_level)
+          );
         } else {
           users = [];
         }
@@ -420,7 +425,7 @@
       const sel = document.getElementById('deptFilter');
       if (!sel) return;
       const myRank = session.permissionRank || 0;
-      if (myRank < 80) {
+      if (myRank < 90) {
         sel.style.display = 'none';
         return;
       }
