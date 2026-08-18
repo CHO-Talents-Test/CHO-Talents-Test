@@ -12,7 +12,8 @@
     .grant-board-title { font-size:1rem; font-weight:800; }
     .grant-board-help { margin-top:0.25rem; font-size:0.78rem; color:var(--admin-text-muted, #6c757d); }
     .month-control { display:flex; align-items:center; gap:0.4rem; }
-    .month-label { min-width:105px; text-align:center; font-size:0.95rem; font-weight:800; }
+    .month-select { min-width:82px; padding:0.38rem 0.48rem; border:1px solid var(--admin-border, #dee2e6); border-radius:7px; background:var(--t-input-bg, #fff); color:var(--t-text, #212529); font-size:0.84rem; font-weight:700; }
+    .month-select.month-select-month { min-width:64px; }
     .grant-item-area { padding:0.8rem 1rem; border-bottom:1px solid var(--admin-border, #dee2e6); }
     .grant-item-label { margin-bottom:0.45rem; font-size:0.82rem; font-weight:800; }
     .grant-item-list { display:flex; flex-wrap:wrap; gap:0.45rem; }
@@ -27,12 +28,16 @@
     .grant-table th, .grant-table td { border-bottom:1px solid var(--admin-border, #dee2e6); border-right:1px solid var(--admin-border, #dee2e6); vertical-align:middle; }
     .grant-table th:last-child, .grant-table td:last-child { border-right:0; }
     .grant-table thead th { background:var(--admin-table-header, #f8f9fa); text-align:center; padding:0.55rem 0.4rem; font-weight:800; white-space:nowrap; }
-    .grant-table .person-col { position:sticky; left:0; z-index:2; min-width:165px; text-align:left; padding:0.6rem 0.75rem; background:var(--admin-card, #fff); }
+    .grant-table .person-col { position:sticky; left:0; z-index:2; width:140px; min-width:140px; max-width:140px; text-align:left; padding:0.6rem 0.65rem; background:var(--admin-card, #fff); overflow:hidden; }
     .grant-table thead .person-col { z-index:4; background:var(--admin-table-header, #f8f9fa); }
     .grant-table .balance-col { min-width:75px; padding:0.6rem; text-align:right; font-weight:800; color:#2b8a3e; }
     .grant-table .date-col { width:128px; min-width:128px; padding:0.4rem; }
     .grant-table tbody tr:hover td { background:var(--t-hover-bg, #f8f9fa); }
     .grant-table tbody tr:hover .person-col { background:var(--t-hover-bg, #f8f9fa); }
+    .grant-date-cell.has-grants { background:var(--t-success-surface, #e6fcf5); }
+    .grant-date-cell.no-grants { background:var(--t-muted-surface, #f8f9fa); }
+    .grant-table tbody tr:hover .grant-date-cell.has-grants { background:var(--t-success-surface, #d8f5e5); }
+    .grant-table tbody tr:hover .grant-date-cell.no-grants { background:var(--t-muted-surface, #eef1f4); }
     .date-head { display:flex; flex-direction:column; align-items:center; gap:0.3rem; }
     .date-head small { font-size:0.68rem; color:var(--admin-text-muted, #6c757d); font-weight:600; }
     .grant-cell { min-height:58px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0.3rem; }
@@ -40,10 +45,18 @@
     .grant-cell label input { margin:0; }
     .grant-cell .selected { color:#1971c2; font-size:0.72rem; font-weight:800; }
     .grant-cell .no-item { color:var(--admin-text-muted, #868e96); font-size:0.72rem; }
+    .grant-cell .grant-complete { padding:0.2rem 0.38rem; border-radius:5px; background:var(--t-success-surface, #e6fcf5); color:#2b8a3e; font-size:0.72rem; font-weight:800; white-space:nowrap; }
+    .grant-count { padding:0.12rem 0.35rem; border-radius:999px; font-size:0.66rem; font-weight:800; line-height:1.2; white-space:nowrap; }
+    .grant-count.has-grants { background:#d3f9d8; color:#2b8a3e; }
+    .grant-count.no-grants { background:#e9ecef; color:#6c757d; }
     .grant-chip { display:block; max-width:116px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; padding:0.12rem 0.32rem; border-radius:4px; background:var(--t-success-surface, #e6fcf5); color:#2b8a3e; font-size:0.68rem; font-weight:800; }
     .grant-chip + .grant-chip { margin-top:0.16rem; }
     .grant-chip.override { background:var(--t-warning-surface, #fff3bf); color:#e67700; }
     .grant-chip-wrap { width:100%; text-align:center; cursor:pointer; }
+    .mobile-grant-control { display:none; }
+    .person-info { display:flex; flex-direction:column; min-width:0; }
+    .person-name { all:unset; cursor:pointer; display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:800; }
+    .person-meta { margin-top:0.15rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:0.7rem; color:var(--admin-text-muted, #6c757d); }
     .grant-empty { padding:2.4rem 1rem; text-align:center; color:var(--admin-text-muted, #6c757d); }
     .grant-paging { padding:0.75rem 1rem; display:flex; justify-content:space-between; align-items:center; gap:0.6rem; flex-wrap:wrap; }
     [data-theme="dark"] .grant-board, [data-theme="dark"] .grant-table .person-col { background:#111827; border-color:#374151; }
@@ -52,9 +65,37 @@
     [data-theme="dark"] .grant-item { background:#111827; border-color:#475569; color:#e5e7eb; }
     [data-theme="dark"] .grant-item:has(input:checked) { background:#163b2a; border-color:#40c057; }
     [data-theme="dark"] .grant-table tbody tr:hover td, [data-theme="dark"] .grant-table tbody tr:hover .person-col { background:#1f2937; }
+    [data-theme="dark"] .grant-date-cell.has-grants, [data-theme="dark"] .grant-table tbody tr:hover .grant-date-cell.has-grants { background:#163b2a; }
+    [data-theme="dark"] .grant-date-cell.no-grants, [data-theme="dark"] .grant-table tbody tr:hover .grant-date-cell.no-grants { background:#111827; }
     [data-theme="dark"] .grant-chip { background:#163b2a; color:#8ce99a; }
     [data-theme="dark"] .grant-chip.override { background:#5f3f00; color:#fff3bf; }
-    @media (max-width:768px) { .grant-board-head { padding:0.8rem; } .grant-item-area, .grant-actions { padding-left:0.8rem; padding-right:0.8rem; } .month-control { width:100%; justify-content:space-between; } }
+    [data-theme="dark"] .grant-count.has-grants { background:#245c3c; color:#b2f2bb; }
+    [data-theme="dark"] .grant-count.no-grants { background:#374151; color:#cbd5e1; }
+    @media (max-width:768px) {
+      .grant-board-head { padding:0.8rem; }
+      .grant-item-area, .grant-actions { padding-left:0.8rem; padding-right:0.8rem; }
+      .month-control { width:100%; justify-content:space-between; gap:0.25rem; }
+      .month-select { min-width:76px; }
+      .grant-table-wrap { overflow-x:hidden; }
+      .grant-table { width:100%; min-width:0; table-layout:fixed; font-size:0.7rem; }
+      .grant-table thead th { padding:0.35rem 0.12rem; }
+      .grant-table .person-col { width:104px; min-width:104px; max-width:104px; padding:0.42rem 0.35rem; }
+      .grant-table .balance-col { display:none; }
+      .grant-table .date-col { width:auto; min-width:0; padding:0.25rem 0.1rem; }
+      .date-head { gap:0.12rem; }
+      .date-head small { display:none; }
+      .grant-table .grant-chip-wrap,
+      .grant-table .desktop-grant-control { display:none; }
+      .grant-table .mobile-grant-control { display:flex; }
+      .grant-date-cell { cursor:pointer; }
+      .grant-cell { min-height:42px; gap:0.18rem; }
+      .grant-cell label { gap:0.12rem; font-size:0.66rem; }
+      .grant-cell .no-item, .grant-cell .grant-complete { font-size:0.64rem; }
+      .grant-count { padding:0.08rem 0.22rem; font-size:0.58rem; }
+      .person-info { flex-direction:row; align-items:center; gap:0.28rem; white-space:nowrap; }
+      .person-name { flex:0 1 auto; font-size:0.68rem; }
+      .person-meta { flex:0 1 auto; min-width:0; margin-top:0; font-size:0.62rem; }
+    }
   </style>
 </head>
 <body class="admin-body">
@@ -81,9 +122,10 @@
           <div class="grant-board-help">달란트 항목을 먼저 고른 뒤, 지급할 대상과 일요일을 선택하세요. 같은 대상·항목·지급일은 한 번만 지급됩니다.</div>
         </div>
         <div class="month-control" aria-label="지급 월 선택">
-          <button class="filter-btn" onclick="changeScheduleMonth(-1)" aria-label="이전 달">‹</button>
-          <span class="month-label" id="scheduleMonthLabel"></span>
-          <button class="filter-btn" onclick="changeScheduleMonth(1)" aria-label="다음 달">›</button>
+          <button class="filter-btn" id="schedulePrevMonth" onclick="changeScheduleMonth(-1)" aria-label="이전 달">‹</button>
+          <select class="month-select" id="scheduleYearSelect" aria-label="지급 연도" onchange="onScheduleYearMonthChange()"></select>
+          <select class="month-select month-select-month" id="scheduleMonthSelect" aria-label="지급 월" onchange="onScheduleYearMonthChange()"></select>
+          <button class="filter-btn" id="scheduleNextMonth" onclick="changeScheduleMonth(1)" aria-label="다음 달">›</button>
           <button class="filter-btn" onclick="moveToCurrentScheduleMonth()">이번 달</button>
         </div>
       </div>
@@ -125,6 +167,15 @@
       </div>
       <div id="detailHistoryPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
       <div class="modal-actions" style="margin-top:1rem;"><button class="btn-cancel" onclick="closeDetailModal()">닫기</button></div>
+    </div>
+  </div>
+
+  <div class="modal-overlay hidden" id="scheduleDayModal">
+    <div class="modal-box" style="max-width:420px;">
+      <h3 class="modal-title" id="scheduleDayTitle">지급 항목</h3>
+      <div id="scheduleDayInfo" style="font-size:0.82rem;color:var(--admin-text-muted);margin-bottom:0.7rem;"></div>
+      <div id="scheduleDayItems" style="display:flex;flex-direction:column;gap:0.45rem;"></div>
+      <div class="modal-actions" style="margin-top:1rem;"><button class="btn-cancel" onclick="closeScheduleDayModal()">닫기</button></div>
     </div>
   </div>
 
@@ -215,9 +266,56 @@
       return `${year}년 ${month}월`;
     }
 
+    function getScheduleYearBounds() {
+      const currentYear = getKSTParts().year;
+      return { firstYear: currentYear - 5, lastYear: currentYear };
+    }
+
+    function isScheduleMonthWithinRange(monthKey) {
+      const [year] = monthKey.split('-').map(Number);
+      const { firstYear, lastYear } = getScheduleYearBounds();
+      return year >= firstYear && year <= lastYear;
+    }
+
+    function syncScheduleMonthControls() {
+      const yearSelect = document.getElementById('scheduleYearSelect');
+      const monthSelect = document.getElementById('scheduleMonthSelect');
+      if (!yearSelect || !monthSelect) return;
+      const [selectedYear, selectedMonth] = scheduleMonth.split('-').map(Number);
+      const { firstYear, lastYear } = getScheduleYearBounds();
+
+      yearSelect.innerHTML = Array.from({ length: lastYear - firstYear + 1 }, (_, index) => {
+        const year = firstYear + index;
+        return `<option value="${year}">${year}년</option>`;
+      }).join('');
+      if (!monthSelect.options.length) {
+        monthSelect.innerHTML = Array.from({ length: 12 }, (_, index) => `<option value="${index + 1}">${index + 1}월</option>`).join('');
+      }
+      yearSelect.value = String(selectedYear);
+      monthSelect.value = String(selectedMonth);
+
+      const previousButton = document.getElementById('schedulePrevMonth');
+      const nextButton = document.getElementById('scheduleNextMonth');
+      if (previousButton) previousButton.disabled = selectedYear === firstYear && selectedMonth === 1;
+      if (nextButton) nextButton.disabled = selectedYear === lastYear && selectedMonth === 12;
+    }
+
     function getDeptName(id) {
       const dept = allDepts.find(item => item.id === id);
       return dept ? dept.name : '-';
+    }
+
+    function isCurrentUserDeptClass(user) {
+      const hasClass = session.classNumber !== null && session.classNumber !== undefined && session.classNumber !== '';
+      return !!session.departmentId && hasClass
+        && user.department_id === session.departmentId
+        && String(user.class_number) === String(session.classNumber);
+    }
+
+    function prioritizeCurrentUserDeptClass(users) {
+      const currentClassUsers = users.filter(isCurrentUserDeptClass);
+      if (!currentClassUsers.length) return users;
+      return [...currentClassUsers, ...users.filter(user => !isCurrentUserDeptClass(user))];
     }
 
     function getTalentPageSize() {
@@ -301,7 +399,24 @@
     async function changeScheduleMonth(offset) {
       const [year, month] = scheduleMonth.split('-').map(Number);
       const next = new Date(Date.UTC(year, month - 1 + offset, 1));
-      scheduleMonth = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
+      const nextMonth = `${next.getUTCFullYear()}-${String(next.getUTCMonth() + 1).padStart(2, '0')}`;
+      if (!isScheduleMonthWithinRange(nextMonth)) return;
+      scheduleMonth = nextMonth;
+      clearScheduleSelection();
+      await refreshScheduleGrants();
+    }
+
+    async function onScheduleYearMonthChange() {
+      const year = Number(document.getElementById('scheduleYearSelect').value);
+      const month = Number(document.getElementById('scheduleMonthSelect').value);
+      if (!year || !month) return;
+      const nextMonth = `${year}-${String(month).padStart(2, '0')}`;
+      if (!isScheduleMonthWithinRange(nextMonth)) {
+        syncScheduleMonthControls();
+        return;
+      }
+      if (nextMonth === scheduleMonth) return;
+      scheduleMonth = nextMonth;
       clearScheduleSelection();
       await refreshScheduleGrants();
     }
@@ -327,7 +442,15 @@
       if (!session.isSuperAdmin) users = users.filter(user => !user.is_super_admin);
       if (rank === 40) users = session.classNumber ? users.filter(user => user.class_number === session.classNumber) : [];
       if (currentDeptFilter) users = users.filter(user => user.department_id === currentDeptFilter);
-      talentUserList = users.sort((a, b) => String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''), 'ko'));
+      const sortedUsers = users.sort((a, b) => {
+        const departmentCompare = getDeptName(a.department_id).localeCompare(getDeptName(b.department_id), 'ko');
+        if (departmentCompare !== 0) return departmentCompare;
+        const classA = a.class_number == null ? Number.MAX_SAFE_INTEGER : Number(a.class_number);
+        const classB = b.class_number == null ? Number.MAX_SAFE_INTEGER : Number(b.class_number);
+        if (classA !== classB) return classA - classB;
+        return String(a.display_name || a.username || '').localeCompare(String(b.display_name || b.username || ''), 'ko');
+      });
+      talentUserList = prioritizeCurrentUserDeptClass(sortedUsers);
       const totalPages = Math.max(1, Math.ceil(talentUserList.length / getTalentPageSize()));
       if (talentPage > totalPages) talentPage = totalPages;
       await refreshScheduleGrants();
@@ -418,7 +541,7 @@
       const selectedItems = getSelectedItems();
       const roleLabel = currentTab === 'student' ? '학생' : '교사';
       document.getElementById('grantBoardTitle').textContent = `${getMonthLabel()} ${roleLabel} 달란트 지급 (${talentUserList.length}명)`;
-      document.getElementById('scheduleMonthLabel').textContent = getMonthLabel();
+      syncScheduleMonthControls();
 
       head.innerHTML = `<tr><th class="person-col">이름 / 소속</th><th class="balance-col">잔액</th>${sundays.map(date => {
         const selectedCount = users.filter(user => selectedCells.has(getCellKey(user.id, date))).length;
@@ -439,7 +562,7 @@
         const name = user.display_name || user.username || '-';
         const sub = [getDeptName(user.department_id), user.class_number ? `${user.class_number}반` : ''].filter(Boolean).join(' · ');
         return `<tr>
-          <td class="person-col"><button type="button" onclick="openDetailModal('${user.id}')" style="all:unset;cursor:pointer;font-weight:800;display:block;">${escapeHtml(name)}</button><div style="font-size:0.7rem;color:var(--admin-text-muted);margin-top:0.15rem;">${escapeHtml(sub || '-')}</div></td>
+          <td class="person-col"><div class="person-info"><button type="button" class="person-name" onclick="openDetailModal('${user.id}')">${escapeHtml(name)}</button><span class="person-meta">${escapeHtml(sub || '-')}</span></div></td>
           <td class="balance-col">${fmtNum(user.talent_balance || 0)}</td>
           ${sundays.map(date => renderScheduleCell(user, date)).join('')}
         </tr>`;
@@ -448,22 +571,52 @@
 
     function renderScheduleCell(user, grantDate) {
       const grants = getCellGrants(user.id, grantDate);
+      const selectedItems = getSelectedItems();
       const pendingItems = getPendingItemsForCell(user.id, grantDate);
+      const payableItemCount = getActiveItems().length;
+      const grantedItemCount = grants.length;
       const key = getCellKey(user.id, grantDate);
       const isSelected = selectedCells.has(key);
       const available = canGiveTalent(user) && pendingItems.length > 0;
-      const grantChips = grants.length ? `<div class="grant-chip-wrap" onclick="openDetailModal('${user.id}')">${grants.map(grant => {
+      const grantChips = grants.length ? `<div class="grant-chip-wrap" onclick="event.stopPropagation();openDetailModal('${user.id}')">${grants.map(grant => {
         const item = talentItems.find(candidate => candidate.id === grant.talent_item_id);
         const label = item?.name || grant.description || '지급 항목';
         return `<span class="grant-chip${grant.override_week_limit ? ' override' : ''}" title="${escapeHtml(label)}">${escapeHtml(label)} +${fmtNum(grant.amount || 0)}</span>`;
       }).join('')}</div>` : '';
-      const selectControl = !getSelectedItems().length
+      const completedControl = '<span class="grant-complete">✓ 지급 완료</span>';
+      const selectControl = !selectedItems.length
         ? '<span class="no-item">항목 선택 필요</span>'
         : available
           ? `<label onclick="event.stopPropagation()"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleScheduleCell('${user.id}', '${grantDate}', this.checked)" /><span>지급 선택</span></label>${isSelected ? `<span class="selected">${pendingItems.length}개 항목 지급</span>` : ''}`
-          : '<span class="no-item">선택 항목 지급 완료</span>';
-      return `<td class="date-col"><div class="grant-cell">${grantChips}${selectControl}</div></td>`;
+          : pendingItems.length ? '<span class="no-item">지급 권한 없음</span>' : completedControl;
+      const mobileSelectControl = !selectedItems.length
+        ? '<span class="no-item">항목 선택 필요</span>'
+        : available
+          ? `<label onclick="event.stopPropagation()"><input type="checkbox" ${isSelected ? 'checked' : ''} onchange="toggleScheduleCell('${user.id}', '${grantDate}', this.checked)" /><span>지급 선택</span></label>`
+          : pendingItems.length ? '<span class="no-item">지급 권한 없음</span>' : completedControl;
+      const grantCount = `<span class="grant-count ${grantedItemCount ? 'has-grants' : 'no-grants'}">${grantedItemCount ? '지급' : '미지급'} ${grantedItemCount}/${payableItemCount}</span>`;
+      return `<td class="date-col grant-date-cell ${grantedItemCount ? 'has-grants' : 'no-grants'}" onclick="openScheduleDayModal('${user.id}', '${grantDate}')"><div class="grant-cell">${grantCount}${grantChips}<div class="desktop-grant-control">${selectControl}</div><div class="mobile-grant-control">${mobileSelectControl}</div></div></td>`;
     }
+
+    function openScheduleDayModal(userId, grantDate) {
+      if (!window.matchMedia('(max-width: 768px)').matches) return;
+      const user = talentUserList.find(item => item.id === userId);
+      if (!user) return;
+      const grants = getCellGrants(userId, grantDate);
+      const userName = user.display_name || user.username || '-';
+      document.getElementById('scheduleDayTitle').textContent = `${userName} · ${grantDate.slice(5).replace('-', '.')} 지급 항목`;
+      document.getElementById('scheduleDayInfo').textContent = grants.length ? '이 날짜에 지급된 달란트 항목입니다.' : '이 날짜에 지급된 달란트 항목이 없습니다.';
+      document.getElementById('scheduleDayItems').innerHTML = grants.length
+        ? grants.map(grant => {
+            const item = talentItems.find(candidate => candidate.id === grant.talent_item_id);
+            const label = item?.name || grant.description || '지급 항목';
+            return `<div style="display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.65rem 0.75rem;border-radius:8px;background:var(--t-success-surface, #e6fcf5);"><span style="font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(item?.emoji || '')} ${escapeHtml(label)}</span><strong style="color:#2b8a3e;white-space:nowrap;">+${fmtNum(grant.amount || 0)}</strong></div>`;
+          }).join('')
+        : '<div class="grant-empty" style="padding:1rem 0;">지급 내역이 없습니다.</div>';
+      document.getElementById('scheduleDayModal').classList.remove('hidden');
+    }
+
+    function closeScheduleDayModal() { document.getElementById('scheduleDayModal').classList.add('hidden'); }
 
     function toggleScheduleCell(userId, grantDate, checked) {
       const key = getCellKey(userId, grantDate);
@@ -699,6 +852,7 @@
     }
 
     document.getElementById('detailModal').addEventListener('click', event => { if (event.target.classList.contains('modal-overlay')) closeDetailModal(); });
+    document.getElementById('scheduleDayModal').addEventListener('click', event => { if (event.target.classList.contains('modal-overlay')) closeScheduleDayModal(); });
     document.getElementById('returnModal').addEventListener('click', event => { if (event.target.classList.contains('modal-overlay')) closeReturnModal(); });
 
     (async () => {
@@ -716,6 +870,7 @@
       allDepts = deptRes.data || [];
       talentItems = itemRes.data || [];
       populateDeptFilter();
+      syncScheduleMonthControls();
       if ((session.permissionRank || 0) < 60) document.getElementById('tabTeacher').style.display = 'none';
       await loadUsers();
     })();

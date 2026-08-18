@@ -344,6 +344,19 @@
       return false;
     }
 
+    function isCurrentUserDeptClass(user) {
+      const hasClass = session.classNumber !== null && session.classNumber !== undefined && session.classNumber !== '';
+      return !!session.departmentId && hasClass
+        && user.department_id === session.departmentId
+        && String(user.class_number) === String(session.classNumber);
+    }
+
+    function prioritizeCurrentUserDeptClass(users) {
+      const currentClassUsers = users.filter(isCurrentUserDeptClass);
+      if (!currentClassUsers.length) return users;
+      return [...currentClassUsers, ...users.filter(user => !isCurrentUserDeptClass(user))];
+    }
+
     async function loadUsers() {
       const myRank = session.permissionRank || 0;
       const roleLabel = currentTab === 'student' ? '학생' : '교사';
@@ -390,7 +403,7 @@
       await loadBatchSummary(userIds);
       await loadAttendanceThisWeek(userIds);
 
-      talentUserList = sortUserList(data, getDeptName);
+      talentUserList = prioritizeCurrentUserDeptClass(sortUserList(data, getDeptName));
       talentUserList.forEach(u => {
         u._deptName = getDeptName(u.department_id);
         const sm = talentSummaryMap[u.id] || { earned: 0, used: 0, returned: 0 };
@@ -442,7 +455,7 @@
       }).join('');
       renderTalentPaging(totalPages);
       if (!talentSortInitialized) {
-        initSortableHeaders('talentTable', function(){ return talentUserList; }, function(d){ talentUserList = d; talentPage = 1; renderTalentTable(); });
+        initSortableHeaders('talentTable', function(){ return talentUserList; }, function(d){ talentUserList = prioritizeCurrentUserDeptClass(d); talentPage = 1; renderTalentTable(); });
         talentSortInitialized = true;
       }
     }
