@@ -346,13 +346,22 @@
       return getSelectedItems().filter(item => !paidIds.has(item.id));
     }
 
+    function getManagedDepartmentId() {
+      return session.managedDeptId || session.departmentId || null;
+    }
+
     function canGiveTalent(user) {
-      if (user.id === session.id) return false;
+      if (user.is_super_admin && !session.isSuperAdmin) return false;
       const rank = session.permissionRank || 0;
       if (rank >= 90) return true;
-      if (rank >= 60 && session.managedDeptId) return user.department_id === session.managedDeptId;
+      if (['chief', 'purchase_teacher', 'dept_teacher'].includes(session.permissionLevel)) {
+        const managedDeptId = getManagedDepartmentId();
+        return !!managedDeptId && user.department_id === managedDeptId;
+      }
       if (rank === 40) return !!session.departmentId && !!session.classNumber
-        && user.department_id === session.departmentId && user.class_number === session.classNumber;
+        && user.user_type === 'student'
+        && user.department_id === session.departmentId
+        && String(user.class_number) === String(session.classNumber);
       return false;
     }
 
@@ -431,14 +440,21 @@
       const rank = session.permissionRank || 0;
       const options = { userType: currentTab };
       if (rank < 90) {
-        if (rank >= 60 && rank < 80 && session.managedDeptId) options.departmentId = session.managedDeptId;
-        else if (rank === 40 && session.departmentId) options.departmentId = session.departmentId;
+        if (['purchase_teacher', 'dept_teacher'].includes(session.permissionLevel)) {
+          options.departmentId = getManagedDepartmentId();
+        } else if (rank === 40 && session.departmentId) {
+          options.departmentId = session.departmentId;
+        }
       }
 
       const { data } = await fetchUsers(options);
       let users = data || [];
       if (!session.isSuperAdmin) users = users.filter(user => !user.is_super_admin);
-      if (rank === 40) users = session.classNumber ? users.filter(user => user.class_number === session.classNumber) : [];
+      if (rank === 40) {
+        users = currentTab === 'student' && session.classNumber
+          ? users.filter(user => String(user.class_number) === String(session.classNumber))
+          : [];
+      }
       if (currentDeptFilter) users = users.filter(user => user.department_id === currentDeptFilter);
       const sortedUsers = users.sort((a, b) => {
         const departmentCompare = getDeptName(a.department_id).localeCompare(getDeptName(b.department_id), 'ko');
