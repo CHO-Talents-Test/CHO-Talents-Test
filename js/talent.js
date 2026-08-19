@@ -3,6 +3,26 @@
  * profiles 테이블 기반 (admin_users 사용 안 함)
  */
 
+// 전달받은 기본 정렬(부서 → 반 → 이름)을 유지하면서 로그인 사용자의
+// 소속 부서·반, 소속 부서, 나머지 대상자 순으로 안정적으로 앞쪽에 배치한다.
+function prioritizeTalentUsersByCurrentDeptAndClass(users, currentUser) {
+  if (!Array.isArray(users)) return [];
+  const departmentId = currentUser?.departmentId;
+  const classNumber = currentUser?.classNumber;
+  const hasClass = classNumber !== null && classNumber !== undefined && classNumber !== '';
+  if (!departmentId) return users;
+
+  const sameDept = user => user.department_id === departmentId;
+  const sameDeptClass = user => sameDept(user)
+    && hasClass
+    && String(user.class_number) === String(classNumber);
+
+  const currentDeptClassUsers = users.filter(sameDeptClass);
+  const currentDeptUsers = users.filter(user => sameDept(user) && !sameDeptClass(user));
+  const otherUsers = users.filter(user => !sameDept(user));
+  return [...currentDeptClassUsers, ...currentDeptUsers, ...otherUsers];
+}
+
 async function fetchTalentBalance(userId) {
   if (!_sb) return 0;
   const { data, error } = await _sb
