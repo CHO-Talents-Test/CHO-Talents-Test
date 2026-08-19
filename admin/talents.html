@@ -331,14 +331,18 @@
     }
 
     function canGiveTalent(user) {
-      if (user.id === session.id) return false;
+      if (user.is_super_admin && !session.isSuperAdmin) return false;
       const myRank = session.permissionRank || 0;
       if (myRank >= 90) return true;
-      if (myRank >= 60 && session.managedDeptId) return user.department_id === session.managedDeptId;
+      if (['chief', 'purchase_teacher', 'dept_teacher'].includes(session.permissionLevel)) {
+        const managedDeptId = session.managedDeptId || session.departmentId;
+        return !!managedDeptId && user.department_id === managedDeptId;
+      }
       if (myRank === 40) {
         if (!session.departmentId || !session.classNumber) return false;
+        if (user.user_type !== 'student') return false;
         if (user.department_id !== session.departmentId) return false;
-        if (user.class_number !== session.classNumber) return false;
+        if (String(user.class_number) !== String(session.classNumber)) return false;
         return true;
       }
       return false;
@@ -363,8 +367,8 @@
       const opts = { userType: currentTab };
 
       if (myRank < 90) {
-        if (myRank >= 60 && myRank < 80 && session.managedDeptId) {
-          opts.departmentId = session.managedDeptId;
+        if (['purchase_teacher', 'dept_teacher'].includes(session.permissionLevel)) {
+          opts.departmentId = session.managedDeptId || session.departmentId || null;
         } else if (myRank === 40 && session.departmentId) {
           opts.departmentId = session.departmentId;
         }
@@ -378,10 +382,10 @@
       }
 
       if (myRank === 40) {
-        if (!session.classNumber) {
+        if (currentTab !== 'student' || !session.classNumber) {
           data = [];
         } else {
-          data = data.filter(u => u.class_number === session.classNumber);
+          data = data.filter(u => String(u.class_number) === String(session.classNumber));
         }
       }
 
