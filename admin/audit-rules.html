@@ -37,7 +37,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📝 작업 이력 작성 룰</h1>
-      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v3.79.0 기준 작업 이력은 <code>activity_logs</code>의 영어 action/details를 코드북과 공통 매핑으로 한글 치환해 표시하며, details에는 처리 상세만 저장합니다. 상품 카테고리 관리, 이미지 연결, 공지 관리, 달란트 예외 지급 요청/승인, 180일 초과 데이터 수동 정리도 관리 작업으로 기록합니다.</p>
+      <p>작업 이력(Audit Trail)에 기록되는 기준과 카테고리를 설명합니다. v4.2.9 기준 작업 이력은 <code>activity_logs</code>의 영어 action/details를 코드북과 공통 매핑으로 한글 치환해 표시하며, details에는 처리 상세만 저장합니다. 상품 카테고리 관리, 이미지 연결, 공지 관리, 달란트 예외 지급 요청/승인, 180일 초과 데이터 수동 정리도 관리 작업으로 기록합니다.</p>
     </div>
 
     <!-- 개요 -->
@@ -114,14 +114,14 @@
       <table class="rule-table">
         <thead><tr><th>액션</th><th>한글 라벨</th><th>기록 시점</th></tr></thead>
         <tbody>
-          <tr><td>TALENT_GIVE / GIVE_ITEM / GIVE_ITEMS</td><td>달란트 지급</td><td>교사/관리자가 학생에게 달란트 지급. 90등급 이상 예외 지급은 사유와 함께 <code>override_week_limit</code>로 구분</td></tr>
+          <tr><td>TALENT_GIVE / GIVE_ITEM / GIVE_ITEMS</td><td>달란트 지급</td><td>교사/관리자가 학생에게 달란트 지급. 항목 지급 상세의 <code>지급대상일</code>과 거래의 <code>grant_date</code>로 지급 대상일을 확인하며, 90등급 이상 예외 지급은 사유와 함께 <code>override_week_limit</code>로 구분</td></tr>
           <tr><td>TALENT_EXCEPTION_REQUEST / APPROVE / REJECT</td><td>예외 지급 요청/승인/거부</td><td>60등급 이상 예외 지급 요청과 90등급 이상 승인/거부 처리</td></tr>
           <tr><td>TALENT_MANUAL_GIVE</td><td>수동 달란트 지급</td><td>특별 지급</td></tr>
           <tr><td>TALENT_USE</td><td>달란트 사용</td><td>실제 상품 구매(차감)로 달란트가 사용된 경우</td></tr>
           <tr><td>TALENT_RETURN</td><td>달란트 반환</td><td>잘못 지급된 달란트를 사유 입력 후 되돌린 경우 (부장 교사 80+ 권한, TALENT_USE와 별도 집계)</td></tr>
           <tr><td>ATTENDANCE_GIVE / ATTENDANCE_CANCEL</td><td>출석 달란트 지급/취소</td><td>출석 체크 관련</td></tr>
           <tr><td>TALENT_ITEM_CREATE / UPDATE / DELETE</td><td>달란트 항목 관리</td><td>적립 항목 CRUD</td></tr>
-          <tr><td>qr_create / qr_edit / qr_toggle / qr_scan</td><td>QR 관리</td><td>QR 달란트 코드 관련. 생성/수정 상세에는 지급 대상, 항목/금액, 유효 기간·지정 시간, 위치 제한 반경을 함께 남깁니다. 수령자 모달 조회는 사용자별 묶음과 유형/부서/검색 필터를 기준으로 분석합니다.</td></tr>
+          <tr><td>qr_create / qr_edit / qr_toggle / qr_scan</td><td>QR 관리</td><td>QR 달란트 코드 관련. 생성/수정 상세에는 지급 대상, 항목/금액, 유효 기간·지정 시간, 위치 제한 반경을 함께 남깁니다. 수령자 모달은 실제 수령 발생 시각과 거래 지급 대상일을 구분하며 사용자별 묶음과 유형/부서/검색 필터를 기준으로 분석합니다.</td></tr>
         </tbody>
       </table>
 
