@@ -214,6 +214,18 @@
       return new Date(kst.getTime() - 9 * 60 * 60 * 1000);
     }
 
+    function getKSTDateKey(date) {
+      const parts = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit'
+      }).formatToParts(date);
+      const value = type => parts.find(part => part.type === type)?.value;
+      return `${value('year')}-${value('month')}-${value('day')}`;
+    }
+
+    function getWeekStartKSTDate() {
+      return getKSTDateKey(getWeekStartKST());
+    }
+
     function canOverrideWeeklyLimit() {
       return (session.permissionRank || 0) >= 60;
     }
@@ -348,17 +360,8 @@
       return false;
     }
 
-    function isCurrentUserDeptClass(user) {
-      const hasClass = session.classNumber !== null && session.classNumber !== undefined && session.classNumber !== '';
-      return !!session.departmentId && hasClass
-        && user.department_id === session.departmentId
-        && String(user.class_number) === String(session.classNumber);
-    }
-
     function prioritizeCurrentUserDeptClass(users) {
-      const currentClassUsers = users.filter(isCurrentUserDeptClass);
-      if (!currentClassUsers.length) return users;
-      return [...currentClassUsers, ...users.filter(user => !isCurrentUserDeptClass(user))];
+      return prioritizeTalentUsersByCurrentDeptAndClass(users, session);
     }
 
     async function loadUsers() {
@@ -510,20 +513,20 @@
       const attendItem = talentItems.find(i => i.is_quick_button === true && i.target_type === currentTab && i.is_active)
         || talentItems.find(i => i.name === '출석' && i.target_type === currentTab && i.is_active);
       if (!attendItem) return;
-      const weekStart = getWeekStartKST();
+      const weekStartDate = getWeekStartKSTDate();
       const { data: earns } = await _sb.from('talent_transactions')
-        .select('id, user_id, amount, description, created_at')
+        .select('id, user_id, amount, description, grant_date')
         .in('user_id', userIds)
         .eq('talent_item_id', attendItem.id)
         .eq('type', 'earn')
-        .gte('created_at', weekStart.toISOString())
-        .order('created_at', { ascending: true });
+        .gte('grant_date', weekStartDate)
+        .order('grant_date', { ascending: true });
       const { data: returns } = await _sb.from('talent_transactions')
-        .select('user_id, amount, description')
+        .select('user_id, amount, description, grant_date')
         .in('user_id', userIds)
         .eq('type', 'use')
         .like('description', '반환:%')
-        .gte('created_at', weekStart.toISOString());
+        .gte('grant_date', weekStartDate);
       const cancelledById = new Set();
       const legacyRetCount = {};
       (returns || []).forEach(r => {
@@ -807,31 +810,31 @@
         return;
       }
 
-      const weekStart = getWeekStartKST();
+      const weekStartDate = getWeekStartKSTDate();
       let { data: weekEarns, error: weekEarnErr } = await _sb.from('talent_transactions')
-        .select('id, talent_item_id, amount, description, created_at, source, override_week_limit')
+        .select('id, talent_item_id, amount, description, grant_date, source, override_week_limit')
         .eq('user_id', talentUserId)
         .eq('type', 'earn')
-        .gte('created_at', weekStart.toISOString())
+        .gte('grant_date', weekStartDate)
         .not('talent_item_id', 'is', null)
-        .order('created_at', { ascending: true });
+        .order('grant_date', { ascending: true });
       if (weekEarnErr && /column .*override_week_limit.*does not exist|schema cache/i.test(weekEarnErr.message || '')) {
         const fallback = await _sb.from('talent_transactions')
-          .select('id, talent_item_id, amount, description, created_at, source')
+          .select('id, talent_item_id, amount, description, grant_date, source')
           .eq('user_id', talentUserId)
           .eq('type', 'earn')
-          .gte('created_at', weekStart.toISOString())
+          .gte('grant_date', weekStartDate)
           .not('talent_item_id', 'is', null)
-          .order('created_at', { ascending: true });
+          .order('grant_date', { ascending: true });
         weekEarns = fallback.data || [];
       }
 
       const { data: weekReturns } = await _sb.from('talent_transactions')
-        .select('amount, description')
+        .select('amount, description, grant_date')
         .eq('user_id', talentUserId)
         .eq('type', 'use')
         .like('description', '\uBC18\uD658:%')
-        .gte('created_at', weekStart.toISOString());
+        .gte('grant_date', weekStartDate);
       const cancelledById = new Set();
       const legacyRetCount = {};
       (weekReturns || []).forEach(r => {

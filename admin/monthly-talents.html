@@ -303,17 +303,8 @@
       return dept ? dept.name : '-';
     }
 
-    function isCurrentUserDeptClass(user) {
-      const hasClass = session.classNumber !== null && session.classNumber !== undefined && session.classNumber !== '';
-      return !!session.departmentId && hasClass
-        && user.department_id === session.departmentId
-        && String(user.class_number) === String(session.classNumber);
-    }
-
     function prioritizeCurrentUserDeptClass(users) {
-      const currentClassUsers = users.filter(isCurrentUserDeptClass);
-      if (!currentClassUsers.length) return users;
-      return [...currentClassUsers, ...users.filter(user => !isCurrentUserDeptClass(user))];
+      return prioritizeTalentUsersByCurrentDeptAndClass(users, session);
     }
 
     function getTalentPageSize() {
