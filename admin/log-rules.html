@@ -35,7 +35,7 @@
   <div class="admin-container">
     <div class="page-header">
       <h1>📋 로그 작성 룰</h1>
-      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. 수정·상태 변경 로그는 대상, 변경 항목, 이전 값, 변경 값을 구조화해 저장하며 비밀번호·비밀 투표 정보는 기록하지 않습니다. 로그 화면과 Slack 알림은 저장된 영어 action/details를 한글로 치환해 보여줍니다.</p>
+      <p>시스템 로그가 기록되는 기준과 규칙을 설명합니다. v4.2.9 기준 수정·상태 변경 로그는 대상, 변경 항목, 이전 값, 변경 값을 구조화해 저장하며 비밀번호·비밀 투표 정보는 기록하지 않습니다. 달란트 지급 로그에는 지급 대상일을 남기고, 로그 화면과 Slack 알림은 저장된 영어 action/details를 한글로 치환해 보여줍니다.</p>
     </div>
 
     <!-- 로그 레벨 개요 -->
@@ -225,10 +225,10 @@
           <tr><td><code>admin/users.html</code></td><td>사용자 등록/수정/삭제, 비밀번호 초기화, 가입 승인/거절, 부서 이동 요청/승인/거절/즉시 이동</td><td><code>USER_*</code>, <code>PASSWORD_RESET</code>, <code>REGISTER_APPROVE</code>, <code>REGISTER_REJECT</code>, <code>DEPT_TRANSFER_*</code></td><td><code>profiles</code>, <code>registration_requests</code>, <code>department_transfer_requests</code>, <code>admin_*_user</code> RPC 결과</td><td><code>dept_transfer</code> 이동 대상 부서 채널, WARN+ 공통</td></tr>
           <tr><td><code>admin/managers.html</code></td><td>운영 권한 부여/수정, 권한 변경 실패</td><td><code>MANAGER_UPDATE</code>, <code>MANAGER_PROMOTE</code>, 실패/오류 액션</td><td><code>profiles</code>, <code>departments</code>, <code>admin_update_user</code> RPC</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/departments.html</code></td><td>부서 등록/수정/삭제/비활성화, 부서 저장 실패</td><td><code>DEPT_CREATE</code>, <code>DEPT_UPDATE</code>, <code>DEPT_DELETE</code>, <code>DEPT_DEACTIVATE</code></td><td><code>departments</code>, 부서명/설명/반 개수, 관련 RPC/REST 결과</td><td>WARN+ 공통</td></tr>
-          <tr><td><code>admin/talents.html</code>, <code>js/talent.js</code></td><td>달란트 지급/사용/반환, 출석 지급/취소, 예외 지급 요청, 주간 제한/권한 거부</td><td><code>TALENT_GIVE*</code>, <code>TALENT_MANUAL_GIVE</code>, <code>TALENT_RETURN</code>, <code>ATTENDANCE_GIVE</code>, <code>ATTENDANCE_CANCEL</code>, <code>TALENT_EXCEPTION_REQUEST</code></td><td><code>profiles</code>, <code>talent_items</code>, <code>talent_transactions</code>, <code>talent_exception_requests</code>, <code>give_talent</code>/<code>use_talent</code> RPC</td><td>WARN+ 공통</td></tr>
+          <tr><td><code>admin/talents.html</code>, <code>js/talent.js</code></td><td>달란트 지급/사용/반환, 출석 지급/취소, 예외 지급 요청, 같은 지급 대상일 중복/권한 거부</td><td><code>TALENT_GIVE*</code>, <code>TALENT_MANUAL_GIVE</code>, <code>TALENT_RETURN</code>, <code>ATTENDANCE_GIVE</code>, <code>ATTENDANCE_CANCEL</code>, <code>TALENT_EXCEPTION_REQUEST</code></td><td><code>profiles</code>, <code>talent_items</code>, <code>talent_transactions.grant_date</code>, <code>talent_exception_requests</code>, <code>give_talent</code>/<code>use_talent</code> RPC. 항목 지급 로그 details에는 <code>지급대상일</code>을 포함</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/talent-adjustments.html</code></td><td>예외 지급 요청 승인/거절, 처리 실패</td><td><code>TALENT_EXCEPTION_APPROVE</code>, <code>TALENT_EXCEPTION_REJECT</code>, 실패/오류 액션</td><td><code>talent_exception_requests</code>, <code>talent_transactions</code>, 승인자/거절 사유</td><td>WARN+ 공통</td></tr>
           <tr><td><code>admin/talent-items.html</code></td><td>달란트 항목 등록/수정/활성 토글/퀵 버튼 지정</td><td><code>TALENT_ITEM_CREATE</code>, <code>TALENT_ITEM_UPDATE</code>, <code>TALENT_ITEM_TOGGLE</code>, <code>TALENT_ITEM_QUICKBTN</code></td><td><code>talent_items</code>, 항목명/금액/대상/정렬/퀵 버튼 설정</td><td>WARN+ 공통</td></tr>
-          <tr><td><code>talent-receive.html</code></td><td>QR 수령 성공, 위치 권한 차단, QR/RPC 실패</td><td><code>qr_scan</code>, <code>QR_LOCATION_PERMISSION_BLOCKED</code>, 실패/오류 액션</td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>, <code>scan_qr_talent</code> RPC, Geolocation 결과</td><td>WARN+ 공통. 위치 권한 차단은 INFO라 기본 Slack 제외</td></tr>
+          <tr><td><code>talent-receive.html</code></td><td>QR 수령 성공, 위치 권한 차단, QR/RPC 실패</td><td><code>qr_scan</code>, <code>QR_LOCATION_PERMISSION_BLOCKED</code>, 실패/오류 액션</td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>의 실제 발생 시각과 <code>grant_date</code>, <code>scan_qr_talent</code> RPC, Geolocation 결과</td><td>WARN+ 공통. 위치 권한 차단은 INFO라 기본 Slack 제외</td></tr>
           <tr><td><code>admin/talent-qr.html</code></td><td>QR 생성/수정/활성 토글, 수령자 조회 실패</td><td><code>qr_create</code>, <code>qr_edit</code>, <code>qr_toggle</code>, <code>QR_CREATE_*</code></td><td><code>talent_qr_codes</code>, <code>talent_qr_scans</code>, <code>talent_transactions</code>, 선택 항목/기간/위치/반복/수령자 필터</td><td>WARN+ 공통</td></tr>
           <tr><td><code>shop.html</code></td><td>상품 구매 신청/대리 구매 성공, 잔액 부족/거부, 주문 RPC 오류, 대리 구매 대상 조회 실패</td><td><code>ORDER_REQUEST_SUCCESS</code>, <code>ORDER_REQUEST_DENIED</code>, <code>ORDER_REQUEST_FAIL</code>, <code>PROXY_ORDER_*</code>, <code>PROXY_USER_LOAD_*</code></td><td><code>products</code>, <code>profiles.talent_balance/pending_talent</code>, <code>product_orders</code>, <code>request_product_order</code> RPC</td><td><code>purchase_new</code> 신청자 부서 채널, WARN+ 공통</td></tr>
           <tr><td><code>admin/shop.html</code>, <code>admin/product-bulk-register.html</code>, <code>js/product.js</code></td><td>상품 등록/수정/삭제/비활성화, 상품 일괄 등록, 이미지 URL 연결</td><td><code>PRODUCT_CREATE</code>, <code>PRODUCT_BULK_CREATE</code>, <code>PRODUCT_UPDATE</code>, <code>PRODUCT_IMAGE_UPDATE</code>, <code>PRODUCT_DEACTIVATE</code></td><td>상품 대상과 변경 항목의 이전 값→변경 값, 일괄 등록 성공/실패 건수와 실패 행</td><td>WARN+ 공통</td></tr>
@@ -274,7 +274,7 @@
       <table class="rule-table">
         <thead><tr><th>액션</th><th>레벨</th><th>발생 시점</th></tr></thead>
         <tbody>
-          <tr><td>qr_scan</td><td><span class="level-tag info">INFO</span></td><td>QR 달란트 수령 성공</td></tr>
+          <tr><td>qr_scan</td><td><span class="level-tag info">INFO</span></td><td>QR 달란트 수령 성공. 실제 수령 시각은 거래/스캔 시각으로, 지급 대상일은 연결된 거래의 <code>grant_date</code>로 확인</td></tr>
           <tr><td>QR_LOCATION_PERMISSION_BLOCKED</td><td><span class="level-tag info">INFO</span></td><td>위치 제한 QR 수령 중 기기/브라우저 위치 권한 차단 감지</td></tr>
         </tbody>
       </table>
@@ -294,7 +294,7 @@
       <table class="rule-table">
         <thead><tr><th>액션</th><th>레벨</th><th>발생 시점</th></tr></thead>
         <tbody>
-          <tr><td>TALENT_GIVE / TALENT_GIVE_ITEM / TALENT_GIVE_ITEMS</td><td><span class="level-tag info">INFO</span></td><td>달란트 지급 성공. 예외 지급은 details의 <code>예외지급=true</code>와 트랜잭션 <code>override_week_limit</code>로 구분</td></tr>
+          <tr><td>TALENT_GIVE / TALENT_GIVE_ITEM / TALENT_GIVE_ITEMS</td><td><span class="level-tag info">INFO</span></td><td>달란트 지급 성공. 항목 지급은 details의 <code>지급대상일</code>, 거래의 <code>grant_date</code>를 함께 확인합니다. 예외 지급은 <code>예외지급=true</code>와 트랜잭션 <code>override_week_limit</code>로 구분</td></tr>
           <tr><td>TALENT_GIVE_DENIED</td><td><span class="level-tag warn">WARN</span></td><td>지급 거부 (권한/중복)</td></tr>
           <tr><td>TALENT_EXCEPTION_REQUEST / APPROVE / REJECT</td><td><span class="level-tag info">INFO</span></td><td>예외 지급 요청 생성, 전도사님 이상 승인/거부 처리</td></tr>
           <tr><td>TALENT_USE</td><td><span class="level-tag info">INFO</span></td><td>실제 상품 구매(차감) 사용</td></tr>

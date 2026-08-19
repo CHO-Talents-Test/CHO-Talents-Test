@@ -12,10 +12,19 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v3.89.0` (`js/version.js` 기준, 2026-07-16) |
+| 현재 버전 | `v4.2.9` (`js/version.js` 기준, 2026-08-19) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
+
+- **v4.2.9 주요 변경 사항**:
+  - 메인 `⭐ 즐겨찾기 설정`의 후보를 실제 상단 네비게이션과 동기화했습니다. 일반 교사 이상은 공지 사항·월별 달란트 관리, 60등급 이상은 구매 통계, 80등급 이상은 Slack 알림 룰·서비스 통계를 추가로 선택할 수 있습니다.
+  - 즐겨찾기 후보는 로그인 여부와 `js/nav.js`의 최소 권한을 함께 적용하므로, 권한 밖의 저장 항목은 계속 자동으로 제외됩니다.
+  - 사용자 안내서·아키텍처 문서·역할별/운영 룰 가이드는 v4.2.9의 메뉴 권한과 지급 대상일 규칙으로 동기화했습니다.
+
+- **v4.2.8 주요 변경 사항**:
+  - 달란트 지급은 한국 시간 기준 일요일이면 당일, 월~토요일이면 다음 일요일을 지급 대상일(`grant_date`)로 기록합니다. 월별 달란트 관리에서 직접 고른 일요일은 그대로 사용합니다.
+  - QR 수령은 실제 수령 발생 시각(`created_at`/`scanned_at`)과 지급 대상일을 분리해 수령 내역과 QR 관리에서 함께 표시합니다. 운영 DB에는 `docs/TASK-104_qr_grant_date.sql`, `docs/TASK-105_sunday_grant_dates.sql` 적용이 필요합니다.
 
 - **v3.89.0 주요 변경 사항**:
   - 미확인 ERROR+ 로그 그리드의 행 전체를 클릭해 상세 모달을 열 수 있습니다.
@@ -24,7 +33,7 @@
   - 상품 등록은 상품명·대상·카테고리·썸네일 이미지·구매 URL을 필수로 검증하고, 교사용/학생용 목록에서 전체·활성·비활성 필터를 제공합니다. 상점 카드의 대표 이미지는 잘리지 않도록 축소 표시됩니다.
   - 역할별 가이드 전환기는 현재 권한 이하의 가이드만 누적 표시하며, 관리자 가이드는 관리자(100+) 전용입니다.
 
-- `APP_VERSION.current`는 `3.88.0`로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `4.2.9`로 갱신되어 있습니다.
 - **v3.88.0 주요 변경 사항**:
   - 상품 추천 투표의 진행 중 익명 득표·유권자 정원 확인, 채택/불채택 직접 결정, 현재 유효 정원 기준 종료 처리는 `profiles.is_super_admin=true`인 최고관리자만 사용할 수 있습니다.
   - 일반 관리자(100)는 종료 전 득표 수를 보거나 위 특례 RPC를 실행할 수 없습니다. 운영 DB에는 `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql` 적용이 필요합니다.
@@ -642,7 +651,7 @@ CHO-Talents/
 | 최고 관리자 | `admin` + `is_super_admin` | 110 | `index.html` | 관리자 포함 전체 사용자 관리, 보고서 초기화, 페이지 접근/기능/감사/로그 관리 |
 | 관리자 | `admin` | 100 | `index.html` | 전체 관리, 페이지 접근/기능/감사/로그 관리, 로그 삭제 대기 처리 |
 | 전도사님 | `evangelist` | 90 | `index.html` | 달란트 항목 관리, QR/공지 사항 관리, 상품 삭제, 부서 즉시 이동, 전체 구매 처리 |
-| 부장 교사 | `chief` | 80 | `index.html` | 대시보드, 부서/관리자/보고서/버전, 달란트 반환 처리 (사용자/관리자 관리는 조회 전용) |
+| 부장 교사 | `chief` | 80 | `index.html` | 대시보드, 사용자 관리, 부서/보고서/서비스 통계, 달란트 반환 처리 (사용자 관리는 담당 범위 조회·처리) |
 | 구매 담당 교사 | `purchase_teacher` | 70 | `index.html` | 부서 담당 교사와 동일 접근, 구매 관리에서 전체 부서 주문 처리 |
 | 부서 담당 교사 | `dept_teacher` | 60 | `index.html` | 담당 부서 중심 사용자/부서/달란트/상품/구매/Q&A 답변 관리 |
 | 일반 교사 | `teacher` | 40 | `index.html` | 담당 부서/반 학생 달란트 처리, 대리 구매, 내 달란트, 교사용/학생용 상점 |
@@ -674,18 +683,20 @@ flowchart TD
   FirstLogin -->|아니오| Home
 
   Home --> AdminDash["admin/index.html<br/>60+"]
-  Home --> Users["admin/users.html<br/>60+"]
+  Home --> Users["admin/users.html<br/>80+"]
   Home --> Departments["admin/departments.html<br/>60+"]
-  Home --> Managers["admin/managers.html<br/>80+"]
+  Home --> Managers["admin/managers.html<br/>90+"]
   Home --> Talents["admin/talents.html<br/>40+"]
+  Home --> MonthlyTalents["admin/monthly-talents.html<br/>40+"]
   Home --> TalentAdjustments["admin/talent-adjustments.html<br/>60+"]
   Home --> TalentItems["admin/talent-items.html<br/>60+"]
   Home --> AdminShop["admin/shop.html<br/>60+"]
   Home --> ProductCategories["admin/product-categories.html<br/>70+"]
   Home --> Purchases["admin/purchases.html<br/>60+"]
+  Home --> PurchaseStats["admin/purchase-stats.html<br/>60+"]
   Home --> Reports["admin/reports.html<br/>80+"]
   Home --> Notices["admin/notices.html<br/>40+ 조회 / 90+ 관리"]
-  Home --> Versions["admin/versions.html<br/>80+"]
+  Home --> Versions["admin/versions.html<br/>100+"]
   Home --> PageAccess["admin/page-access.html<br/>100+"]
   Home --> PageFeatures["admin/page-features.html<br/>100+"]
   Home --> Audit["admin/audit.html<br/>100+"]
@@ -698,14 +709,14 @@ flowchart TD
 
 | 페이지 | 연결 | 동작 |
 |---|---|---|
-| `index.html` | 학생 가이드, Q&A, 상점, 로그인, 달란트 적립, 내 달란트 | 로그인 상태면 로그아웃 버튼과 60등급 이상 관리 버튼 표시 |
+| `index.html` | 학생 가이드, Q&A, 상점, 로그인, 달란트 적립, 내 달란트 | 로그인 상태에서는 권한에 맞는 메뉴를 즐겨찾기로 저장합니다. 후보는 상단 네비게이션과 같으며, 최대 20개를 다른 기기에서도 동기화해 표시합니다. |
 | `login.html` | 계정 등록 신청, 메인 | 로그인 성공/실패 로그 기록. 승인 대기/거부 계정 구분 안내 |
 | `register.html` | 로그인 | 영문/숫자/`_`/`-` 아이디 중복확인 후 가입 신청. 실패 시 에러 로깅 |
 | `guide.html` | 메인, Q&A, 상점, 내 달란트 | 사이트 이용 방법을 카드/스텝 형태로 안내 |
 | `qna.html` | 메인, 학생 가이드 | FAQ 공개 조회, 로그인 사용자 질문 등록, 60등급 이상 답변/FAQ 등록 |
 | `earn-talents.html` | 메인, 상점, 내 달란트 | 달란트 적립 방법 안내. 학생/교사별 활성 `talent_items`를 정렬 순서대로 카드로 생성해 이모지, 지급 규칙·설명, `+N 달란트`를 표시 |
 | `shop.html` | 메인, 적립 안내, 내 달란트, 내 구매 상품 | 학생용 상품 공개 조회. 교사/60등급 이상은 교사용 탭. 로그인 시 구매 신청, 40등급 이상은 대리 구매 가능. 상품 상세 모달은 설명을 먼저 보여 주고, 상세 설명 이미지(`products.detail_image_url`)가 있으면 설명 아래에 표시 |
-| `talent-receive.html` | 로그인 필요 | QR 코드 카메라 스캔/코드 입력 수령. 결과 메시지는 카메라 영역 위에 표시되며, 위치 제한 QR에서 기기/브라우저 위치 권한이 차단되면 알림창과 화면 메시지를 표시. 최근 수령 내역은 실제 지급자 이름을 표시하고, 관리자 권한은 지급자 아이디도 함께 표시 |
+| `talent-receive.html` | 로그인 필요 | QR 코드 카메라 스캔/코드 입력 수령. 결과 메시지는 카메라 영역 위에 표시되며, 위치 제한 QR에서 기기/브라우저 위치 권한이 차단되면 알림창과 화면 메시지를 표시. 최근 수령 내역은 실제 지급자 이름(관리자는 아이디도 함께), 지급 대상일과 실제 발생 시각을 표시 |
 | `my-talents.html` | 로그인 필요 | 누적 적립/예외 지급/반환/사용 완료/사용 대기/사용 가능 잔액, 달란트 내역(적립/예외/사용/반환 구분), 구매 내역 조회 |
 | `my-orders.html` | 로그인 필요 | 본인 구매 신청 내역과 4단계 진행 상태 조회 |
 
@@ -714,21 +725,23 @@ flowchart TD
 | 페이지 | 최소 등급 | 주요 기능 |
 |---|---:|---|
 | `admin/index.html` | 60 | 사용자/부서/보고서 요약, 가입 대기자 수. 미확인 ERROR+ 카드/알림/최근 이슈 로그는 100등급 이상(클릭 시 로그 이동). 바로가기에 달란트 통계/QR 관리 포함 |
-| `admin/users.html` | 60 | 사용자 목록, 교사/학생 로우 클릭 상세 모달, 권한 범위 내 수정/삭제/비밀번호 초기화, 가입 신청 처리, 부서 이동 요청/승인. 관리자 권한은 가입 신청 이름 옆에 아이디 표시 |
+| `admin/users.html` | 80 | 사용자 목록, 교사/학생 로우 클릭 상세 모달, 권한 범위 내 수정/삭제/비밀번호 초기화, 가입 신청 처리, 부서 이동 요청/승인. 관리자 권한은 가입 신청 이름 옆에 아이디 표시 |
 | `admin/departments.html` | 60 | 부서 등록/수정/비활성화, 반 개수 관리, 부서별 인원/담당자 확인. 부서 로우 클릭 시 소속보기 모달 열림 |
-| `admin/managers.html` | 80 | 기존 사용자를 관리자 계열 권한으로 승격/수정, 담당 부서 지정. 로우 클릭 시 수정 모달 열림 |
+| `admin/managers.html` | 90 | 기존 사용자를 관리자 계열 권한으로 승격/수정, 담당 부서 지정. 로우 클릭 시 수정 모달 열림 |
 | `admin/talents.html` | 40 | 학생/교사 탭별 달란트 체크박스 선택+일괄 지급, 로우 클릭 사용자 상세 모달, 전도사님(90+) 예외 지급, 수동 적립/사용, 반환(80+). 상세 팝업에 누적적립/총사용/총반환/잔여와 이력 페이징/페이지당 항목 수 설정 표시. 일반 교사는 담당 부서/반 제한 |
+| `admin/monthly-talents.html` | 40 | 월별로 선택한 일요일 지급 대상일에 맞춰 달란트 지급 현황을 조회·관리. 선택한 지급일은 그대로 `grant_date`에 저장 |
 | `admin/talent-adjustments.html` | 60 | 예외 지급 요청, 예외 지급 내역, 달란트 반환 내역, 전체 처리 순으로 조회. 부서 담당 교사는 담당 부서만, 부장 교사 이상은 전체 부서 이력 조회. 전도사님(90+) 이상은 예외 지급 요청 승인/거부와 네비게이션 배지를 확인. 처리자/대상자/사유/원본 지급 참조/처리 시각을 페이징으로 확인 |
 | `admin/talent-items.html` | 60 | 달란트 지급 항목 등록/수정/활성화, 카드 이모지와 지급 규칙/설명 관리, 총/이번 주/예외 지급 통계 표시. 항목 로우 클릭 시 수정 모달 열림. 학생 항목은 주 1회 지급 규칙과 연동, 퀵 버튼 설정은 80등급 이상 |
-| `admin/talent-qr.html` | 90 | QR 코드 생성(qrcode.js 이미지), QR 항목 영역 클릭 수정 모달, 수정(새 코드 재생성), 비활성화. 지정일 날짜+시간 또는 기간(from~to datetime) 설정, 위치 반경 100m~5km(기본 500m). 수령자 모달은 사용자별 묶음, 사용자 유형/부서/검색 필터, 선택 사용자 지급 항목 상세, 반환 상태를 표시 |
+| `admin/talent-qr.html` | 90 | QR 코드 생성(qrcode.js 이미지), QR 항목 영역 클릭 수정 모달, 수정(새 코드 재생성), 비활성화. 지정일 날짜+시간 또는 기간(from~to datetime) 설정, 위치 반경 100m~5km(기본 500m). 수령자 모달은 사용자별 묶음, 사용자 유형/부서/검색 필터, 선택 사용자 지급 항목 상세, 반환 상태와 최근 발생 시각/지급 대상일을 표시 |
 | `admin/shop.html` | 60 | 학생용/교사용 상품 등록, 수정, 썸네일 이미지와 상세 설명 이미지 분리 업로드, 정렬 순번 관리. 등록 시 상품명·대상·카테고리·썸네일 이미지·구매 URL은 필수이며, 교사/학생 목록은 각각 전체·활성·비활성 필터를 제공합니다. 목록은 카테고리 순번과 상품 순번 기준으로 기본 정렬되며 로우 클릭 시 수정 창이 열림. 삭제 버튼(90+)은 소프트 삭제(삭제 대기=비활성화)로 목록에서 숨김 |
 | `admin/product-categories.html` | 70 | 상품 카테고리 등록, 수정, 삭제(비활성화), 카테고리 정렬 순번 관리. 그리드에는 코드 열을 표시하지 않고 로우 클릭 시 수정 모달이 열립니다. 사용 중인 카테고리와 기본 `etc` 카테고리는 삭제 불가 |
 | `admin/purchases.html` | 60 | 구매 관리: 4단계 처리, 모든 상태 탭에 부서/기간 필터(기본 오늘) + 기간 프리셋, 구매 확정 시 달란트 차감 |
+| `admin/purchase-stats.html` | 60 | 전체·부서별·사용자별 구매 통계를 조회하고 행을 클릭해 상세 집계를 확인 |
 | `admin/notices.html` | 40 | 공지 사항 조회. 일반 교사는 활성 공지만 볼 수 있고, 전도사님(90+) 이상은 공지 등록/수정/삭제와 활성 토글을 처리합니다. 목록 행 선택 시 보기 모달이 열리며, 열람 현황 모달에서 등록일시/등록자, 사용자 유형, 전체/확인자/미확인자 콤보박스 필터를 확인할 수 있습니다. 활성 공지는 로그인 후 메인 화면에 팝업 표시되고 계정별 다시 열지 않음 상태를 저장 |
 | `admin/reports.html` | 80 | 작업 보고서 유형별 조회, 상세 보기, 등록/수정, 선택 삭제 |
 | `admin/logs.html` | 100 | 활동 로그 필터링(기본 1년) + 기간 프리셋, 상세 보기, 한글 액션 라벨 표시, 오류 로그 확인 처리, 소프트 삭제(삭제 대기), 확인 완료 로그 180일 초과 실제 삭제. 미확인 ERROR+ 목록은 행 전체 클릭으로 상세 모달을 엽니다. |
 | `admin/service-stats.html` | 80 | GitHub/Supabase/Kakao/Slack 무료 할당량, 현재·남은 사용량/비율, 예상 사용률, 30일 추이, 수집/Slack 알림 이력 조회와 즉시 수집. 최근 수집 실패 항목은 서비스·수집 항목·실패 사유를 별도로 표시합니다. |
-| `admin/versions.html` | 80 | 배포 버전과 v1.0.0부터의 전체 변경 이력 확인 |
+| `admin/versions.html` | 100 | 배포 버전과 v1.0.0부터의 전체 변경 이력 확인 |
 | `admin/page-access.html` | 100 | 유형/권한별 페이지 접근/요소 가시성 설정 |
 | `admin/page-features.html` | 100 | 권한별 페이지 기능(수정/삭제/승인 등) 설정값 관리 |
 | `admin/audit.html` | 100 | 관리 작업 이력 조회 (70+ 액션 타입, 10개 카테고리 필터, 영어 저장 details의 한글 표시). 기간 필터 기본값 1년 + 기간 프리셋, 자동 조회 |
@@ -807,6 +820,8 @@ flowchart TD
   Return --> UseRPC["use_talent RPC (반환)"]
   UseRPC --> Tx
 ```
+
+달란트 지급은 한국 시간의 실제 지급 발생일을 기준으로 지급 대상일을 정합니다. 일요일 발생 건은 당일, 월~토요일 발생 건은 다음 일요일을 `grant_date`로 저장합니다. 따라서 같은 지급 대상일의 중복 확인·예외 지급·QR 수령·월별 달란트 관리는 모두 동일한 기준을 사용합니다. QR 수령은 수령 순간의 시각과 이 지급 대상일을 별도로 보존합니다.
 
 ### 부서 이동
 
@@ -1002,6 +1017,9 @@ SQL Editor에서 수동 설치할 때는 `docs/INITIAL_DATABASE_SETUP.sql` 실�
 | `docs/TASK-091_user_stats_filters.sql` | v3.89.0: 사용자 로그인 통계 집계·상세 RPC에 학생/교사 필터를 동일하게 적용 |
 | `docs/TASK-091_plan.md`, `docs/TASK-091_test_scenario.md`, `docs/TASK-091_test_result.md`, `docs/TASK-091_change_report.md` | v3.89.0: 운영 조회·상품 검증·가이드 권한 정비 계획, 시나리오·결과, 변경 보고 |
 | `docs/TASK-099_scheduled_talent_grant_dates.sql` | v4.1.0: 달란트 거래 지급일(`grant_date`) 저장과 일요일 지정일 기반 중복 검증 RPC |
+| `docs/TASK-104_qr_grant_date.sql` | v4.2.7: QR 수령 거래의 지급 대상일 저장 및 발생 시각과의 분리 표시를 위한 운영 DB 적용 SQL |
+| `docs/TASK-105_sunday_grant_dates.sql` | v4.2.8: 일반·수동·QR 지급 경로의 다음 일요일 지급 대상일 기준 통일 SQL |
+| `docs/TASK-106_plan.md`, `docs/TASK-106_test_scenario.md`, `docs/TASK-106_test_result.md`, `docs/TASK-106_change_report.md` | v4.2.9: 즐겨찾기 전체 메뉴 동기화와 사용자/운영 가이드 최신화 계획, 검증, 변경 보고 |
 | `docs/TASK-086_test_scenario.md`, `docs/TASK-086_test_result.md`, `docs/TASK-086_change_report.md` | v3.84.0: 관리자 예외 결정 검증 기준과 변경 보고 |
 
 ## 관련 문서
