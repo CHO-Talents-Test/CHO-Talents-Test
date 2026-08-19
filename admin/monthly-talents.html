@@ -30,7 +30,6 @@
     .grant-table thead th { background:var(--admin-table-header, #f8f9fa); text-align:center; padding:0.55rem 0.4rem; font-weight:800; white-space:nowrap; }
     .grant-table .person-col { position:sticky; left:0; z-index:2; width:140px; min-width:140px; max-width:140px; text-align:left; padding:0.6rem 0.65rem; background:var(--admin-card, #fff); overflow:hidden; }
     .grant-table thead .person-col { z-index:4; background:var(--admin-table-header, #f8f9fa); }
-    .grant-table .balance-col { min-width:75px; padding:0.6rem; text-align:right; font-weight:800; color:#2b8a3e; }
     .grant-table .date-col { width:128px; min-width:128px; padding:0.4rem; }
     .grant-table tbody tr:hover td { background:var(--t-hover-bg, #f8f9fa); }
     .grant-table tbody tr:hover .person-col { background:var(--t-hover-bg, #f8f9fa); }
@@ -80,7 +79,6 @@
       .grant-table { width:100%; min-width:0; table-layout:fixed; font-size:0.7rem; }
       .grant-table thead th { padding:0.35rem 0.12rem; }
       .grant-table .person-col { width:104px; min-width:104px; max-width:104px; padding:0.42rem 0.35rem; }
-      .grant-table .balance-col { display:none; }
       .grant-table .date-col { width:auto; min-width:0; padding:0.25rem 0.1rem; }
       .date-head { gap:0.12rem; }
       .date-head small { display:none; }
@@ -543,18 +541,18 @@
       document.getElementById('grantBoardTitle').textContent = `${getMonthLabel()} ${roleLabel} 달란트 지급 (${talentUserList.length}명)`;
       syncScheduleMonthControls();
 
-      head.innerHTML = `<tr><th class="person-col">이름 / 소속</th><th class="balance-col">잔액</th>${sundays.map(date => {
+      head.innerHTML = `<tr><th class="person-col">이름 / 소속</th>${sundays.map(date => {
         const selectedCount = users.filter(user => selectedCells.has(getCellKey(user.id, date))).length;
         const eligibleCount = users.filter(user => canGiveTalent(user) && getPendingItemsForCell(user.id, date).length > 0).length;
         return `<th class="date-col"><div class="date-head"><span>${date.slice(5).replace('-', '.')} (일)</span><label title="표시된 대상 전체 선택"><input type="checkbox" ${selectedItems.length && eligibleCount && selectedCount === eligibleCount ? 'checked' : ''} ${selectedItems.length && eligibleCount ? '' : 'disabled'} onchange="toggleAllScheduleCells('${date}', this.checked)" /></label><small>선택 ${selectedCount}/${eligibleCount}</small></div></th>`;
       }).join('')}</tr>`;
 
       if (scheduleLoading) {
-        body.innerHTML = `<tr><td class="grant-empty" colspan="${sundays.length + 2}">지급 내역을 불러오는 중...</td></tr>`;
+        body.innerHTML = `<tr><td class="grant-empty" colspan="${sundays.length + 1}">지급 내역을 불러오는 중...</td></tr>`;
         return;
       }
       if (!users.length) {
-        body.innerHTML = `<tr><td class="grant-empty" colspan="${sundays.length + 2}">표시할 ${roleLabel}이(가) 없습니다.</td></tr>`;
+        body.innerHTML = `<tr><td class="grant-empty" colspan="${sundays.length + 1}">표시할 ${roleLabel}이(가) 없습니다.</td></tr>`;
         return;
       }
 
@@ -563,7 +561,6 @@
         const sub = [getDeptName(user.department_id), user.class_number ? `${user.class_number}반` : ''].filter(Boolean).join(' · ');
         return `<tr>
           <td class="person-col"><div class="person-info"><button type="button" class="person-name" onclick="openDetailModal('${user.id}')">${escapeHtml(name)}</button><span class="person-meta">${escapeHtml(sub || '-')}</span></div></td>
-          <td class="balance-col">${fmtNum(user.talent_balance || 0)}</td>
           ${sundays.map(date => renderScheduleCell(user, date)).join('')}
         </tr>`;
       }).join('');
