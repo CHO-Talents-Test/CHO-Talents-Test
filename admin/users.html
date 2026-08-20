@@ -60,7 +60,7 @@
         <span id="teacherPageSizeWrap"></span>
       </div>
       <table class="admin-table" id="teacherTable">
-        <thead><tr><th data-sort-key="permission_level">권한</th><th data-sort-key="display_name">이름</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th>관리</th></tr></thead>
+        <thead><tr><th data-sort-key="permission_level">권한</th><th data-sort-key="display_name">이름 / 아이디</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th>관리</th></tr></thead>
         <tbody id="teacherList"><tr><td colspan="6" class="empty-state">로딩 중...</td></tr></tbody>
       </table>
       <div id="teacherPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
@@ -70,7 +70,7 @@
         <span id="studentPageSizeWrap"></span>
       </div>
       <table class="admin-table" id="studentTable">
-        <thead><tr><th data-sort-key="display_name">이름</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th>관리</th></tr></thead>
+        <thead><tr><th data-sort-key="display_name">이름 / 아이디</th><th data-sort-key="_deptName">부서</th><th data-sort-key="class_number" data-sort-type="number">반</th><th data-sort-key="talent_balance" data-sort-type="number">달란트</th><th>관리</th></tr></thead>
         <tbody id="studentList"><tr><td colspan="5" class="empty-state">로딩 중...</td></tr></tbody>
       </table>
       <div id="studentPaging" style="display:flex;justify-content:center;align-items:center;gap:0.3rem;margin-top:0.5rem;flex-wrap:wrap;"></div>
@@ -230,7 +230,7 @@
 
     (async () => {
       await navInit();
-      session = await initPage(80, '../login.html');
+      session = await initPage(60, '../login.html');
       if (!session) return;
       navUpdateAuth(session);
       autoLogPageView();
@@ -290,9 +290,9 @@
         users = users.filter(u => !u.is_super_admin);
       }
 
-      // 부장 교사(80)는 담당 부서의 일반 교사·학생 계정만 조회한다.
+      // 부장·구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생 계정만 조회한다.
       // 전도사님(90) 이상은 관리자와 동일하게 전체 계정을 조회한다.
-      if (myRank < 90) {
+      if (isDepartmentScopedUserManager()) {
         if (myManagedDept) {
           users = users.filter(u =>
             u.department_id === myManagedDept &&
@@ -301,6 +301,8 @@
         } else {
           users = [];
         }
+      } else if (myRank < 90) {
+        users = [];
       }
 
       if (myRank < 80) {
@@ -354,6 +356,21 @@
 
     const ADMIN_LEVELS = ['admin', 'evangelist', 'chief'];
     const DEPT_MGR_FILTER_LEVELS = ['purchase_teacher', 'dept_teacher'];
+    const DEPT_SCOPED_USER_MANAGER_LEVELS = ['chief', 'purchase_teacher', 'dept_teacher'];
+
+    function isDepartmentScopedUserManager() {
+      return DEPT_SCOPED_USER_MANAGER_LEVELS.includes(session?.permissionLevel);
+    }
+
+    function canViewUserAccount(user) {
+      if (!session || !user) return false;
+      if (session.isSuperAdmin || ['admin', 'evangelist'].includes(session.permissionLevel)) return true;
+      const managedDeptId = session.managedDeptId || session.departmentId;
+      return isDepartmentScopedUserManager()
+        && !!managedDeptId
+        && user.department_id === managedDeptId
+        && ['teacher', 'student'].includes(user.permission_level);
+    }
 
     function updateStats() {
       document.getElementById('cntAll').textContent = allUsers.length;
@@ -500,7 +517,7 @@
         const permCol = groupKey !== 'student' ? `<td><span class="level-badge ${rb.cls}">${permEmoji} ${permLabel}</span></td>` : '';
         return `<tr class="user-row" style="cursor:pointer;" onclick="openDetailModal('${u.id}')">
           ${permCol}
-          <td>${dn}${(isSelf || _isAdmin()) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + u.username + ')</span>' : ''}</td>
+          <td>${dn}${(isSelf || canViewUserAccount(u)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + escapeHtml(u.username) + ')</span>' : ''}</td>
           <td>${getDeptName(u.department_id)}</td>
           <td>${getClassLabel(u.class_number)}</td>
           <td style="font-weight:700;">${fmtNum(u.talent_balance || 0)}</td>
@@ -680,7 +697,7 @@
       orderHtml = buildDetailOrderShell();
 
       let html = '<table style="width:100%;border-collapse:collapse;">';
-      if (myRank >= 100) html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;width:35%;border-bottom:1px solid #e9ecef;">아이디</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${u.username}</td></tr>`;
+      if (canViewUserAccount(u)) html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;width:35%;border-bottom:1px solid #e9ecef;">아이디</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${escapeHtml(u.username)}</td></tr>`;
       html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">이름</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${dn}</td></tr>`;
       html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">역할</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${typeLabel}</td></tr>`;
       html += `<tr><td style="font-weight:600;padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">권한</td><td style="padding:0.4rem 0.5rem;border-bottom:1px solid #e9ecef;">${permEmoji} ${permLabel}</td></tr>`;
