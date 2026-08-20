@@ -3,8 +3,8 @@
 --
 -- 권한 기준
 --   * 관리자(100), 전도사님(90), 최고관리자: 모든 사용자 계정 조회
---   * 부장 교사(80): 모든 부서의 일반 교사·학생 계정을 목록에서 조회
---   * 구매 담당 교사(70), 부서 담당 교사(60): 담당 부서의 일반 교사·학생 계정만 조회
+--   * 부장 교사(80): 모든 부서의 교사·학생 계정을 목록에서 조회
+--   * 구매 담당 교사(70), 부서 담당 교사(60): 담당 부서의 교사·학생 계정만 조회
 --
 -- admin/users.html의 화면 필터를 우회해 RPC 또는 profiles 테이블을
 -- 직접 호출해도 같은 범위가 적용되도록 합니다.
@@ -56,29 +56,29 @@ BEGIN
     RETURN true;
   END IF;
 
-  -- 부장 교사는 모든 부서의 일반 교사·학생 계정을 목록에서 조회한다.
+  -- 부장 교사는 모든 부서의 교사·학생 계정을 목록에서 조회한다.
   IF v_caller_perm = 'chief' THEN
-    SELECT permission_level
-    INTO v_target_perm
+    SELECT user_type
+    INTO v_target_type
     FROM public.profiles
     WHERE id = p_target_id;
 
-    RETURN v_target_perm IN ('teacher', 'student');
+    RETURN v_target_type IN ('teacher', 'student');
   END IF;
 
-  -- 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생만 조회한다.
+  -- 구매 담당·부서 담당 교사는 담당 부서의 교사·학생만 조회한다.
   IF v_caller_perm IN ('purchase_teacher', 'dept_teacher') THEN
     IF v_managed_dept_id IS NULL THEN
       RETURN false;
     END IF;
 
-    SELECT permission_level, department_id
-    INTO v_target_perm, v_target_dept_id
+    SELECT user_type, department_id
+    INTO v_target_type, v_target_dept_id
     FROM public.profiles
     WHERE id = p_target_id;
 
     RETURN v_target_dept_id = v_managed_dept_id
-      AND v_target_perm IN ('teacher', 'student');
+      AND v_target_type IN ('teacher', 'student');
   END IF;
 
   -- 일반 교사의 기존 같은 부서·같은 반 학생 조회 범위는 유지한다.
@@ -142,19 +142,19 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 부장 교사는 모든 부서의 일반 교사·학생 계정을 목록에서 조회한다.
+  -- 부장 교사는 모든 부서의 교사·학생 계정을 목록에서 조회한다.
   IF v_caller_perm = 'chief' THEN
     RETURN QUERY
       SELECT *
       FROM public.profiles
-      WHERE permission_level IN ('teacher', 'student')
+      WHERE user_type IN ('teacher', 'student')
         AND (p_user_type IS NULL OR user_type = p_user_type)
         AND (p_department_id IS NULL OR department_id = p_department_id)
       ORDER BY created_at DESC;
     RETURN;
   END IF;
 
-  -- 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생만 조회한다.
+  -- 구매 담당·부서 담당 교사는 담당 부서의 교사·학생만 조회한다.
   IF v_caller_perm IN ('purchase_teacher', 'dept_teacher') THEN
     IF v_managed_dept_id IS NULL THEN
       RETURN;
@@ -164,7 +164,7 @@ BEGIN
       SELECT *
       FROM public.profiles
       WHERE department_id = v_managed_dept_id
-        AND permission_level IN ('teacher', 'student')
+        AND user_type IN ('teacher', 'student')
         AND (p_user_type IS NULL OR user_type = p_user_type)
         AND (p_department_id IS NULL OR department_id = p_department_id)
       ORDER BY created_at DESC;
