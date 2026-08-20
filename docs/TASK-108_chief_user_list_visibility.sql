@@ -1,13 +1,9 @@
--- TASK-107: 사용자 관리 계정 조회 범위를 담당 부서 기준으로 통일
+-- TASK-108: 부장 교사 전체 부서 사용자 목록 조회 복원
 -- 실행 위치: Supabase SQL Editor
 --
--- 권한 기준
---   * 관리자(100), 전도사님(90), 최고관리자: 모든 사용자 계정 조회
---   * 부장 교사(80): 모든 부서의 일반 교사·학생 계정을 목록에서 조회
---   * 구매 담당 교사(70), 부서 담당 교사(60): 담당 부서의 일반 교사·학생 계정만 조회
---
--- admin/users.html의 화면 필터를 우회해 RPC 또는 profiles 테이블을
--- 직접 호출해도 같은 범위가 적용되도록 합니다.
+-- 이 SQL은 TASK-107을 이미 적용한 운영 DB를 대상으로 합니다.
+-- 부장 교사(80)는 모든 부서의 일반 교사·학생 계정을 목록에서 조회하고,
+-- 구매 담당·부서 담당 교사는 계속 담당 부서 계정만 조회합니다.
 
 BEGIN;
 
@@ -51,7 +47,6 @@ BEGIN
     RETURN false;
   END IF;
 
-  -- 관리자·전도사님은 모든 사용자 계정을 조회한다.
   IF v_caller_rank >= 90 THEN
     RETURN true;
   END IF;
@@ -131,7 +126,6 @@ BEGIN
     RAISE EXCEPTION 'Unauthorized';
   END IF;
 
-  -- 관리자·전도사님은 모든 사용자 계정을 조회한다.
   IF v_caller_rank >= 90 THEN
     RETURN QUERY
       SELECT *
@@ -171,7 +165,6 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 일반 교사는 자기 부서·반의 학생만 조회한다.
   IF v_caller_rank = 40
      AND v_caller_dept_id IS NOT NULL
      AND v_caller_class_number IS NOT NULL THEN
@@ -191,7 +184,6 @@ BEGIN
 END;
 $$;
 
--- 직접 profiles 조회도 같은 범위로 제한한다.
 DROP POLICY IF EXISTS profiles_select_perm ON public.profiles;
 CREATE POLICY profiles_select_perm
   ON public.profiles
