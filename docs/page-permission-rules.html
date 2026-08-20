@@ -37,7 +37,7 @@
 <div id="nav-container"></div>
 <div class="container">
   <h1>CHO-Talents 페이지별 권한 설정 정리</h1>
-  <p class="subtitle">작성 기준: v4.2.11 / 2026-08-20. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>index.html</code> 즐겨찾기 후보, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
+  <p class="subtitle">작성 기준: v4.2.13 / 2026-08-20. 실제 소스의 <code>js/codes.js</code>, <code>PERMISSION_RANK</code>, <code>initPage()</code>, <code>data-min-perm</code>, <code>role_page_access</code>, <code>js/nav.js</code> 가이드 라우팅, <code>index.html</code> 즐겨찾기 후보, <code>js/version.js</code> 최신 자산 재검증 기준으로 정리합니다.</p>
 
   <h2>1. 권한 등급 체계</h2>
   <div class="rank-strip">
@@ -111,7 +111,7 @@
         <tr><td><code>admin/monthly-talents.html</code></td><td>월별 달란트 관리</td><td><span class="badge b-40">40</span></td><td>선택한 일요일 지급 대상일로 지급 현황을 조회·관리합니다. 같은 지급 대상일의 중복 확인과 예외 지급은 일반 지급·수동 지급·QR 수령과 동일한 <code>grant_date</code> 기준을 사용합니다.</td></tr>
         <tr><td><code>admin/talent-adjustments.html</code></td><td>예외 지급/반환 관리</td><td><span class="badge b-60">60</span></td><td>예외 지급 요청, 예외 지급 내역, 달란트 반환 내역, 전체 처리 순서로 표시. 90+만 승인/거부 가능하며 네비게이션 배지도 90+ 처리 가능자 기준으로 표시. 그 외는 조회만 가능. 부서 담당 교사는 담당 부서 이력/요청만, 부장 교사 이상은 전체 부서 이력/요청 조회</td></tr>
         <tr><td><code>admin/index.html</code></td><td>대시보드</td><td><span class="badge b-60">60</span></td><td>통계 카드와 이슈 로그 테이블만 표시. v3.50.0: 바로가기(quickLinks) 박스 제거. 최근 이슈 로그는 100+만 표시</td></tr>
-        <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>부장 교사는 모든 부서의 일반 교사·학생 계정을 목록과 아이디로 확인하되, 담당 부서 밖 계정은 목록만 조회합니다. 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생 계정만 조회·관리합니다. 전도사님(90) 이상은 관리자와 동일하게 전체 계정을 조회합니다. 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
+        <tr><td><code>admin/users.html</code></td><td>사용자 관리</td><td><span class="badge b-60">60</span></td><td>부장 교사는 모든 부서의 교사·학생 계정을 목록과 아이디로 확인하되, 담당 부서 밖 계정은 목록만 조회합니다. 구매 담당·부서 담당 교사는 담당 부서의 교사·학생 계정만 조회·관리합니다. 전도사님(90) 이상은 관리자와 동일하게 전체 계정을 조회합니다. 상단 통계 카드(전체·관리자·부서 담당·교사·학생) 클릭 필터 — 관리자=admin+evangelist+chief, 부서 담당=purchase_teacher+dept_teacher</td></tr>
         <tr><td><code>admin/departments.html</code></td><td>부서 관리</td><td><span class="badge b-60">60</span></td><td>생성/수정 80+, 삭제/비활성화 90+ 성격. 부서명 오름차순 기본 정렬과 페이지당 항목 수 선택 지원</td></tr>
         <tr><td><code>admin/shop.html</code></td><td>상품 관리</td><td><span class="badge b-60">60</span></td><td>상품 등록/수정, 썸네일 이미지와 상세 설명 이미지 분리 업로드, 상품 정렬 순번 관리. 목록은 카테고리 순번과 상품 순번 기준으로 정렬되며 로우 클릭 시 수정 창이 열림. 상품 삭제는 90+</td></tr>
         <tr><td><code>admin/product-bulk-register.html</code></td><td>상품 일괄 등록</td><td><span class="badge b-70">70</span></td><td>양식 엑셀 다운로드, 행별 검증 미리보기, 성공/실패 사유 확인 후 상품 일괄 등록</td></tr>

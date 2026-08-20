@@ -294,12 +294,12 @@
       // 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생 계정만 조회한다.
       // 전도사님(90) 이상은 관리자와 동일하게 전체 계정을 조회한다.
       if (isChiefUserManager()) {
-        users = users.filter(u => ['teacher', 'student'].includes(u.permission_level));
+        users = users.filter(u => ['teacher', 'student'].includes(u.user_type));
       } else if (isDepartmentScopedUserManager()) {
         if (myManagedDept) {
           users = users.filter(u =>
             u.department_id === myManagedDept &&
-            ['teacher', 'student'].includes(u.permission_level)
+            ['teacher', 'student'].includes(u.user_type)
           );
         } else {
           users = [];
@@ -360,7 +360,7 @@
     const ADMIN_LEVELS = ['admin', 'evangelist', 'chief'];
     const DEPT_MGR_FILTER_LEVELS = ['purchase_teacher', 'dept_teacher'];
     const DEPT_SCOPED_USER_MANAGER_LEVELS = ['purchase_teacher', 'dept_teacher'];
-    const NORMAL_USER_LEVELS = ['teacher', 'student'];
+    const VISIBLE_USER_TYPES = ['teacher', 'student'];
 
     function isChiefUserManager() {
       return session?.permissionLevel === 'chief';
@@ -374,13 +374,13 @@
       const managedDeptId = session?.managedDeptId || session?.departmentId;
       return !!managedDeptId
         && user?.department_id === managedDeptId
-        && NORMAL_USER_LEVELS.includes(user?.permission_level);
+        && VISIBLE_USER_TYPES.includes(user?.user_type);
     }
 
     function canViewUserAccount(user) {
       if (!session || !user) return false;
       if (session.isSuperAdmin || ['admin', 'evangelist'].includes(session.permissionLevel)) return true;
-      if (isChiefUserManager()) return NORMAL_USER_LEVELS.includes(user.permission_level);
+      if (isChiefUserManager()) return VISIBLE_USER_TYPES.includes(user.user_type);
       return isDepartmentScopedUserManager() && isManagedDepartmentUser(user);
     }
 
@@ -460,7 +460,8 @@
       const sel = document.getElementById('deptFilter');
       if (!sel) return;
       const myRank = session.permissionRank || 0;
-      if (myRank < 90) {
+      // 부장 교사(80)는 모든 부서 계정을 목록으로 조회하므로 부서 필터를 사용한다.
+      if (myRank < 80) {
         sel.style.display = 'none';
         return;
       }
