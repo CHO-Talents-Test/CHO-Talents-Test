@@ -587,8 +587,18 @@ BEGIN
     RETURN true;
   END IF;
 
-  -- 부장·구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생만 조회한다.
-  IF v_caller_perm IN ('chief', 'purchase_teacher', 'dept_teacher') THEN
+  -- 부장 교사는 모든 부서의 일반 교사·학생 계정을 목록에서 조회한다.
+  IF v_caller_perm = 'chief' THEN
+    SELECT permission_level
+    INTO v_target_perm
+    FROM public.profiles
+    WHERE id = p_target_id;
+
+    RETURN v_target_perm IN ('teacher', 'student');
+  END IF;
+
+  -- 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생만 조회한다.
+  IF v_caller_perm IN ('purchase_teacher', 'dept_teacher') THEN
     IF v_managed_dept_id IS NULL THEN
       RETURN false;
     END IF;
@@ -843,8 +853,20 @@ BEGIN
     RETURN;
   END IF;
 
-  -- 부장·구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생만 조회한다.
-  IF v_caller_perm IN ('chief', 'purchase_teacher', 'dept_teacher') THEN
+  -- 부장 교사는 모든 부서의 일반 교사·학생 계정을 목록에서 조회한다.
+  IF v_caller_perm = 'chief' THEN
+    RETURN QUERY
+      SELECT *
+      FROM public.profiles
+      WHERE permission_level IN ('teacher', 'student')
+        AND (p_user_type IS NULL OR user_type = p_user_type)
+        AND (p_department_id IS NULL OR department_id = p_department_id)
+      ORDER BY created_at DESC;
+    RETURN;
+  END IF;
+
+  -- 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생만 조회한다.
+  IF v_caller_perm IN ('purchase_teacher', 'dept_teacher') THEN
     IF v_managed_dept_id IS NULL THEN
       RETURN;
     END IF;

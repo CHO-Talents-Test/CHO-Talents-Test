@@ -290,9 +290,12 @@
         users = users.filter(u => !u.is_super_admin);
       }
 
-      // 부장·구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생 계정만 조회한다.
+      // 부장 교사는 모든 부서의 일반 교사·학생 계정을 목록에서 조회한다.
+      // 구매 담당·부서 담당 교사는 담당 부서의 일반 교사·학생 계정만 조회한다.
       // 전도사님(90) 이상은 관리자와 동일하게 전체 계정을 조회한다.
-      if (isDepartmentScopedUserManager()) {
+      if (isChiefUserManager()) {
+        users = users.filter(u => ['teacher', 'student'].includes(u.permission_level));
+      } else if (isDepartmentScopedUserManager()) {
         if (myManagedDept) {
           users = users.filter(u =>
             u.department_id === myManagedDept &&
@@ -356,20 +359,35 @@
 
     const ADMIN_LEVELS = ['admin', 'evangelist', 'chief'];
     const DEPT_MGR_FILTER_LEVELS = ['purchase_teacher', 'dept_teacher'];
-    const DEPT_SCOPED_USER_MANAGER_LEVELS = ['chief', 'purchase_teacher', 'dept_teacher'];
+    const DEPT_SCOPED_USER_MANAGER_LEVELS = ['purchase_teacher', 'dept_teacher'];
+    const NORMAL_USER_LEVELS = ['teacher', 'student'];
+
+    function isChiefUserManager() {
+      return session?.permissionLevel === 'chief';
+    }
 
     function isDepartmentScopedUserManager() {
       return DEPT_SCOPED_USER_MANAGER_LEVELS.includes(session?.permissionLevel);
     }
 
+    function isManagedDepartmentUser(user) {
+      const managedDeptId = session?.managedDeptId || session?.departmentId;
+      return !!managedDeptId
+        && user?.department_id === managedDeptId
+        && NORMAL_USER_LEVELS.includes(user?.permission_level);
+    }
+
     function canViewUserAccount(user) {
       if (!session || !user) return false;
       if (session.isSuperAdmin || ['admin', 'evangelist'].includes(session.permissionLevel)) return true;
-      const managedDeptId = session.managedDeptId || session.departmentId;
-      return isDepartmentScopedUserManager()
-        && !!managedDeptId
-        && user.department_id === managedDeptId
-        && ['teacher', 'student'].includes(user.permission_level);
+      if (isChiefUserManager()) return NORMAL_USER_LEVELS.includes(user.permission_level);
+      return isDepartmentScopedUserManager() && isManagedDepartmentUser(user);
+    }
+
+    function canViewUserDetail(user) {
+      if (!session || !user) return false;
+      if (session.isSuperAdmin || ['admin', 'evangelist'].includes(session.permissionLevel)) return true;
+      return isManagedDepartmentUser(user);
     }
 
     function updateStats() {
@@ -504,9 +522,10 @@
         const permEmoji = PERMISSION_EMOJI[perm] || '';
         const rb = ROLE_BADGES[badgeKeyForUser(u)] || ROLE_BADGES.student;
         const dn = _nameMap[u.id] || u.display_name || '-';
+        const canViewDetail = canViewUserDetail(u);
         const canManage = canManageUser(u);
         const isSelf = u.id === session.id;
-        let items = [`<a onclick="openDetailModal('${u.id}')">📋 상세 정보</a>`];
+        let items = canViewDetail ? [`<a onclick="openDetailModal('${u.id}')">📋 상세 정보</a>`] : [];
         if (canManage) items.push(`<a onclick='openEditModal(${JSON.stringify(u).replace(/'/g,"&#39;")})'>✏️ 수정</a>`);
         else if (isProtectedSuperAdminUser(u)) items.push('<a style="color:#868e96;cursor:default;">🔒 최고관리자는 본인만 수정 가능</a>');
         if (canManage && !isSelf) {
@@ -515,18 +534,19 @@
           if (myRank >= 80) items.push(`<a onclick="confirmDelete('${u.id}','${(dn).replace(/'/g,"\\'")}')">🗑️ 삭제</a>`);
         }
         const permCol = groupKey !== 'student' ? `<td><span class="level-badge ${rb.cls}">${permEmoji} ${permLabel}</span></td>` : '';
-        return `<tr class="user-row" style="cursor:pointer;" onclick="openDetailModal('${u.id}')">
+        const managementCell = canViewDetail
+          ? `<div class="mgmt-dropdown" onclick="event.stopPropagation()">
+              <button class="filter-btn" onclick="toggleMgmtMenu(event, this)">관리 ▾</button>
+              <div class="mgmt-menu">${items.join('')}</div>
+            </div>`
+          : '<span style="font-size:0.8rem;color:#868e96;">목록 조회만 가능</span>';
+        return `<tr class="user-row" style="cursor:${canViewDetail ? 'pointer' : 'default'};"${canViewDetail ? ` onclick="openDetailModal('${u.id}')"` : ''}>
           ${permCol}
           <td>${dn}${(isSelf || canViewUserAccount(u)) ? ' <span style="font-size:0.72rem;color:#868e96;">(' + escapeHtml(u.username) + ')</span>' : ''}</td>
           <td>${getDeptName(u.department_id)}</td>
           <td>${getClassLabel(u.class_number)}</td>
           <td style="font-weight:700;">${fmtNum(u.talent_balance || 0)}</td>
-          <td>
-            <div class="mgmt-dropdown" onclick="event.stopPropagation()">
-              <button class="filter-btn" onclick="toggleMgmtMenu(event, this)">관리 ▾</button>
-              <div class="mgmt-menu">${items.join('')}</div>
-            </div>
-          </td>
+          <td>${managementCell}</td>
         </tr>`;
       }).join('');
       renderGroupPaging(groupKey, totalPages, pagingId);
@@ -569,7 +589,6 @@
 
       const myRank = session.permissionRank || 0;
       const isSA = session && session.isSuperAdmin;
-      const myManagedDept = session.managedDeptId || session.departmentId;
 
       if (myRank < 60) return false;
 
@@ -585,18 +604,8 @@
 
       if (myRank <= targetRank) return false;
 
-      if (myRank < 80) {
-        return !!myManagedDept && (
-          user.department_id === myManagedDept ||
-          user.managed_dept_id === myManagedDept
-        );
-      }
-
-      if (myRank === 80) {
-        return !!myManagedDept && (
-          user.department_id === myManagedDept ||
-          user.managed_dept_id === myManagedDept
-        );
+      if (myRank >= 60 && myRank <= 80) {
+        return isManagedDepartmentUser(user);
       }
 
       return true;
@@ -638,7 +647,7 @@
 
     async function openDetailModal(userId) {
       const u = allUsers.find(x => x.id === userId);
-      if (!u) return;
+      if (!u || !canViewUserDetail(u)) return;
       const myRank = session.permissionRank || 0;
       const dn = _nameMap[u.id] || u.display_name || '-';
       const perm = u.permission_level;
@@ -990,6 +999,8 @@
     }
 
     async function resetPw(id, username) {
+      const target = allUsers.find(u => u.id === id);
+      if (!canManageUser(target)) { alert('이 사용자를 관리할 권한이 없습니다.'); return; }
       if (!confirm(`"${username}" 비밀번호를 초기화(1234)하시겠습니까?`)) return;
       const { error } = await resetUserPassword(id, username);
       if (error) { await logError('USER_PW_RESET_FAIL', { userId: id, 아이디: username, 오류: error }); alert('초기화 실패: ' + tErr(error)); }
@@ -997,6 +1008,8 @@
     }
 
     async function confirmDelete(id, username) {
+      const target = allUsers.find(u => u.id === id);
+      if (!canManageUser(target)) { alert('이 사용자를 관리할 권한이 없습니다.'); return; }
       if (!confirm(`"${username}" 사용자를 삭제하시겠습니까?\n이 작업은 되돌릴 수 없습니다.`)) return;
       const { error } = await deleteUser(id);
       if (error) { await logError('USER_DELETE_FAIL', { userId: id, 아이디: username, 오류: error }); alert('삭제 실패: ' + tErr(error)); }
@@ -1128,6 +1141,8 @@
     let _transferFromDeptId = null;
 
     function openTransferModal(userId, displayName, deptId) {
+      const target = allUsers.find(u => u.id === userId);
+      if (!canManageUser(target)) { alert('이 사용자를 관리할 권한이 없습니다.'); return; }
       _transferUserId = userId;
       _transferFromDeptId = deptId;
       document.getElementById('transferUserInfo').textContent = displayName;
