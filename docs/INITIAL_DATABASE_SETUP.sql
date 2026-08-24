@@ -1001,17 +1001,23 @@ AS $$
 DECLARE
   v_caller_perm text;
   v_caller_rank integer;
+  v_caller_super boolean;
   v_target_perm text;
   v_target_rank integer;
   v_target_super boolean;
   v_new_rank integer;
 BEGIN
-  SELECT permission_level INTO v_caller_perm FROM public.profiles WHERE id = auth.uid();
+  SELECT permission_level, COALESCE(is_super_admin, false)
+  INTO v_caller_perm, v_caller_super
+  FROM public.profiles WHERE id = auth.uid();
   IF v_caller_perm IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'Unauthorized');
   END IF;
 
   v_caller_rank := public.get_permission_rank(v_caller_perm);
+  IF v_caller_super THEN
+    v_caller_rank := 110;
+  END IF;
   IF v_caller_rank < 60 THEN
     RETURN json_build_object('success', false, 'error', 'Unauthorized');
   END IF;

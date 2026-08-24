@@ -2,9 +2,18 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '4.2.14',
+  current: '4.2.15',
   date: '2026-08-24',
   history: [
+    {
+      version: '4.2.15',
+      date: '2026-08-24',
+      title: '최고관리자 상위 권한 할당 허용',
+      changes: [
+        'profiles.is_super_admin=true 계정은 현재 권한 레벨보다 높은 권한도 사용자 관리에서 할당할 수 있도록 화면·세션·서버 권한 판정을 통일했습니다.',
+        '새 운영 DB에는 docs/TASK-110_super_admin_unrestricted_permission_assignment.sql을 적용하면 admin_update_user RPC에서도 같은 규칙이 적용됩니다.'
+      ]
+    },
     {
       version: '4.2.14',
       date: '2026-08-24',
