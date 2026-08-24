@@ -337,11 +337,14 @@
 
     const DEPT_MGR_LEVELS = ['evangelist', 'chief', 'purchase_teacher', 'dept_teacher'];
 
+    // 학생 권한은 일반 수정 흐름에서 역할과 함께 자동 적용한다. 다만 최고관리자는
+    // 역할/권한 조합을 검증할 수 있도록 수정 모달에서 직접 선택할 수 있다.
     const PERM_LEVELS = (typeof getCodeItems === 'function')
       ? getCodeItems('profiles.permission_level')
-          .filter(i => !['student', 'super_admin'].includes(i.key))
+          .filter(i => i.key !== 'super_admin')
           .map(i => ({ value: i.key, label: i.value, rank: getCodeRank('profiles.permission_level', i.key, 0) }))
       : [
+        { value: 'student', label: '학생', rank: 20 },
         { value: 'teacher', label: '일반 교사', rank: 40 },
         { value: 'dept_teacher', label: '부서 담당 교사', rank: 60 },
         { value: 'purchase_teacher', label: '구매 담당 교사', rank: 70 },
@@ -350,9 +353,11 @@
         { value: 'admin', label: '관리자', rank: 100 }
       ];
 
-    function buildPermOptions(maxRank, selectedValue) {
+    function buildPermOptions(maxRank, selectedValue, includeStudentPermission = false) {
       const isSA = session && session.isSuperAdmin;
-      return PERM_LEVELS.filter(l => isSA || l.rank < maxRank || l.value === selectedValue)
+      return PERM_LEVELS
+        .filter(l => includeStudentPermission || l.value !== 'student')
+        .filter(l => isSA || l.rank < maxRank || l.value === selectedValue)
         .map(l => `<option value="${l.value}" ${l.value === selectedValue ? 'selected' : ''}>${PERMISSION_EMOJI[l.value]||''} ${l.label}</option>`)
         .join('');
     }
@@ -821,22 +826,33 @@
 
     const MGMT_LEVELS = ['purchase_teacher','dept_teacher','chief','evangelist','admin'];
 
+    function canFreelyEditRoleAndPermission() {
+      return !!(session && session.isSuperAdmin && editingId);
+    }
+
     function onUserTypeChange() {
       const ut = document.getElementById('mUserType').value;
       const permWrap = document.getElementById('permLevelWrap');
-      if (ut === 'student') {
+      const canChooseAnyPermission = canFreelyEditRoleAndPermission();
+      if (ut === 'student' && !canChooseAnyPermission) {
         permWrap.style.display = 'none';
       } else {
         permWrap.style.display = 'block';
-        const currentPerm = document.getElementById('mPermLevel').value || 'teacher';
-        document.getElementById('mPermLevel').innerHTML = buildPermOptions(session.permissionRank || 0, currentPerm);
+        const currentPerm = document.getElementById('mPermLevel').value || (ut === 'student' ? 'student' : 'teacher');
+        document.getElementById('mPermLevel').innerHTML = buildPermOptions(
+          session.permissionRank || 0,
+          currentPerm,
+          canChooseAnyPermission
+        );
       }
       onPermLevelChange();
     }
 
     function onPermLevelChange() {
       const ut = document.getElementById('mUserType').value;
-      const perm = ut === 'student' ? 'student' : (document.getElementById('mPermLevel').value || 'teacher');
+      const perm = canFreelyEditRoleAndPermission()
+        ? (document.getElementById('mPermLevel').value || (ut === 'student' ? 'student' : 'teacher'))
+        : (ut === 'student' ? 'student' : (document.getElementById('mPermLevel').value || 'teacher'));
       document.getElementById('managedDeptWrap').style.display = MGMT_LEVELS.includes(perm) ? 'block' : 'none';
     }
 
@@ -893,9 +909,13 @@
       document.getElementById('mDisplayName').value = u.display_name || '';
       document.getElementById('mUserType').value = u.user_type || 'student';
       document.getElementById('mUserType').disabled = isSA ? false : (myRank < 80);
-      if (u.user_type === 'teacher') {
+      if (isSA || u.user_type === 'teacher') {
         document.getElementById('permLevelWrap').style.display = 'block';
-        document.getElementById('mPermLevel').innerHTML = buildPermOptions(myRank, u.permission_level || 'teacher');
+        document.getElementById('mPermLevel').innerHTML = buildPermOptions(
+          myRank,
+          u.permission_level || (u.user_type === 'student' ? 'student' : 'teacher'),
+          isSA
+        );
       } else {
         document.getElementById('permLevelWrap').style.display = 'none';
       }
@@ -959,7 +979,10 @@
       let username = document.getElementById('mUsername').value.trim();
       const displayName = document.getElementById('mDisplayName').value.trim();
       const userType = document.getElementById('mUserType').value;
-      const permLevel = userType === 'student' ? 'student' : (document.getElementById('mPermLevel').value || 'teacher');
+      const canChooseAnyPermission = canFreelyEditRoleAndPermission();
+      const permLevel = canChooseAnyPermission
+        ? (document.getElementById('mPermLevel').value || (userType === 'student' ? 'student' : 'teacher'))
+        : (userType === 'student' ? 'student' : (document.getElementById('mPermLevel').value || 'teacher'));
       const deptId = document.getElementById('mDept').value || null;
       const classNumber = document.getElementById('mClassNumber').value ? parseInt(document.getElementById('mClassNumber').value) : null;
       const managedDeptId = document.getElementById('mManagedDept').value || null;

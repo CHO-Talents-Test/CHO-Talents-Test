@@ -1938,7 +1938,7 @@ async function loadAuthSession() {
     displayName: data.display_name,
     userType: data.user_type || 'teacher',
     permissionLevel: perm,
-    permissionRank: (typeof getPermRank === 'function') ? getPermRank(perm, _isSA) : ((_isSA && perm === 'admin') ? 110 : ({ admin: 100, evangelist: 90, chief: 80, purchase_teacher: 70, dept_teacher: 60, teacher: 40, student: 20 }[perm] || 0)),
+    permissionRank: (typeof getPermRank === 'function') ? getPermRank(perm, _isSA) : (_isSA ? 110 : ({ admin: 100, evangelist: 90, chief: 80, purchase_teacher: 70, dept_teacher: 60, teacher: 40, student: 20 }[perm] || 0)),
     isSuperAdmin: _isSA,
     isFirstLogin: data.is_first_login,
     departmentId: data.department_id,

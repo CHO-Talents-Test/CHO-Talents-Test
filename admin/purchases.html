@@ -165,6 +165,12 @@
     function canViewPurchaseAccounts() {
       return !!session && (session.permissionRank || 0) >= 100;
     }
+    function isPurchaseTeacher() {
+      return !!session && session.permissionLevel === 'purchase_teacher';
+    }
+    function canManageAllPurchaseOrders() {
+      return !!session && (isPurchaseTeacher() || (session.permissionRank || 0) >= 90);
+    }
     let orderPage = 1;
 
     const ORDER_STATUS_GROUP = 'product_orders.status';
@@ -222,8 +228,7 @@
       allOrders = data || [];
 
       const myRank = session.permissionRank || 0;
-      const isPurchaseTeacher = (session.permissionLevel === 'purchase_teacher');
-      const scopedDeptId = (myRank >= 60 && myRank < 80 && !isPurchaseTeacher) ? (session.managedDeptId || session.departmentId) : null;
+      const scopedDeptId = (myRank >= 60 && myRank < 80 && !isPurchaseTeacher()) ? (session.managedDeptId || session.departmentId) : null;
       let scopedUsers = null;
       if (scopedDeptId) {
         const { data: users, error: userErr } = await fetchUsers({ departmentId: scopedDeptId });
@@ -252,28 +257,24 @@
       const allIds = [...new Set([...userIds, ...procIds])];
 
       if (allIds.length > 0) {
-        let profiles = [];
-        if (scopedUsers) {
-          const scopedMap = new Map(scopedUsers.map(u => [u.id, u]));
-          profiles = userIds.map(id => scopedMap.get(id)).filter(Boolean);
-          const missingProcIds = procIds.filter(id => !scopedMap.has(id));
-          if (missingProcIds.length > 0) {
-            const processorColumns = canViewPurchaseAccounts()
-              ? 'id,display_name,username,user_type,department_id'
-              : 'id,display_name,user_type,department_id';
-            const { data: processors } = await _sb.from('profiles').select(processorColumns).in('id', missingProcIds);
-            profiles = profiles.concat(processors || []);
-          }
-        } else {
+        // profiles RLS는 구매 담당 교사의 일반 계정 조회를 담당 부서로 제한한다.
+        // 주문 화면에서는 전용 RPC로 주문자·처리자의 최소 정보만 받아 전체 부서
+        // 구매 이력의 이름/부서를 정상 표시한다.
+        let { data: profiles, error: profileError } = await _sb.rpc('get_purchase_order_profiles', {
+          p_user_ids: allIds
+        });
+        if (profileError) {
+          await logWarn('PURCHASE_PROFILE_CONTEXT_LOAD_FAIL', { 오류: profileError.message });
+          // 새 RPC가 아직 적용되지 않은 DB에서도 기존 조회 범위는 유지한다.
           const profileColumns = canViewPurchaseAccounts()
             ? 'id,display_name,username,user_type,department_id,class_number'
-              : 'id,display_name,user_type,department_id,class_number';
-          const { data: profileRows } = await _sb.from('profiles').select(profileColumns).in('id', allIds);
-          profiles = profileRows || [];
+            : 'id,display_name,user_type,department_id,class_number';
+          const { data: fallbackProfiles } = await _sb.from('profiles').select(profileColumns).in('id', allIds);
+          profiles = fallbackProfiles || [];
         }
         profileMap = {};
         processorMap = {};
-        profiles.forEach(p => {
+        (profiles || []).forEach(p => {
           const safeProfile = canViewPurchaseAccounts()
             ? p
             : {
@@ -341,8 +342,7 @@
     function getAllowedOrderTransitions(order) {
       if (!session || !order) return [];
       const permissionLevel = session.permissionLevel;
-      const isGlobalManager = (session.permissionRank || 0) >= 90;
-      const isPurchaseTeacher = permissionLevel === 'purchase_teacher';
+      const isGlobalManager = canManageAllPurchaseOrders();
       const isManagedDepartmentTeacher = (permissionLevel === 'dept_teacher' || permissionLevel === 'chief')
         && session.managedDeptId
         && order._deptId === session.managedDeptId;
@@ -350,11 +350,6 @@
       if (isGlobalManager) {
         if (order.status === 'requested') return ['preparing', 'cancelled'];
         if (order.status === 'preparing') return ['purchased', 'requested'];
-        if (order.status === 'purchased') return ['delivered'];
-        return [];
-      }
-      if (isPurchaseTeacher) {
-        if (order.status === 'preparing') return ['purchased'];
         if (order.status === 'purchased') return ['delivered'];
         return [];
       }
