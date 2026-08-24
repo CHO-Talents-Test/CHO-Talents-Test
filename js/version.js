@@ -2,16 +2,24 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '4.2.15',
+  current: '4.2.16',
   date: '2026-08-24',
   history: [
     {
+      version: '4.2.16',
+      date: '2026-08-24',
+      title: '최고관리자 전용 테스트 권한 전환',
+      changes: [
+        '최고관리자에게 적용했던 전역 권한 승격과 사용자 수정 예외를 되돌려, 모든 화면이 현재 permission_level의 기존 권한 규칙대로 동작하도록 복구했습니다.',
+        'is_super_admin=true 계정에만 네비게이션 테스트 권한 콤보를 표시합니다. 선택한 권한은 본인 profiles.permission_level에만 저장되고 페이지가 새 권한 기준으로 다시 열립니다. 운영 DB에는 docs/TASK-111_super_admin_permission_test_control.sql 적용이 필요합니다.'
+      ]
+    },
+    {
       version: '4.2.15',
       date: '2026-08-24',
-      title: '최고관리자 상위 권한 할당 허용',
+      title: '최고관리자 상위 권한 할당 허용 (v4.2.16에서 대체)',
       changes: [
-        'profiles.is_super_admin=true 계정은 현재 권한 레벨보다 높은 권한도 사용자 관리에서 할당할 수 있도록 화면·세션·서버 권한 판정을 통일했습니다.',
-        '새 운영 DB에는 docs/TASK-110_super_admin_unrestricted_permission_assignment.sql을 적용하면 admin_update_user RPC에서도 같은 규칙이 적용됩니다.'
+        'v4.2.16에서 이 전역 예외를 제거하고, 최고관리자 본인만 네비게이션에서 테스트 권한을 바꾸는 방식으로 대체했습니다.'
       ]
     },
     {

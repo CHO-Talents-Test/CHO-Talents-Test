@@ -166,7 +166,7 @@ function _navItemAttrs(item) {
 
 function _navGuideHrefForSession(session) {
   if (!session) return 'guide.html';
-  if (session.isSuperAdmin || session.permissionLevel === 'admin') return 'admin-guide.html';
+  if (session.permissionLevel === 'admin') return 'admin-guide.html';
   if (session.permissionLevel === 'evangelist') return 'evangelist-guide.html';
   if (session.permissionLevel === 'chief') return 'chief-teacher-guide.html';
   if (session.permissionLevel === 'purchase_teacher') return 'purchase-teacher-guide.html';
@@ -202,6 +202,7 @@ function renderNav(containerId) {
   html += `<button class="nav-header-logout" id="navLogoutBtn" style="display:none;">로그아웃</button>`;
   html += `<span id="navLoginArea"><a href="${_navResolveHref('login.html')}" class="nav-header-login">로그인</a></span>`;
   html += `<span id="navAuthArea" style="display:none;"><span class="nav-user" id="navUser"></span></span>`;
+  html += `<span id="navSuperAdminPermission" style="display:none;"></span>`;
   html += `</div>`;
   html += `<ul class="admin-nav-links" id="navLinks">`;
 
@@ -299,6 +300,92 @@ function _navInitThemePicker() {
   }
 }
 
+function _navEscapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[ch]));
+}
+
+function _navPermissionOptions() {
+  if (typeof getCodeItems === 'function') {
+    return getCodeItems('profiles.permission_level')
+      .filter(item => item.key !== 'super_admin')
+      .map(item => ({ value: item.key, label: item.value }));
+  }
+  return [
+    { value: 'student', label: '학생' },
+    { value: 'teacher', label: '일반 교사' },
+    { value: 'dept_teacher', label: '부서 담당 교사' },
+    { value: 'purchase_teacher', label: '구매 담당 교사' },
+    { value: 'chief', label: '부장 교사' },
+    { value: 'evangelist', label: '전도사님' },
+    { value: 'admin', label: '관리자' }
+  ];
+}
+
+async function _navChangeOwnSuperAdminPermission(select) {
+  const activeSession = typeof getSession === 'function' ? getSession() : null;
+  if (!activeSession || !activeSession.isSuperAdmin) return;
+
+  const nextPermission = select.value;
+  const previousPermission = activeSession.permissionLevel;
+  if (!nextPermission || nextPermission === previousPermission) return;
+
+  const previousLabel = (typeof PERMISSION_LABELS !== 'undefined' && PERMISSION_LABELS[previousPermission]) || previousPermission;
+  const nextLabel = (typeof PERMISSION_LABELS !== 'undefined' && PERMISSION_LABELS[nextPermission]) || nextPermission;
+  if (!confirm(`내 테스트 권한을 "${previousLabel}"에서 "${nextLabel}"(으)로 변경하시겠습니까?\n변경 후 현재 페이지가 새 권한 기준으로 다시 열립니다.`)) {
+    select.value = previousPermission;
+    return;
+  }
+
+  select.disabled = true;
+  try {
+    const { data, error } = await _sb.rpc('super_admin_change_own_permission', {
+      p_permission_level: nextPermission
+    });
+    if (error || !data || data.success === false) {
+      throw new Error((error && error.message) || (data && data.error) || '권한을 변경할 수 없습니다.');
+    }
+
+    const updatedSession = Object.assign({}, activeSession, {
+      permissionLevel: nextPermission,
+      permissionRank: typeof getPermRank === 'function'
+        ? getPermRank(nextPermission, activeSession.isSuperAdmin)
+        : (PERMISSION_RANK[nextPermission] || 0)
+    });
+    if (typeof setSession === 'function') setSession(updatedSession);
+    if (typeof logInfo === 'function') {
+      await logInfo('SUPER_ADMIN_OWN_PERMISSION_CHANGE', {
+        이전권한: previousPermission,
+        변경권한: nextPermission,
+        변경내역: `내 테스트 권한: ${previousLabel} → ${nextLabel}`
+      });
+    }
+    window.location.reload();
+  } catch (err) {
+    select.disabled = false;
+    select.value = previousPermission;
+    alert('권한 변경 실패: ' + ((err && err.message) || String(err)));
+  }
+}
+
+function _navRenderSuperAdminPermissionControl(session) {
+  const wrap = document.getElementById('navSuperAdminPermission');
+  if (!wrap) return;
+  if (!session || !session.isSuperAdmin) {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+    return;
+  }
+
+  const options = _navPermissionOptions();
+  const selected = session.permissionLevel;
+  wrap.style.display = 'inline-flex';
+  wrap.innerHTML = `<label for="navSuperAdminPermissionSelect" style="display:inline-flex;align-items:center;gap:0.3rem;font-size:0.72rem;white-space:nowrap;">테스트 권한 <select id="navSuperAdminPermissionSelect" style="max-width:125px;padding:0.2rem 0.35rem;border:1px solid var(--admin-border);border-radius:6px;font-size:0.72rem;background:var(--t-input-bg,#fff);color:var(--t-text,#333);">${options.map(option => `<option value="${_navEscapeHtml(option.value)}" ${option.value === selected ? 'selected' : ''}>${_navEscapeHtml(option.label)}</option>`).join('')}</select></label>`;
+  const select = document.getElementById('navSuperAdminPermissionSelect');
+  if (select) select.addEventListener('change', () => _navChangeOwnSuperAdminPermission(select));
+}
+
 function navUpdateAuth(session) {
   const loginArea = document.getElementById('navLoginArea');
   const authArea = document.getElementById('navAuthArea');
@@ -318,6 +405,7 @@ function navUpdateAuth(session) {
       const name = session.displayName || session.username;
       navUser.innerHTML = `${emoji} ${name}`;
     }
+    _navRenderSuperAdminPermissionControl(session);
     if (navMyTalent) navMyTalent.style.display = '';
     if (navMyOrders) navMyOrders.style.display = '';
 
@@ -343,6 +431,7 @@ function navUpdateAuth(session) {
     if (loginArea) loginArea.style.display = '';
     if (authArea) authArea.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
+    _navRenderSuperAdminPermissionControl(null);
     document.querySelectorAll('[data-auth-only]').forEach(el => {
       el.style.display = 'none';
     });
