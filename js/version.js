@@ -2,9 +2,18 @@
  * 버전 관리 모듈 - CHO-Talents
  */
 const APP_VERSION = {
-  current: '4.2.13',
-  date: '2026-08-20',
+  current: '4.2.14',
+  date: '2026-08-24',
   history: [
+    {
+      version: '4.2.14',
+      date: '2026-08-24',
+      title: '구매 담당 교사 전체 구매 이력 관리',
+      changes: [
+        '구매 담당 교사가 모든 부서·사용자 유형·권한의 구매 이력에서 신청자 이름과 부서를 확인할 수 있도록 주문자 정보 조회 경로를 보강했습니다.',
+        '구매 담당 교사는 전체 부서 주문에 대해 구매 신청부터 상품 준비·구매 확정·지급 완료·취소·준비 단계 되돌리기까지 구매 흐름을 관리할 수 있습니다. 운영 DB에는 docs/TASK-109_purchase_teacher_global_purchase_management.sql 적용이 필요합니다.'
+      ]
+    },
     {
       version: '4.2.13',
       date: '2026-08-20',

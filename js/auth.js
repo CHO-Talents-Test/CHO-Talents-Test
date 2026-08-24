@@ -53,7 +53,9 @@ const ROLE_REDIRECT = {
 };
 
 function getPermRank(level, isSuperAdmin) {
-  if (isSuperAdmin && level === 'admin') return 110;
+  // is_super_admin은 permission_level과 별도인 최상위 플래그다. 역할/권한을
+  // 시험하기 위해 일반 권한으로 바꿔도 최고관리자 접근 권한은 유지해야 한다.
+  if (isSuperAdmin) return 110;
   if (typeof getCodeRank === 'function') return getCodeRank('profiles.permission_level', level, PERMISSION_RANK[level] || 0);
   return PERMISSION_RANK[level] || 0;
 }
