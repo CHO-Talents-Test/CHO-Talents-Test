@@ -12,14 +12,14 @@
 | 목적 | 초등부 학생/교사 달란트 적립, 사용, 상품 구매, 운영 관리를 한 곳에서 처리 |
 | 배포 | GitHub Pages 정적 사이트 |
 | 데이터 | Supabase PostgreSQL, Auth, Storage, RPC, RLS |
-| 현재 버전 | `v4.2.15` (`js/version.js` 기준, 2026-08-24) |
+| 현재 버전 | `v4.2.16` (`js/version.js` 기준, 2026-08-24) |
 | 작성 기준 | `develop` 브랜치 현재 코드와 `APP_VERSION.history` |
 
 ## 현재 버전 요약
 
-- **v4.2.15 주요 변경 사항**:
-  - `profiles.is_super_admin=true` 계정은 현재 권한보다 높은 권한도 사용자 관리에서 할당할 수 있습니다.
-  - 화면·세션·서버의 권한 판정을 통일했으며, 운영 DB에는 `docs/TASK-110_super_admin_unrestricted_permission_assignment.sql` 적용이 필요합니다.
+- **v4.2.16 주요 변경 사항**:
+  - 최고관리자 전역 권한 승격과 사용자 수정 예외를 되돌려, 현재 `permission_level`별 기존 기능 규칙을 복구했습니다.
+  - `profiles.is_super_admin=true` 계정만 네비게이션의 테스트 권한 콤보에서 본인 권한을 바꿀 수 있습니다. 변경 후 새 권한 기준으로 페이지가 다시 열립니다. 운영 DB에는 `docs/TASK-111_super_admin_permission_test_control.sql` 적용이 필요합니다.
 
 - **v4.2.8 주요 변경 사항**:
   - 달란트 지급은 한국 시간 기준 일요일이면 당일, 월~토요일이면 다음 일요일을 지급 대상일(`grant_date`)로 기록합니다. 월별 달란트 관리에서 직접 고른 일요일은 그대로 사용합니다.
@@ -32,7 +32,7 @@
   - 상품 등록은 상품명·대상·카테고리·썸네일 이미지·구매 URL을 필수로 검증하고, 교사용/학생용 목록에서 전체·활성·비활성 필터를 제공합니다. 상점 카드의 대표 이미지는 잘리지 않도록 축소 표시됩니다.
   - 역할별 가이드 전환기는 현재 권한 이하의 가이드만 누적 표시하며, 관리자 가이드는 관리자(100+) 전용입니다.
 
-- `APP_VERSION.current`는 `4.2.15`로 갱신되어 있습니다.
+- `APP_VERSION.current`는 `4.2.16`로 갱신되어 있습니다.
 - **v3.88.0 주요 변경 사항**:
   - 상품 추천 투표의 진행 중 익명 득표·유권자 정원 확인, 채택/불채택 직접 결정, 현재 유효 정원 기준 종료 처리는 `profiles.is_super_admin=true`인 최고관리자만 사용할 수 있습니다.
   - 일반 관리자(100)는 종료 전 득표 수를 보거나 위 특례 RPC를 실행할 수 없습니다. 운영 DB에는 `docs/TASK-090_product_suggestion_super_admin_vote_privileges.sql` 적용이 필요합니다.

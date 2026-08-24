@@ -710,6 +710,42 @@ BEGIN
 END;
 $$;
 
+CREATE OR REPLACE FUNCTION public.super_admin_change_own_permission(
+  p_permission_level text
+)
+RETURNS json
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_is_super_admin boolean;
+BEGIN
+  SELECT COALESCE(is_super_admin, false)
+  INTO v_is_super_admin
+  FROM public.profiles
+  WHERE id = auth.uid();
+
+  IF NOT COALESCE(v_is_super_admin, false) THEN
+    RETURN json_build_object('success', false, 'error', 'Unauthorized');
+  END IF;
+
+  IF p_permission_level NOT IN (
+    'student', 'teacher', 'dept_teacher', 'purchase_teacher',
+    'chief', 'evangelist', 'admin'
+  ) THEN
+    RETURN json_build_object('success', false, 'error', 'Invalid permission level');
+  END IF;
+
+  UPDATE public.profiles
+  SET permission_level = p_permission_level,
+      updated_at = now()
+  WHERE id = auth.uid();
+
+  RETURN json_build_object('success', true, 'permission_level', p_permission_level);
+END;
+$$;
+
 CREATE OR REPLACE FUNCTION public.update_last_login()
 RETURNS void
 LANGUAGE plpgsql
@@ -1001,23 +1037,17 @@ AS $$
 DECLARE
   v_caller_perm text;
   v_caller_rank integer;
-  v_caller_super boolean;
   v_target_perm text;
   v_target_rank integer;
   v_target_super boolean;
   v_new_rank integer;
 BEGIN
-  SELECT permission_level, COALESCE(is_super_admin, false)
-  INTO v_caller_perm, v_caller_super
-  FROM public.profiles WHERE id = auth.uid();
+  SELECT permission_level INTO v_caller_perm FROM public.profiles WHERE id = auth.uid();
   IF v_caller_perm IS NULL THEN
     RETURN json_build_object('success', false, 'error', 'Unauthorized');
   END IF;
 
   v_caller_rank := public.get_permission_rank(v_caller_perm);
-  IF v_caller_super THEN
-    v_caller_rank := 110;
-  END IF;
   IF v_caller_rank < 60 THEN
     RETURN json_build_object('success', false, 'error', 'Unauthorized');
   END IF;
@@ -2262,6 +2292,7 @@ GRANT EXECUTE ON FUNCTION public.get_my_role() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_view_managed_profile(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.can_view_scoped_profile(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.change_my_password(text) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.super_admin_change_own_permission(text) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.update_last_login() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.check_username_available(text) TO anon, authenticated;
 GRANT EXECUTE ON FUNCTION public.check_registration_status(text) TO anon, authenticated;
